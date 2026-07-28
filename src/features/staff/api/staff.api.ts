@@ -1,0 +1,12 @@
+import { graphqlClient } from "../../../shared/api/graphql-client";
+import type { CreateEmployeeInput, Employee, EmployeeInviteAttempt, EmployeeLoginStatus, EmployeeStatus, StaffCategory } from "../model/staff.types";
+
+const fields = "id employeeCode fullName email phone staffCategory staffType employmentType designation department primaryCampusId campusIds joiningDate status loginStatus inviteAttempts inviteError lastInviteAttemptAt invitedAt externalHrCode createdAt updatedAt endedAt endReason";
+
+export interface EmployeeFilter { search?: string; status?: EmployeeStatus; staffCategory?: StaffCategory; campusId?: string; loginStatus?: EmployeeLoginStatus; }
+export async function listEmployees(filter?: EmployeeFilter) { return (await graphqlClient<{ employees: Employee[] }, { filter?: EmployeeFilter }>(`query Employees($filter: EmployeeFilter) { employees(filter: $filter) { ${fields} } }`, filter ? { filter } : {})).employees; }
+export async function getEmployee(id: string) { return (await graphqlClient<{ employee: Employee }, { id: string }>(`query Employee($id: ID!) { employee(id: $id) { ${fields} } }`, { id })).employee; }
+export async function listEmployeeInviteAttempts(id:string){return(await graphqlClient<{employeeInviteAttempts:EmployeeInviteAttempt[]},{id:string}>(`query EmployeeInviteAttempts($id:ID!){ employeeInviteAttempts(id:$id){ id employeeId email attemptNumber status provider error createdAt } }`,{id})).employeeInviteAttempts}
+export async function createEmployee(input: CreateEmployeeInput) { const wire={...input,...(input.customFields?{customFields:JSON.stringify(input.customFields)}:{})};return (await graphqlClient<{ createEmployee: Employee }, { input: typeof wire }>(`mutation CreateEmployee($input: CreateEmployeeInput!) { createEmployee(input: $input) { ${fields} } }`, { input:wire })).createEmployee; }
+export async function resendEmployeeInvite(id: string) { return (await graphqlClient<{ resendEmployeeInvite: Employee }, { id: string }>(`mutation ResendEmployeeInvite($id: ID!) { resendEmployeeInvite(id: $id) { ${fields} } }`, { id })).resendEmployeeInvite; }
+export async function endEmployment(id: string, reason: string) { return (await graphqlClient<{ endEmployment: Employee }, { id: string; reason: string }>(`mutation EndEmployment($id: ID!, $reason: String!) { endEmployment(id: $id, reason: $reason) { ${fields} } }`, { id, reason })).endEmployment; }
