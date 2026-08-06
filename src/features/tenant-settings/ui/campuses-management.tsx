@@ -1,15 +1,17 @@
-import { Ban, Building2, Pencil, Plus, RotateCcw, Search } from "lucide-react";
+import { Ban, Building2, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { EmptyState, LoadingState } from "../../../shared/ui/page-state";
 import { Modal } from "../../../shared/ui/modal";
 import {
-  createCampus,
+  createCampusSetup,
+  createCampusAcademicUnit,
   deactivateCampus,
   listCampuses,
+  listCampusAcademicUnits,
   reactivateCampus,
   updateCampus,
 } from "../api/settings.api";
-import type { Campus, CampusInput, InstitutionType } from "../model/settings.types";
+import type { AcademicUnitType, Campus, CampusAcademicUnit, CampusAcademicUnitInput, CampusInput } from "../model/settings.types";
 import { useSelectedCampus } from "../model/selected-campus-provider";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
@@ -21,10 +23,14 @@ import { Spinner } from "../../../shared/ui/spinner";
 
 const emptyForm: CampusInput = {
   name: "",
-  campusType: "SCHOOL",
   address: "",
   contactEmail: "",
   contactPhone: "",
+};
+const unitDefaults: Record<AcademicUnitType, CampusAcademicUnitInput> = {
+  SCHOOL: { type: "SCHOOL", name: "School", curriculumOrAffiliationId: "CBSE" },
+  PU: { type: "PU", name: "PU College", curriculumOrAffiliationId: "KARNATAKA_PUE" },
+  DEGREE: { type: "DEGREE", name: "Degree College", curriculumOrAffiliationId: "BENGALURU_UNIVERSITY" },
 };
 
 export function CampusesManagement() {
@@ -38,13 +44,14 @@ export function CampusesManagement() {
   const [editing, setEditing] = useState<Campus | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"ALL" | Campus["status"]>("ALL");
-  const [campusType, setCampusType] = useState<"ALL" | InstitutionType>("ALL");
+  const [units, setUnits] = useState<CampusAcademicUnit[]>([]);
+  const [unitDrafts, setUnitDrafts] = useState<CampusAcademicUnitInput[]>([{ ...unitDefaults.SCHOOL }]);
 
   const load = () => {
     setLoading(true);
     setError(null);
-    listCampuses()
-      .then(setItems)
+    Promise.all([listCampuses(), listCampusAcademicUnits()])
+      .then(([campuses, academicUnits]) => { setItems(campuses); setUnits(academicUnits); })
       .catch((value) =>
         setError(value instanceof Error ? value.message : "Unable to load campuses"),
       )
@@ -56,7 +63,6 @@ export function CampusesManagement() {
     () =>
       items.filter((item) => {
         if (status !== "ALL" && item.status !== status) return false;
-        if (campusType !== "ALL" && item.campusType !== campusType) return false;
         const query = search.trim().toLowerCase();
         return (
           !query ||
@@ -65,7 +71,7 @@ export function CampusesManagement() {
           )
         );
       }),
-    [campusType, items, search, status],
+    [items, search, status],
   );
 
   async function submit(event: FormEvent) {
@@ -73,9 +79,21 @@ export function CampusesManagement() {
     setBusy(true);
     setError(null);
     try {
-      const saved = editing
-        ? await updateCampus(editing.id, form)
-        : await createCampus(form);
+      if (!editing && unitDrafts.length === 0) throw new Error("Select at least one academic unit");
+      const campusInput: CampusInput = {
+        name: form.name.trim(),
+        ...(form.address?.trim() ? { address: form.address.trim() } : {}),
+        ...(form.contactEmail?.trim() ? { contactEmail: form.contactEmail.trim() } : {}),
+        ...(form.contactPhone?.trim() ? { contactPhone: form.contactPhone.trim() } : {}),
+      };
+      const setup = editing ? null : await createCampusSetup({ ...campusInput, academicUnits: unitDrafts });
+      const saved = editing ? await updateCampus(editing.id, campusInput) : setup!.campus;
+      if (setup) setUnits((current) => [...current, ...setup.academicUnits]);
+      if (editing && unitDrafts.length) {
+        const created: CampusAcademicUnit[] = [];
+        for (const draft of unitDrafts) created.push(await createCampusAcademicUnit(editing.id, draft));
+        setUnits((current) => [...current, ...created]);
+      }
       setItems((current) =>
         (editing
           ? current.map((item) => (item.id === saved.id ? saved : item))
@@ -85,6 +103,7 @@ export function CampusesManagement() {
       setOpen(false);
       setEditing(null);
       setForm(emptyForm);
+      setUnitDrafts([{ ...unitDefaults.SCHOOL }]);
       await refreshCampuses();
     } catch (value) {
       setError(value instanceof Error ? value.message : "Unable to create campus");
@@ -96,6 +115,7 @@ export function CampusesManagement() {
   function startCreate() {
     setEditing(null);
     setForm(emptyForm);
+    setUnitDrafts([{ ...unitDefaults.SCHOOL }]);
     setOpen(true);
   }
 
@@ -103,11 +123,11 @@ export function CampusesManagement() {
     setEditing(item);
     setForm({
       name: item.name,
-      campusType: item.campusType,
       address: item.address ?? "",
       contactEmail: item.contactEmail ?? "",
       contactPhone: item.contactPhone ?? "",
     });
+    setUnitDrafts([]);
     setOpen(true);
   }
 
@@ -177,17 +197,6 @@ export function CampusesManagement() {
           <option value="ACTIVE">Active</option>
           <option value="INACTIVE">Inactive</option>
         </select>
-        <select
-          aria-label="Campus type"
-          value={campusType}
-          onChange={(e) => setCampusType(e.target.value as typeof campusType)}
-          className="h-8 rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-600 shadow-2xs"
-        >
-          <option value="ALL">All types</option>
-          <option value="SCHOOL">School</option>
-          <option value="COLLEGE">College</option>
-          <option value="DEGREE_COLLEGE">Degree college</option>
-        </select>
         <span className="text-xs text-slate-500 font-medium">
           {visibleItems.length} campus{visibleItems.length === 1 ? "" : "es"}
         </span>
@@ -200,7 +209,7 @@ export function CampusesManagement() {
             <TableHeader>
               <TableRow>
                 <TableHead>Campus</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Academic units</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead aria-label="Actions" />
@@ -223,7 +232,14 @@ export function CampusesManagement() {
                     </div>
                   </TableCell>
                   <TableCell className="text-slate-600">
-                    {item.campusType.replaceAll("_", " ")}
+                    <div className="flex flex-wrap gap-1">
+                      {units.filter((unit) => unit.campusId === item.id && unit.status === "ACTIVE").map((unit) => (
+                        <Badge key={unit.id} variant="secondary">{unit.type === "SCHOOL" ? unit.curriculumOrAffiliationId.replaceAll("_", " ") : unit.name}</Badge>
+                      ))}
+                      {!units.some((unit) => unit.campusId === item.id && unit.status === "ACTIVE") && (
+                        <span className="text-xs text-amber-700">Academic units not configured</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <p className="text-sm text-slate-700">{item.contactPhone || "No phone"}</p>
@@ -296,21 +312,6 @@ export function CampusesManagement() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="campus-type">Institution type</Label>
-              <select
-                id="campus-type"
-                value={form.campusType}
-                onChange={(e) =>
-                  setForm((v) => ({ ...v, campusType: e.target.value as InstitutionType }))
-                }
-                className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
-              >
-                <option value="SCHOOL">School</option>
-                <option value="COLLEGE">College</option>
-                <option value="DEGREE_COLLEGE">Degree college</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="campus-phone">Contact phone</Label>
               <Input
                 id="campus-phone"
@@ -318,6 +319,45 @@ export function CampusesManagement() {
                 onChange={(e) => setForm((v) => ({ ...v, contactPhone: e.target.value }))}
               />
             </div>
+            <fieldset className="space-y-3 sm:col-span-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <legend className="text-sm font-semibold text-slate-900">
+                    {editing ? "Add another board or academic unit" : "Education offered at this campus"}
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    {(["SCHOOL", "PU", "DEGREE"] as AcademicUnitType[]).map((type) => (
+                      <Button key={type} type="button" size="sm" variant="outline" onClick={() => setUnitDrafts((current) => [...current, { ...unitDefaults[type] }])}>
+                        <Plus size={13} /> {type === "SCHOOL" ? "Add school board" : type === "PU" ? "Add PU unit" : "Add degree unit"}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                {unitDrafts.map((unit, index) => (
+                  <div key={`${unit.type}-${index}`} className="grid gap-3 rounded-md border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_auto]">
+                    <div className="space-y-1.5">
+                      <Label>{unit.type === "SCHOOL" ? "School name" : unit.type === "PU" ? "PU unit name" : "Degree unit name"}</Label>
+                      <Input value={unit.name} onChange={(event) => setUnitDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} required />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{unit.type === "DEGREE" ? "University / affiliation" : "Board / curriculum"}</Label>
+                      <select
+                        value={unit.curriculumOrAffiliationId}
+                        onChange={(event) => setUnitDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, curriculumOrAffiliationId: event.target.value } : item))}
+                        className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                      >
+                        {unit.type === "SCHOOL" && <><option value="CBSE">CBSE</option><option value="STATE_BOARD">State Board</option><option value="ICSE">ICSE</option></>}
+                        {unit.type === "PU" && <option value="KARNATAKA_PUE">Karnataka Pre-University Education</option>}
+                        {unit.type === "DEGREE" && <><option value="BENGALURU_UNIVERSITY">Bengaluru University</option><option value="AUTONOMOUS">Autonomous</option></>}
+                      </select>
+                    </div>
+                    <Button type="button" variant="ghost" size="icon-sm" className="self-end" aria-label={`Remove ${unit.name}`} onClick={() => setUnitDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                ))}
+                {!editing && unitDrafts.length === 0 && <p className="text-xs font-medium text-amber-700">Add at least one academic unit.</p>}
+                <p className="text-xs text-slate-500">Classes, streams, programs and semesters are configured after the campus is saved.</p>
+              </fieldset>
             <div className="space-y-1.5">
               <Label htmlFor="campus-email">Contact email</Label>
               <Input

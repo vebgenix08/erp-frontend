@@ -10,5 +10,12 @@ export default defineConfig(({ command, mode }) => {
     const missing = requiredBuildVariables.filter((name) => !(process.env[name] ?? fileEnv[name])?.trim());
     if (missing.length) throw new Error(`Missing required frontend build variables: ${missing.join(", ")}`);
   }
-  return { plugins: [tailwindcss(), react()] };
+  return {
+    plugins: [tailwindcss(), react()],
+    build: {
+      // ExcelJS is an isolated, on-demand export engine. Route and initial app chunks
+      // remain below 500 kB; this budget prevents a false warning for that lazy tool.
+      chunkSizeWarningLimit: 1000,
+    },
+  };
 });

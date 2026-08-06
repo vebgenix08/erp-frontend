@@ -13,12 +13,14 @@ import {
 import { useEffect, useState } from "react";
 import {
   NavLink,
+  Navigate,
   Outlet,
   useLocation,
   useNavigate,
   type NavLinkRenderProps,
 } from "react-router-dom";
 import { useSession } from "../../features/session/model/session-provider";
+import { getSessionDashboardPath } from "../../features/session/api/session.api";
 import { SelectedAcademicYearProvider } from "../../features/tenant-settings/model/selected-academic-year-provider";
 import { SelectedCampusProvider } from "../../features/tenant-settings/model/selected-campus-provider";
 import { OperatingContextControls } from "./operating-context-controls";
@@ -150,6 +152,15 @@ function RoleWorkspace() {
 
   const prefix = location.pathname.split("/")[1] as keyof typeof portalDefinitions;
   const portal = portalDefinitions[prefix] ?? portalDefinitions.principal;
+  const requiredRole: Partial<Record<keyof typeof portalDefinitions, string>> = {
+    accountant: "ACCOUNTANT", admissions: "ADMISSION_OFFICER", principal: "PRINCIPAL", hod: "HOD",
+    teacher: "TEACHER", "class-teacher": "CLASS_TEACHER", student: "STUDENT", parent: "PARENT",
+    library: "LIBRARIAN", transport: "TRANSPORT_MANAGER", hostel: "HOSTEL_WARDEN",
+    exams: "EXAM_COORDINATOR", hr: "HR_MANAGER",
+  };
+  if (session?.user.role?.trim().toUpperCase() !== requiredRole[prefix]) {
+    return <Navigate to={getSessionDashboardPath(session)} replace />;
+  }
   const active = portal.links.find(([to]) => location.pathname.startsWith(to));
 
   return (

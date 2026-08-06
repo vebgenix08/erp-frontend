@@ -40,8 +40,29 @@ export async function getStudent(id:string) {
 export async function getStudentByAdmissionApplicationId(id:string) {
   return (await graphqlClient<{studentByAdmissionApplicationId:Student},{id:string}>(`query StudentByAdmissionApplicationId($id: ID!) { studentByAdmissionApplicationId(id:$id) { ${fields} } }`,{id})).studentByAdmissionApplicationId;
 }
-export async function changeStudentEnrollment(id:string,input:{campusId:string;academicYearId:string;classId:string;sectionId?:string;rollNumber?:string;reason:string}) {
+export async function changeStudentEnrollment(id:string,input:{campusId:string;academicYearId:string;classId:string;sectionId?:string;reason:string}) {
   return (await graphqlClient<{changeStudentEnrollment:Student},{id:string;input:typeof input}>(`mutation ChangeStudentEnrollment($id: ID!, $input: ChangeStudentEnrollmentInput!) { changeStudentEnrollment(id:$id,input:$input) { ${fields} } }`,{id,input})).changeStudentEnrollment;
+}
+export interface CampusTransfer { id:string;studentId:string;studentName:string;clientRequestId:string;registrationNumber:string;targetRegistrationNumber:string;source:{campusId:string;academicYearId:string;programId:string;classId:string;sectionId?:string;enrollmentId:string;rollNumber?:string};target:{campusId:string;academicYearId:string;programId:string;classId:string;sectionId?:string;enrollmentId:string;rollNumber?:string};effectiveAt:string;reason:string;note?:string;status:"DRAFT"|"UNDER_REVIEW"|"PROCESSING"|"COMPLETED"|"FAILED"|"CANCELLED";registrationAction:"KEEP"|"REGENERATE";financeAssessment?:Record<string,unknown>;warning?:string;failureReason?:string;createdAt:string;updatedAt:string;completedAt?:string;history:Array<{status:CampusTransfer["status"];at:string;actorId:string;note?:string}> }
+const campusTransferFields="id studentId studentName clientRequestId registrationNumber targetRegistrationNumber source{campusId academicYearId programId classId sectionId enrollmentId rollNumber} target{campusId academicYearId programId classId sectionId enrollmentId rollNumber} effectiveAt reason note status registrationAction financeAssessment warning failureReason createdAt updatedAt completedAt history{status at actorId note}";
+export async function listCampusTransfers(studentId:string){return(await graphqlClient<{campusTransfers:CampusTransfer[]},{studentId:string}>(`query CampusTransfers($studentId:ID!){campusTransfers(studentId:$studentId){${campusTransferFields}}}`,{studentId})).campusTransfers}
+export async function createCampusTransfer(input:{studentId:string;targetCampusId:string;academicYearId:string;targetClassId:string;targetSectionId?:string;effectiveAt:string;reason:string;note?:string;clientRequestId:string}){return(await graphqlClient<{createCampusTransfer:CampusTransfer},{input:typeof input}>(`mutation CreateCampusTransfer($input:CreateCampusTransferInput!){createCampusTransfer(input:$input){${campusTransferFields}}}`,{input})).createCampusTransfer}
+export async function listCampusTransferPage(filter:{search?:string;status?:CampusTransfer["status"];page:number;pageSize:number}){return(await graphqlClient<{campusTransferPage:{items:CampusTransfer[];page:number;pageSize:number;total:number;totalPages:number}},{filter:typeof filter}>(`query CampusTransferPage($filter:CampusTransferPageFilter){campusTransferPage(filter:$filter){items{${campusTransferFields}} page pageSize total totalPages}}`,{filter})).campusTransferPage}
+export async function approveCampusTransfer(id:string){return(await graphqlClient<{approveCampusTransfer:CampusTransfer},{id:string}>(`mutation ApproveCampusTransfer($id:ID!){approveCampusTransfer(id:$id){${campusTransferFields}}}`,{id})).approveCampusTransfer}
+export async function retryCampusTransfer(id:string){return(await graphqlClient<{retryCampusTransfer:CampusTransfer},{id:string}>(`mutation RetryCampusTransfer($id:ID!){retryCampusTransfer(id:$id){${campusTransferFields}}}`,{id})).retryCampusTransfer}
+export async function cancelCampusTransfer(id:string,reason:string){return(await graphqlClient<{cancelCampusTransfer:CampusTransfer},{id:string;reason:string}>(`mutation CancelCampusTransfer($id:ID!,$reason:String!){cancelCampusTransfer(id:$id,reason:$reason){${campusTransferFields}}}`,{id,reason})).cancelCampusTransfer}
+export interface StudentNumberingBatchResult { updated:number;skipped:number;students:Student[] }
+export async function generateClassRegistrationNumbers(input:{campusId:string;academicYearId:string;classId:string;clientRequestId:string}) {
+  return (await graphqlClient<{generateClassRegistrationNumbers:StudentNumberingBatchResult},{input:typeof input}>(
+    `mutation GenerateClassRegistrationNumbers($input:ClassRegistrationNumberingInput!){generateClassRegistrationNumbers(input:$input){updated skipped students{${fields}}}}`,
+    {input},
+  )).generateClassRegistrationNumbers;
+}
+export async function generateSectionRollNumbers(input:{campusId:string;academicYearId:string;classId:string;sectionId:string;regenerate:boolean;clientRequestId:string}) {
+  return (await graphqlClient<{generateSectionRollNumbers:StudentNumberingBatchResult},{input:typeof input}>(
+    `mutation GenerateSectionRollNumbers($input:SectionRollNumberingInput!){generateSectionRollNumbers(input:$input){updated skipped students{${fields}}}}`,
+    {input},
+  )).generateSectionRollNumbers;
 }
 export interface StudentNote { id:string;studentId:string;body:string;createdBy:string;createdAt:string;updatedAt:string }
 const noteFields="id studentId body createdBy createdAt updatedAt";

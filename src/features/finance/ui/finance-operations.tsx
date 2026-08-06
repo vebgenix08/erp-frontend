@@ -178,7 +178,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
   );
 
   const outstandingOrders = useMemo(
-    () => orders.filter((item) => item.balanceMinor > 0 && item.status !== "CANCELLED"),
+    () => orders.filter((item) => item.balanceMinor > 0 && item.status !== "CANCELLED" && item.status !== "CLOSED"),
     [orders],
   );
 
@@ -197,7 +197,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
         limit: 100,
         offset,
       });
-      all.push(...batch.items.filter((item) => item.balanceMinor > 0 && item.status !== "CANCELLED"));
+      all.push(...batch.items.filter((item) => item.balanceMinor > 0 && item.status !== "CANCELLED" && item.status !== "CLOSED"));
       if (batch.items.length < 100) return all;
     }
   }

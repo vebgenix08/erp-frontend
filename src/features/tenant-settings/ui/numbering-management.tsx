@@ -177,7 +177,7 @@ export function NumberingManagement() {
                 placeholder="STU/{YEAR}/{SEQUENCE}"
               />
               <p className="text-xs text-slate-500">
-                Tokens: {"{SEQUENCE}"}, {"{YEAR}"}, {"{MONTH}"}, {"{ACADEMIC_YEAR}"}, {"{CAMPUS_CODE}"}
+                Tokens: {"{SEQUENCE}"}, {"{YEAR}"}, {"{MONTH}"}, {"{ACADEMIC_YEAR}"}, {"{CAMPUS_CODE}"}, {"{CLASS_CODE}"}
               </p>
             </div>
 
@@ -293,7 +293,8 @@ export function NumberingManagement() {
                     .replaceAll("{YEAR}", "2026")
                     .replaceAll("{MONTH}", "07")
                     .replaceAll("{ACADEMIC_YEAR}", "26-27")
-                    .replaceAll("{CAMPUS_CODE}", "MAIN")}
+                    .replaceAll("{CAMPUS_CODE}", "MAIN")
+                    .replaceAll("{CLASS_CODE}", "C10")}
                 </strong>
               </div>
             </div>

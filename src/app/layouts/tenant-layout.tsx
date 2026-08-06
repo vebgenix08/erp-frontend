@@ -1,8 +1,9 @@
 import {
   BadgeIndianRupee,
   Bell,
+  BookOpen,
   Building2,
-  CalendarDays,
+  CalendarRange,
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
@@ -15,10 +16,10 @@ import {
   LogOut,
   Menu,
   RefreshCw,
+  Search,
   Settings2,
   ShieldCheck,
   UserRoundCog,
-  UserRoundCheck,
   UsersRound,
   X,
 } from "lucide-react";
@@ -43,6 +44,7 @@ import { OperatingContextControls } from "./operating-context-controls";
 import { cn } from "../../shared/ui/utils";
 import { Avatar, AvatarFallback } from "../../shared/ui/avatar";
 import { Button } from "../../shared/ui/button";
+import { Input } from "../../shared/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../shared/ui/tooltip";
 
 export function TenantLayout() {
@@ -60,11 +62,28 @@ function TenantWorkspace() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [cmdSearch, setCmdSearch] = useState("");
   const [institutionName, setInstitutionName] = useState<string | null>(null);
   const [institutionLogo, setInstitutionLogo] = useState<string | null>(null);
   const [registryName, setRegistryName] = useState<string | null>(null);
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
+
+  // Keyboard shortcut handler for Ctrl + K or Cmd + K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCmdOpen((prev) => !prev);
+      }
+      if (e.key === "Escape") {
+        setCmdOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -80,7 +99,9 @@ function TenantWorkspace() {
       .catch(() => {
         if (active) setInstitutionName(null);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [session?.selectedTenant?.tenantId, session?.tenant?.tenantId]);
 
   useEffect(() => {
@@ -92,20 +113,20 @@ function TenantWorkspace() {
       .catch(() => {
         if (active) setRegistryName(null);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [session?.selectedTenant?.tenantId, session?.tenant?.tenantId]);
 
   const dashboardLink = ["/admin/dashboard", "Dashboard", LayoutDashboard] as const;
 
   const setupLinks = [
     ["/admin/setup/campuses", "Campuses", Building2],
-    ["/admin/setup/academic-years", "Academic Years", CalendarDays],
-    ["/admin/setup/academic-structure", "Academic Structure", GraduationCap],
-    ["/admin/academics/teaching-assignments", "Teaching Assignments", UserRoundCheck],
+    ["/admin/setup/academic-structure", "Academic Setup", BookOpen],
+    ["/admin/academics/class-setup", "Class Setup", CalendarRange],
   ] as const;
 
   const administrationLinks = [
-    ["/admin/setup/readiness", "Setup Readiness", ClipboardCheck],
     ["/admin/setup/numbering", "Numbering", Hash],
     ["/admin/setup/templates", "Templates", FileText],
     ["/admin/setup/notifications", "Notifications", Bell],
@@ -114,18 +135,22 @@ function TenantWorkspace() {
   const financeLinks = [
     ["/admin/finance/dashboard", "Finance Dashboard", BadgeIndianRupee],
     ["/admin/finance/setup", "Finance Setup", Settings2],
-    ["/admin/finance/collections", "Collections", BadgeIndianRupee],
+    ["/admin/finance/collections", "Fee Collections", BadgeIndianRupee],
     ["/admin/finance/general-charges", "Additional Fees", FileText],
     ["/admin/finance/outstanding", "Outstanding Fees", FileSearch],
-    ["/admin/finance/receipts", "Receipts", FileText],
+    ["/admin/finance/receipts", "Receipts Register", FileText],
     ["/admin/finance/receipt-template", "Receipt Template", FileText],
-    ["/admin/finance/reconciliation", "Reconciliation", RefreshCw],
+    ["/admin/finance/reconciliation", "Bank Reconciliation", RefreshCw],
   ] as const;
 
   const peopleLinks = [
-    ["/admin/staff", "Staff Directory", UsersRound],
     ["/admin/students", "Students Directory", GraduationCap],
+    ["/admin/staff", "Staff Directory", UsersRound],
+  ] as const;
+
+  const academicOperationsLinks = [
     ["/admin/student-documents", "Certificates & ID Cards", FileText],
+    ["/admin/campus-transfers", "Campus Transfers", RefreshCw],
   ] as const;
 
   const admissionsLinks = [
@@ -140,6 +165,22 @@ function TenantWorkspace() {
     ["/admin/access/permissions", "Permissions Matrix", KeyRound],
   ] as const;
 
+  const allSearchItems = [
+    ...setupLinks.map(([to, label]) => ({ category: "Academic Setup", label, to })),
+    ...financeLinks.map(([to, label]) => ({ category: "Finance", label, to })),
+    ...peopleLinks.map(([to, label]) => ({ category: "Students & Staff", label, to })),
+    ...academicOperationsLinks.map(([to, label]) => ({ category: "Academic Operations", label, to })),
+    ...admissionsLinks.map(([to, label]) => ({ category: "Admissions", label, to })),
+    ...accessLinks.map(([to, label]) => ({ category: "Access & Security", label, to })),
+    ...administrationLinks.map(([to, label]) => ({ category: "Administration", label, to })),
+  ];
+
+  const filteredSearch = cmdSearch.trim()
+    ? allSearchItems.filter((item) =>
+      `${item.label} ${item.category}`.toLowerCase().includes(cmdSearch.trim().toLowerCase())
+    )
+    : allSearchItems;
+
   const tenantLabel =
     institutionName ??
     registryName ??
@@ -151,7 +192,7 @@ function TenantWorkspace() {
   return (
     <TooltipProvider>
       <div className="flex h-screen w-full overflow-hidden bg-slate-50">
-        {/* Mobile scrim */}
+        {/* MobileScrim */}
         {mobileOpen && (
           <button
             className="fixed inset-0 z-30 bg-slate-900/60 backdrop-blur-xs md:hidden"
@@ -160,18 +201,77 @@ function TenantWorkspace() {
           />
         )}
 
+        {/* Global Command Palette Modal (Ctrl + K) */}
+        {cmdOpen && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-900/50 backdrop-blur-xs">
+            <div
+              className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-4 shadow-2xl space-y-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2 text-slate-400 min-w-0 flex-1">
+                  <Search className="h-4 w-4 shrink-0" />
+                  <Input
+                    autoFocus
+                    value={cmdSearch}
+                    onChange={(e) => setCmdSearch(e.target.value)}
+                    placeholder="Search pages, modules, or actions... (Esc to close)"
+                    className="border-none shadow-none h-8 text-xs focus-visible:ring-0 pl-0"
+                  />
+                </div>
+                <button
+                  onClick={() => setCmdOpen(false)}
+                  className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto space-y-1 py-1">
+                {filteredSearch.map((item) => (
+                  <button
+                    key={item.to}
+                    onClick={() => {
+                      setCmdOpen(false);
+                      setCmdSearch("");
+                      navigate(item.to);
+                    }}
+                    className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-all text-left"
+                  >
+                    <span>{item.label}</span>
+                    <span className="text-[10px] font-normal text-slate-400">{item.category}</span>
+                  </button>
+                ))}
+                {!filteredSearch.length && (
+                  <div className="py-8 text-center text-xs text-slate-400 font-medium">
+                    No results found for "{cmdSearch}"
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Clean Slate 900 Dark Sidebar */}
         <aside
           className={cn(
             "fixed inset-y-0 left-0 z-40 flex w-56 flex-col bg-[#0f172a] text-slate-300 shadow-xl transition-transform duration-200 border-r border-slate-800",
             "md:relative md:translate-x-0",
-            mobileOpen ? "translate-x-0" : "-translate-x-full",
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
           {/* Brand header */}
           <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-slate-800/80 bg-[#0b1329]/50">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white text-brand-600 shadow-xs">
-              {institutionLogo?<img src={institutionLogo} alt={`${tenantLabel} logo`} className="h-full w-full object-contain p-0.5"/>:<GraduationCap size={18}/>}
+              {institutionLogo ? (
+                <img
+                  src={institutionLogo}
+                  alt={`${tenantLabel} logo`}
+                  className="h-full w-full object-contain p-0.5"
+                />
+              ) : (
+                <GraduationCap size={18} />
+              )}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-bold text-white leading-tight">{tenantLabel}</p>
@@ -197,7 +297,7 @@ function TenantWorkspace() {
                     "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors",
                     isActive
                       ? "bg-brand-600 text-white font-bold shadow-xs"
-                      : "text-slate-300 hover:bg-slate-800 hover:text-white",
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
                   )
                 }
               >
@@ -208,23 +308,52 @@ function TenantWorkspace() {
 
             {/* Categorized ERP Nav Groups */}
             <div className="space-y-3.5">
-              <SidebarGroup categoryLabel="Admissions" links={admissionsLinks} defaultOpen={location.pathname.startsWith("/admin/admissions")} />
+              <SidebarGroup
+                categoryLabel="Admissions"
+                links={admissionsLinks}
+                defaultOpen={location.pathname.startsWith("/admin/admissions")}
+              />
 
               <SidebarGroup
                 categoryLabel="Students & staff"
                 links={peopleLinks}
-                defaultOpen={location.pathname.startsWith("/admin/staff") || location.pathname.startsWith("/admin/students")}
+                defaultOpen={
+                  location.pathname.startsWith("/admin/staff") ||
+                  location.pathname.startsWith("/admin/students")
+                }
+              />
+
+              <SidebarGroup
+                categoryLabel="Academic operations"
+                links={academicOperationsLinks}
+                defaultOpen={location.pathname.startsWith("/admin/student-documents")}
               />
 
               <SidebarGroup
                 categoryLabel="Academic setup"
                 links={setupLinks}
-                defaultOpen={location.pathname.startsWith("/admin/setup/campuses") || location.pathname.startsWith("/admin/setup/academic")}
+                defaultOpen={
+                  location.pathname.startsWith("/admin/setup/campuses") ||
+                  location.pathname.startsWith("/admin/setup/academic") ||
+                  location.pathname.startsWith("/admin/academics")
+                }
               />
 
-              <SidebarGroup categoryLabel="Finance" links={financeLinks} defaultOpen={location.pathname.startsWith("/admin/finance")} />
+              <SidebarGroup
+                categoryLabel="Finance"
+                links={financeLinks}
+                defaultOpen={location.pathname.startsWith("/admin/finance")}
+              />
 
-              <SidebarGroup categoryLabel="Administration" links={administrationLinks} defaultOpen={location.pathname.startsWith("/admin/setup/readiness") || location.pathname.startsWith("/admin/setup/numbering") || location.pathname.startsWith("/admin/setup/templates") || location.pathname.startsWith("/admin/setup/notifications")} />
+              <SidebarGroup
+                categoryLabel="Administration"
+                links={administrationLinks}
+                defaultOpen={
+                  location.pathname.startsWith("/admin/setup/numbering") ||
+                  location.pathname.startsWith("/admin/setup/templates") ||
+                  location.pathname.startsWith("/admin/setup/notifications")
+                }
+              />
 
               <SidebarGroup
                 categoryLabel="Users & access"
@@ -269,8 +398,8 @@ function TenantWorkspace() {
 
         {/* Main Content Workspace */}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          {/* Topbar Header */}
-          <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 z-20 gap-4">
+          {/* Topbar Header with Backdrop Blur */}
+          <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/90 backdrop-blur-md px-6 z-20 gap-4">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <button
                 className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 md:hidden"
@@ -282,12 +411,26 @@ function TenantWorkspace() {
 
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-500 truncate">{tenantLabel}</p>
-                <p className="text-sm font-bold text-slate-900 truncate">Enterprise Administration</p>
+                <p className="text-sm font-bold text-slate-900 truncate">
+                  Enterprise Administration
+                </p>
               </div>
             </div>
 
-            {/* Right Side Tools: Campus & Academic Year Controls */}
+            {/* Right Side Tools: Campus & Academic Year Controls + Ctrl+K Search */}
             <div className="flex shrink-0 items-center gap-3">
+              {/* Command Palette Quick Button */}
+              <button
+                onClick={() => setCmdOpen(true)}
+                className="hidden sm:flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-white hover:border-slate-300 transition-all"
+              >
+                <Search className="h-3.5 w-3.5 text-slate-400" />
+                <span>Quick Search...</span>
+                <kbd className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                  Ctrl K
+                </kbd>
+              </button>
+
               <OperatingContextControls />
 
               <button
@@ -303,7 +446,11 @@ function TenantWorkspace() {
                 className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1 text-xs font-bold hover:bg-white hover:border-slate-300 transition-colors"
               >
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded bg-brand-600 text-white font-extrabold text-[11px]">
-                  {institutionLogo?<img src={institutionLogo} alt="" className="h-full w-full bg-white object-contain"/>:tenantLabel.slice(0, 1).toUpperCase()}
+                  {institutionLogo ? (
+                    <img src={institutionLogo} alt="" className="h-full w-full bg-white object-contain" />
+                  ) : (
+                    tenantLabel.slice(0, 1).toUpperCase()
+                  )}
                 </span>
                 <span className="hidden md:inline text-slate-800">{tenantLabel}</span>
               </NavLink>
@@ -311,9 +458,7 @@ function TenantWorkspace() {
           </header>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto p-5 md:p-6">
-            <Outlet />
-          </div>
+          <div className="flex-1 overflow-y-auto p-5 md:p-6">{<Outlet />}</div>
         </main>
       </div>
     </TooltipProvider>
@@ -359,7 +504,7 @@ function SidebarGroup({
                   "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors",
                   isActive
                     ? "bg-brand-600 text-white font-bold shadow-xs"
-                    : "text-slate-300 hover:bg-slate-800 hover:text-white",
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 )
               }
             >

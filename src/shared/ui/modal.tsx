@@ -16,14 +16,15 @@ interface ModalProps {
   open: boolean;
   title: string;
   description?: string;
+  className?: string;
   children: ReactNode;
   onClose: () => void;
 }
 
-export function Modal({ open, title, description, children, onClose }: ModalProps) {
+export function Modal({ open, title, description, className, children, onClose }: ModalProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent>
+      <DialogContent className={className}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}

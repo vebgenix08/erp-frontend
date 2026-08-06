@@ -1,4 +1,15 @@
-import { AlertTriangle, Check, FileCheck2, Plus, Search, Send, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  FileCheck2,
+  FileText,
+  Plus,
+  Search,
+  Send,
+  UserCheck,
+  Users,
+} from "lucide-react";
 import { useDeferredValue, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { listClasses, listSections } from "../../academic-structure/api/academic-structure.api";
@@ -152,12 +163,7 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
       setEnquiries(leads.filter((item) => item.status !== "CLOSED"));
       setTemplate(
         templates
-          .filter(
-            (item) =>
-              item.status === "PUBLISHED" &&
-              (item.layout === "APPLICATION_FORM" ||
-                (item.layout === "ADMISSION_FORM" && item.name.toLowerCase().includes("application"))),
-          )
+          .filter((item) => item.status === "PUBLISHED" && item.layout === "APPLICATION_FORM")
           .sort(
             (left, right) =>
               (right.publishedVersion ?? right.version) -
@@ -178,17 +184,11 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, selectedCampus?.id, selectedAcademicYear?.id, deferredSearch, page, pageSize]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [selectedCampus?.id, selectedAcademicYear?.id]);
-
-  const availableSections = sections.filter((item) => item.classId === form.academicTargetId);
-
-  const chooseEnquiry = (id: string) => {
-    const enquiry = enquiries.find((item) => item.id === id);
+  const selectEnquiry = (enquiryId: string) => {
+    const enquiry = enquiries.find((item) => item.id === enquiryId);
     setForm((current) => ({
       ...current,
-      enquiryId: id,
+      enquiryId,
       studentName: enquiry?.studentName ?? current.studentName,
       parentName: enquiry?.parentName ?? current.parentName,
       phone: enquiry?.phone ?? current.phone,
@@ -245,7 +245,7 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
         templateVersion: template.publishedVersion ?? template.version,
         customFields,
       });
-      setItems((current) => page === 1 ? [saved, ...current].slice(0, pageSize) : current);
+      setItems((current) => (page === 1 ? [saved, ...current].slice(0, pageSize) : current));
       setTotal((current) => current + 1);
       setPage(1);
       setForm(empty);
@@ -319,186 +319,267 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
   if (loading) return <LoadingState label="Loading admission applications" />;
   if (error && !items.length && !template) return <ErrorState message={error} retry={() => void load()} />;
 
+  const draftCount = items.filter((i) => i.status === "DRAFT").length;
+  const reviewCount = items.filter((i) => ["SUBMITTED", "APPROVED"].includes(i.status)).length;
+  const confirmedCount = items.filter((i) => i.status === "CONFIRMED").length;
+
   return (
-    <section className="space-y-5">
-      {/* Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <section className="space-y-6 font-sans text-slate-900 pb-12">
+      {/* Top Header Title */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">{confirmedOnly ? "Admitted students" : "Admission applications"}</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {confirmedOnly ? "Review confirmed admissions and open the complete admission record." : "Prepare, submit, review and confirm applications for the selected campus."}
+          <h1 className="text-xl font-bold text-slate-900">
+            {confirmedOnly ? "Admitted Students" : "Admission Applications"}
+          </h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {confirmedOnly
+              ? `Review confirmed admissions and view student profile directory records for ${selectedCampus?.name ?? "Campus"}`
+              : `Prepare, review, approve, and confirm student admissions for ${selectedCampus?.name ?? "Campus"}`}
           </p>
         </div>
-        {!confirmedOnly && <Button
-          size="sm"
-          variant="brand"
-          disabled={!template || !selectedCampus || !selectedAcademicYear}
-          onClick={() => setOpen(true)}
-          className="h-8 text-xs font-bold"
-        >
-          <Plus size={14} />
-          New application
-        </Button>}
-      </header>
+
+        {!confirmedOnly && (
+          <Button
+            size="sm"
+            disabled={!template || !selectedCampus || !selectedAcademicYear}
+            onClick={() => setOpen(true)}
+            className="h-9 px-4 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            New Application
+          </Button>
+        )}
+      </div>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs">
           {error}
         </div>
       )}
 
-      {!template && (
-        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          Publish an admission form under Setup → Templates before creating applications.
+      {!template && !confirmedOnly && (
+        <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 shadow-xs">
+          Publish an admission form template under Setup → Templates before creating new applications.
         </div>
       )}
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px]">
+      {/* 4 KPI Summary Cards Bar */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              {confirmedOnly ? "Total Admitted" : "Total Applications"}
+            </span>
+            <div className="h-7 w-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+              <Users className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900 leading-none">{total}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            {confirmedOnly ? "Confirmed student enrollments" : "All application records"}
+          </div>
+        </div>
+
+        {!confirmedOnly && (
+          <>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
+              <div className="h-5 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Drafts
+                </span>
+                <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                  <FileText className="h-3.5 w-3.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-slate-800 leading-none">{draftCount}</div>
+              <div className="text-[11px] text-slate-500 font-medium leading-none">Incomplete draft applications</div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
+              <div className="h-5 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Under Review
+                </span>
+                <div className="h-7 w-7 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+                  <FileCheck2 className="h-3.5 w-3.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-purple-600 leading-none">{reviewCount}</div>
+              <div className="text-[11px] text-slate-500 font-medium leading-none">Submitted / Verified applications</div>
+            </div>
+          </>
+        )}
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Confirmed Admissions
+            </span>
+            <div className="h-7 w-7 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+              <UserCheck className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-emerald-600 leading-none">{confirmedCount}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">Active student directory records</div>
+        </div>
+      </div>
+
+      {/* Toolbar Filter Card */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+        <div className="relative flex-1 min-w-[240px]">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <Input
             aria-label="Search applications"
-            placeholder="Search applicant, parent, phone or number"
+            placeholder="Search applicant name, parent, phone or application #"
             value={search}
-            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-            className="pl-9"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            className="pl-9 h-9 text-xs"
           />
         </div>
-        {!confirmedOnly && <select
-          aria-label="Filter application status"
-          value={status}
-          onChange={(event) => { setStatus(event.target.value as ApplicationStatus | ""); setPage(1); }}
-          className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
-        >
-          <option value="">All statuses</option>
-          {statuses.map((value) => (
-            <option key={value} value={value}>
-              {label(value)}
-            </option>
-          ))}
-        </select>}
-        <span className="text-sm text-slate-500">{total} applications</span>
+
+        <div className="flex items-center gap-2">
+          {!confirmedOnly && (
+            <select
+              aria-label="Filter application status"
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value as ApplicationStatus | "");
+                setPage(1);
+              }}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="">All Statuses</option>
+              {statuses.map((value) => (
+                <option key={value} value={value}>
+                  {label(value)}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 whitespace-nowrap">
+            {total} Record{total === 1 ? "" : "s"}
+          </span>
+        </div>
       </div>
 
-      {/* Data Table */}
+      {/* Data Table Container */}
       {items.length ? (
-        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Applicant</TableHead>
-                <TableHead>Academic target</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Action</TableHead>
+            <TableHeader className="bg-slate-50">
+              <TableRow className="border-b border-slate-200">
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Applicant Name</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Target Class</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Parent & Contact</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Status</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="divide-y divide-slate-100">
               {items.map((item) => (
-                <TableRow key={item.id} className="cursor-pointer">
-                  <TableCell>
-                    <div>
-                      {confirmedOnly ? (
-                        <button className="font-semibold text-slate-900 hover:text-accent-700" onClick={() => void openConfirmedStudent(item)}>
-                          {item.studentName}
-                        </button>
-                      ) : (
-                        <Link className="font-semibold text-slate-900 hover:text-accent-700" to={`/admin/admissions/applications/${item.id}`}>{item.studentName}</Link>
-                      )}
-                      <p className="text-xs text-slate-500">
-                        {item.status === "CONFIRMED" && item.admissionNumber
-                          ? `${item.admissionNumber} · ${item.applicationNumber}`
-                          : (item.applicationNumber ?? "Draft · number assigned on submission")}
-                      </p>
+                <TableRow key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">
+                        {item.studentName.charAt(0)}
+                      </div>
+                      <div>
+                        {confirmedOnly ? (
+                          <button
+                            type="button"
+                            className="font-bold text-slate-900 text-xs hover:text-blue-600 transition-colors text-left"
+                            onClick={() => void openConfirmedStudent(item)}
+                          >
+                            {item.studentName}
+                          </button>
+                        ) : (
+                          <Link
+                            className="font-bold text-slate-900 text-xs hover:text-blue-600 transition-colors"
+                            to={`/admin/admissions/applications/${item.id}`}
+                          >
+                            {item.studentName}
+                          </Link>
+                        )}
+                        <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                          {item.status === "CONFIRMED" && item.admissionNumber
+                            ? `Adm: ${item.admissionNumber} • App: ${item.applicationNumber}`
+                            : (item.applicationNumber ?? "Draft · App # assigned on submit")}
+                        </p>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-slate-650 text-sm">
-                    {classes.find((row) => row.id === item.academicTargetId)?.name ?? "—"}
+
+                  <TableCell className="py-3 text-xs">
+                    <Badge variant="secondary" className="font-semibold">
+                      {classes.find((row) => row.id === item.academicTargetId)?.name ?? "—"}
+                    </Badge>
                   </TableCell>
-                  <TableCell>
-                    <p className="text-sm text-slate-750 font-semibold">{item.phone}</p>
-                    <p className="text-xs text-slate-500">Parent: {item.parentName}</p>
+
+                  <TableCell className="py-3 text-xs">
+                    <p className="font-semibold text-slate-800">{item.phone}</p>
+                    <p className="text-[11px] text-slate-400">Parent: {item.parentName}</p>
                   </TableCell>
-                  <TableCell>
+
+                  <TableCell className="py-3 text-xs">
                     <Badge variant={getStatusVariant(item.status)}>
                       {label(item.status)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
+
+                  <TableCell className="py-3 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
                       {confirmedOnly ? (
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 px-2.5 text-xs"
+                          className="h-8 px-2.5 text-xs font-semibold text-blue-700 border-blue-200 bg-blue-50/50 hover:bg-blue-100"
                           disabled={resolvingStudentId === item.id}
                           onClick={() => void openConfirmedStudent(item)}
                         >
-                          {resolvingStudentId === item.id ? "Opening..." : "View student"}
+                          {resolvingStudentId === item.id ? "Opening..." : "View Student"}
                         </Button>
                       ) : (
-                        <Button asChild variant="outline" size="sm" className="h-8 px-2.5 text-xs">
-                          <Link to={`/admin/admissions/applications/${item.id}`}>View</Link>
+                        <Button asChild variant="outline" size="sm" className="h-8 px-2.5 text-xs font-semibold">
+                          <Link to={`/admin/admissions/applications/${item.id}`}>View Details</Link>
                         </Button>
                       )}
-                      {item.status === "DRAFT" && (
+
+                      {item.status === "DRAFT" && !confirmedOnly && (
                         <Button
                           variant="outline"
                           size="sm"
                           disabled={busy}
                           onClick={() => void act(item, "submit")}
-                          className="h-8 px-2.5 text-xs"
+                          className="h-8 px-2.5 text-xs font-semibold text-blue-700 border-blue-200 bg-blue-50/50 hover:bg-blue-100"
                         >
-                          <Send size={13} />
-                          Submit
+                          <Send className="h-3.5 w-3.5 mr-1" /> Submit
                         </Button>
                       )}
-                      {item.status === "SUBMITTED" && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={busy}
-                            onClick={() => void act(item, "approve")}
-                            className="h-8 px-2.5 text-xs text-emerald-600 hover:text-emerald-700"
-                          >
-                            <Check size={13} />
-                            Approve
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Reject application"
-                            disabled={busy}
-                            onClick={() => void act(item, "reject")}
-                            className="text-slate-400 hover:text-red-650"
-                          >
-                            <XCircle size={15} />
-                          </Button>
-                        </>
-                      )}
-                      {["DRAFT", "SUBMITTED", "REJECTED"].includes(item.status) && (
+
+                      {item.status === "SUBMITTED" && !confirmedOnly && (
                         <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          title="Cancel application"
+                          variant="outline"
+                          size="sm"
                           disabled={busy}
-                          onClick={() => void act(item, "cancel")}
-                          className="text-slate-400 hover:text-red-650"
+                          onClick={() => void act(item, "approve")}
+                          className="h-8 px-2.5 text-xs font-semibold text-purple-700 border-purple-200 bg-purple-50/50 hover:bg-purple-100"
                         >
-                          <XCircle size={15} />
+                          <FileCheck2 className="h-3.5 w-3.5 mr-1" /> Approve
                         </Button>
                       )}
-                      {item.status === "APPROVED" && (
+
+                      {item.status === "APPROVED" && !confirmedOnly && (
                         <Button
                           size="sm"
                           disabled={busy}
                           onClick={() => void reviewForConfirmation(item)}
-                          className="h-8 px-2.5 text-xs"
+                          className="h-8 px-2.5 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
                         >
-                          <FileCheck2 size={13} />
-                          Confirm admission
+                          <Check className="h-3.5 w-3.5 mr-1" /> Confirm Admission
                         </Button>
                       )}
                     </div>
@@ -507,194 +588,153 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
               ))}
             </TableBody>
           </Table>
-          <ServerPagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onPageChange={setPage}
-            onPageSizeChange={(value) => { setPageSize(value); setPage(1); }}
-          />
+
+          <div className="border-t border-slate-200 p-3 bg-slate-50">
+            <ServerPagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={(value) => {
+                setPageSize(value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
       ) : (
         <EmptyState
-          title="No applications found"
-          description="Create an application from an enquiry or start a direct application."
+          title={confirmedOnly ? "No admitted students" : "No applications found"}
+          description={
+            confirmedOnly
+              ? "Confirmed admission applications will automatically sync and display here."
+              : "Create a new admission application or change selected search filters."
+          }
         />
       )}
 
-      {/* New Application Modal */}
+      {/* Modal for Creating Application */}
       <Modal
         open={open}
-        title="New admission application"
-        description={`${template?.name ?? "Admission form"} · ${selectedCampus?.name ?? "No campus"} · ${selectedAcademicYear?.name ?? "No academic year"}`}
+        title="New Admission Application"
+        description={`${template?.name ?? "Application Form"} • ${selectedCampus?.name ?? "No Campus"} • ${selectedAcademicYear?.name ?? "No Academic Year"}`}
+        className="sm:max-w-3xl"
         onClose={() => setOpen(false)}
       >
-        <form onSubmit={(e) => void create(e)} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="from-enquiry">Start from enquiry <small className="text-slate-400">(optional)</small></Label>
-            <select
-              id="from-enquiry"
-              value={form.enquiryId}
-              onChange={(e) => chooseEnquiry(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
-            >
-              <option value="">Direct application</option>
-              {enquiries.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.studentName} · {item.phone}
-                </option>
-              ))}
-            </select>
-          </div>
+        <form onSubmit={(e) => void create(e)} className="space-y-4 font-sans text-xs">
+          {enquiries.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Link to Enquiry (Optional)</Label>
+              <select
+                value={form.enquiryId}
+                onChange={(e) => selectEnquiry(e.target.value)}
+                className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="">Select from prospective enquiries</option>
+                {enquiries.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.studentName} • Parent: {item.parentName} ({item.phone})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {template && (
-            <TemplateFields
-              template={template}
-              values={{
-                ...customFields,
-                ...form,
-                campusId: selectedCampus?.id ?? "",
-                academicYearId: selectedAcademicYear?.id ?? "",
-              }}
-              systemKeys={SYSTEM_KEYS}
-              scope="APPLICATION"
-              onChange={updateTemplateValue}
-              renderSystemField={(field) => {
-                if (field.key === "academicTargetId") {
-                  return (
-                    <select
-                      required={field.required}
-                      value={form.academicTargetId}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          academicTargetId: event.target.value,
-                          sectionId: "",
-                        }))
-                      }
-                      className="flex h-8 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-600"
-                    >
-                      <option value="">Select academic target</option>
-                      {classes.map((item) => (
-                        <option key={item.id} value={item.id}>{item.name}</option>
-                      ))}
-                    </select>
-                  );
-                }
-                if (field.key === "sectionId") {
-                  return (
-                    <select
-                      required={field.required}
-                      value={form.sectionId}
-                      disabled={!form.academicTargetId}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, sectionId: event.target.value }))
-                      }
-                      className="flex h-8 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-600 disabled:opacity-50"
-                    >
-                      <option value="">Assign after confirmation</option>
-                      {availableSections.map((item) => (
-                        <option key={item.id} value={item.id}>{item.name}</option>
-                      ))}
-                    </select>
-                  );
-                }
-                if (field.key === "campusId" || field.key === "academicYearId") {
-                  return (
-                    <Input
-                      value={
-                        field.key === "campusId"
-                          ? selectedCampus?.name ?? ""
-                          : selectedAcademicYear?.name ?? ""
-                      }
-                      disabled
-                    />
-                  );
-                }
-                return null;
-              }}
-            />
+            <div className="pt-1">
+              <TemplateFields
+                template={template}
+                values={{
+                  ...customFields,
+                  ...form,
+                  campusId: selectedCampus?.id ?? "",
+                  academicYearId: selectedAcademicYear?.id ?? "",
+                }}
+                systemKeys={SYSTEM_KEYS}
+                scope="APPLICATION"
+                onChange={updateTemplateValue}
+                renderSystemField={(field) => {
+                  if (field.key === "academicTargetId") {
+                    return (
+                      <select
+                        required={field.required}
+                        value={form.academicTargetId}
+                        onChange={(event) => setForm((current) => ({ ...current, academicTargetId: event.target.value, sectionId: "" }))}
+                        className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-500/20"
+                      >
+                        <option value="">Select target class</option>
+                        {classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    );
+                  }
+                  if (field.key === "sectionId") {
+                    return (
+                      <select
+                        required={field.required}
+                        value={form.sectionId}
+                        onChange={(event) => setForm((current) => ({ ...current, sectionId: event.target.value }))}
+                        className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-500/20"
+                      >
+                        <option value="">Select section</option>
+                        {sections.filter((item) => !form.academicTargetId || item.classId === form.academicTargetId).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    );
+                  }
+                  if (field.key === "campusId" || field.key === "academicYearId") {
+                    return <Input value={field.key === "campusId" ? selectedCampus?.name ?? "" : selectedAcademicYear?.name ?? ""} disabled />;
+                  }
+                  return null;
+                }}
+              />
+            </div>
           )}
 
           <Separator />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)} className="h-9 text-xs font-semibold">
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={busy || !template}>
-              Save draft
+            <Button type="submit" size="sm" disabled={busy} className="h-9 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700">
+              Create Application
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Confirmation & Duplicate Check Modal */}
-      <Modal
-        open={Boolean(confirmation && duplicateCheck)}
-        title="Confirm admission"
-        {...(confirmation
-          ? {
-              description: `${confirmation.studentName} · ${confirmation.applicationNumber ?? "Approved application"}`,
-            }
-          : {})}
-        onClose={() => {
-          setConfirmation(null);
-          setDuplicateCheck(null);
-        }}
-      >
-        {confirmation && duplicateCheck ? (
-          <div className="space-y-4">
+      {/* Duplicate Check Review Modal for Confirmation */}
+      {confirmation && duplicateCheck && (
+        <Modal
+          open={!!confirmation}
+          title="Confirm Admission"
+          description={`Applicant: ${confirmation.studentName} • ${confirmation.applicationNumber}`}
+          onClose={() => setConfirmation(null)}
+        >
+          <div className="space-y-4 text-xs font-sans">
             {duplicateCheck.hasPotentialDuplicates ? (
-              <div role="alert" className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                <AlertTriangle size={17} className="mt-0.5 shrink-0" />
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-start gap-2.5 text-amber-800">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
                 <div>
-                  <strong className="block font-semibold">Potential duplicate records found</strong>
-                  <p className="mt-0.5 text-xs text-red-650 leading-relaxed">
-                    Review the records below. This is a warning, not an automatic rejection.
+                  <p className="font-bold">Potential Duplicate Records Detected</p>
+                  <p className="mt-0.5 text-[11px]">
+                    Matching student records found in the database. Please review before proceeding.
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-250 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 font-medium">
-                <Check size={16} /> No matching application or admitted-student record was found.
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 flex items-start gap-2.5 text-emerald-800">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                <div>
+                  <p className="font-bold">No Duplicates Found</p>
+                  <p className="mt-0.5 text-[11px]">
+                    Ready to confirm admission and generate an active student record in Student Directory.
+                  </p>
+                </div>
               </div>
             )}
 
-            {duplicateCheck.matches.map((match) => (
-              <div
-                key={match.applicationId}
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-sm"
-              >
-                <div>
-                  <strong className="block text-slate-805 font-bold">{match.studentName}</strong>
-                  <span className="text-xs text-slate-400 font-mono">
-                    {match.admissionNumber ?? match.applicationNumber ?? "Draft record"}
-                  </span>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge variant={getStatusVariant(match.status)}>
-                    {label(match.status)}
-                  </Badge>
-                  <span className="text-[10px] text-slate-450">{match.reasons.map(label).join(" · ")}</span>
-                </div>
-              </div>
-            ))}
-
-            <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 border border-slate-200 rounded-md p-3">
-              Confirmation assigns the admission number and starts asynchronous student enrollment and fee-order generation. It cannot be treated as a draft action.
-            </p>
-
-            <Separator />
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setConfirmation(null);
-                  setDuplicateCheck(null);
-                }}
-              >
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setConfirmation(null)} className="h-9 text-xs font-semibold">
                 Cancel
               </Button>
               <Button
@@ -702,18 +742,14 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                 size="sm"
                 disabled={busy}
                 onClick={() => void confirm()}
+                className="h-9 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <FileCheck2 size={15} />
-                {busy
-                  ? "Confirming..."
-                  : duplicateCheck.hasPotentialDuplicates
-                    ? "Acknowledge and confirm"
-                    : "Confirm admission"}
+                Confirm Admission
               </Button>
             </div>
           </div>
-        ) : null}
-      </Modal>
+        </Modal>
+      )}
     </section>
   );
 }

@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ComponentType } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoutes } from "../features/session/ui/protected-routes";
 import { AuthLayout } from "./layouts/auth-layout";
@@ -5,79 +6,84 @@ import { PlatformLayout } from "./layouts/platform-layout";
 import { RoleLayout } from "./layouts/role-layout";
 import { TenantLayout } from "./layouts/tenant-layout";
 import { LoginPage } from "../pages/auth/login-page";
-import { SelectTenantPage } from "../pages/auth/select-tenant-page";
-import { TenantNotFoundPage } from "../pages/auth/tenant-not-found-page";
-import { ForgotPasswordPage } from "../pages/auth/forgot-password-page";
-import { ResetPasswordPage } from "../pages/auth/reset-password-page";
-import { LogoutPage } from "../pages/auth/logout-page";
-import { PlatformDashboardPage } from "../pages/platform/dashboard-page";
-import { PlatformTenantsPage } from "../pages/platform/tenants-page";
-import { PlatformTenantNewPage } from "../pages/platform/tenant-new-page";
-import { PlatformTenantDetailPage } from "../pages/platform/tenant-detail-page";
-import { PlatformTenantOnboardingPage } from "../pages/platform/tenant-onboarding-page";
-import { PlatformAuditLogsPage } from "../pages/platform/audit-logs-page";
-import { PlatformFeaturesPage } from "../pages/platform/features-page";
-import { PlatformEntitlementsPage } from "../pages/platform/entitlements-page";
-import { PlatformIntegrationsPage } from "../pages/platform/integrations-page";
-import { PlatformOperationsPage } from "../pages/platform/operations-page";
-import { AdminDashboardPage } from "../pages/admin/dashboard-page";
-import { AdminProfilePage } from "../pages/admin/profile-page";
-import { AdminCampusesPage } from "../pages/admin/campuses-page";
-import { AdminAcademicYearsPage } from "../pages/admin/academic-years-page";
-import { AdminAcademicStructurePage } from "../pages/admin/academic-structure-page";
-import { AdminTeachingAssignmentsPage } from "../pages/admin/teaching-assignments-page";
-import { AdminSetupReadinessPage } from "../pages/admin/setup-readiness-page";
-import { AdminTemplatesPage } from "../pages/admin/templates-page";
-import { AdminNumberingPage } from "../pages/admin/numbering-page";
-import { AdminNotificationsPage } from "../pages/admin/notifications-page";
-import { AdminUsersPage } from "../pages/admin/users-page";
-import { AdminRolesPage } from "../pages/admin/roles-page";
-import { AdminPermissionsPage } from "../pages/admin/permissions-page";
-import { AdminStaffPage } from "../pages/admin/staff-page";
-import { AdminStaffNewPage } from "../pages/admin/staff-new-page";
-import { AdminStaffDetailPage } from "../pages/admin/staff-detail-page";
-import { AdminFinanceSetupPage } from "../pages/admin/finance-setup-page";
-import { AdminFinanceDashboardPage } from "../pages/admin/finance-dashboard-page";
-import { AdminFeeHeadsPage } from "../pages/admin/fee-heads-page";
-import { AdminFeeSchedulesPage } from "../pages/admin/fee-schedules-page";
-import { AdminFeeStructuresPage } from "../pages/admin/fee-structures-page";
-import { AdminFeeMappingsPage } from "../pages/admin/fee-mappings-page";
-import { AdminFinanceCollectionsPage } from "../pages/admin/finance-collections-page";
-import { AdminFinanceOutstandingPage } from "../pages/admin/finance-outstanding-page";
-import { AdminFinanceReceiptsPage } from "../pages/admin/finance-receipts-page";
-import { AdminFinanceReconciliationPage } from "../pages/admin/finance-reconciliation-page";
-import { AdminReceiptTemplatePage } from "../pages/admin/receipt-template-page";
-import { AdminGeneralChargesPage } from "../pages/admin/general-charges-page";
-import { AdminStudentsPage } from "../pages/admin/students-page";
-import { AdminStudentDetailPage } from "../pages/admin/student-detail-page";
-import { AdminStudentDocumentsPage } from "../pages/admin/student-documents-page";
-import { AdminAdmissionsEnquiriesPage } from "../pages/admin/admissions-enquiries-page";
-import { AdminAdmissionsApplicationsPage } from "../pages/admin/admissions-applications-page";
-import { AdminAdmissionApplicationDetailPage } from "../pages/admin/admission-application-detail-page";
-import { AdminAdmittedStudentsPage } from "../pages/admin/admitted-students-page";
-import { PrincipalDashboardPage } from "../pages/principal/dashboard-page";
-import { HodDashboardPage } from "../pages/hod/dashboard-page";
-import { AccountantDashboardPage } from "../pages/accountant/dashboard-page";
-import { AccountantCollectionsPage } from "../pages/accountant/collections-page";
-import { AccountantOutstandingPage } from "../pages/accountant/outstanding-page";
-import { AccountantReceiptsPage } from "../pages/accountant/receipts-page";
-import { AccountantReconciliationPage } from "../pages/accountant/reconciliation-page";
-import { AdmissionsDashboardPage } from "../pages/admissions/dashboard-page";
-import { AdmissionsEnquiriesPage } from "../pages/admissions/enquiries-page";
-import { AdmissionsApplicationsPage } from "../pages/admissions/applications-page";
-import { TeacherDashboardPage } from "../pages/teacher/dashboard-page";
-import { ClassTeacherDashboardPage } from "../pages/class-teacher/dashboard-page";
-import { StudentDashboardPage } from "../pages/student/dashboard-page";
-import { ParentDashboardPage } from "../pages/parent/dashboard-page";
-import { LibraryDashboardPage } from "../pages/library/dashboard-page";
-import { TransportDashboardPage } from "../pages/transport/dashboard-page";
-import { HostelDashboardPage } from "../pages/hostel/dashboard-page";
-import { ExamsDashboardPage } from "../pages/exams/dashboard-page";
-import { HrDashboardPage } from "../pages/hr/dashboard-page";
-import { NotFoundPage } from "../pages/not-found/ui/not-found-page";
+
+const lazyPage = (loader: () => Promise<Record<string, unknown>>, exportName: string) =>
+  lazy(async () => ({ default: (await loader())[exportName] as ComponentType }));
+
+const SelectTenantPage = lazyPage(() => import("../pages/auth/select-tenant-page"), "SelectTenantPage");
+const TenantNotFoundPage = lazyPage(() => import("../pages/auth/tenant-not-found-page"), "TenantNotFoundPage");
+const ForgotPasswordPage = lazyPage(() => import("../pages/auth/forgot-password-page"), "ForgotPasswordPage");
+const ResetPasswordPage = lazyPage(() => import("../pages/auth/reset-password-page"), "ResetPasswordPage");
+const LogoutPage = lazyPage(() => import("../pages/auth/logout-page"), "LogoutPage");
+const PlatformDashboardPage = lazyPage(() => import("../pages/platform/dashboard-page"), "PlatformDashboardPage");
+const PlatformTenantsPage = lazyPage(() => import("../pages/platform/tenants-page"), "PlatformTenantsPage");
+const PlatformTenantNewPage = lazyPage(() => import("../pages/platform/tenant-new-page"), "PlatformTenantNewPage");
+const PlatformTenantDetailPage = lazyPage(() => import("../pages/platform/tenant-detail-page"), "PlatformTenantDetailPage");
+const PlatformTenantOnboardingPage = lazyPage(() => import("../pages/platform/tenant-onboarding-page"), "PlatformTenantOnboardingPage");
+const PlatformAuditLogsPage = lazyPage(() => import("../pages/platform/audit-logs-page"), "PlatformAuditLogsPage");
+const PlatformFeaturesPage = lazyPage(() => import("../pages/platform/features-page"), "PlatformFeaturesPage");
+const PlatformEntitlementsPage = lazyPage(() => import("../pages/platform/entitlements-page"), "PlatformEntitlementsPage");
+const PlatformIntegrationsPage = lazyPage(() => import("../pages/platform/integrations-page"), "PlatformIntegrationsPage");
+const PlatformOperationsPage = lazyPage(() => import("../pages/platform/operations-page"), "PlatformOperationsPage");
+const AdminDashboardPage = lazyPage(() => import("../pages/admin/dashboard-page"), "AdminDashboardPage");
+const AdminProfilePage = lazyPage(() => import("../pages/admin/profile-page"), "AdminProfilePage");
+const AdminCampusesPage = lazyPage(() => import("../pages/admin/campuses-page"), "AdminCampusesPage");
+const AdminAcademicStructurePage = lazyPage(() => import("../pages/admin/academic-structure-page"), "AdminAcademicStructurePage");
+const AdminClassSetupPage = lazyPage(() => import("../pages/admin/class-setup-page"), "AdminClassSetupPage");
+const AdminTemplatesPage = lazyPage(() => import("../pages/admin/templates-page"), "AdminTemplatesPage");
+const AdminNumberingPage = lazyPage(() => import("../pages/admin/numbering-page"), "AdminNumberingPage");
+const AdminNotificationsPage = lazyPage(() => import("../pages/admin/notifications-page"), "AdminNotificationsPage");
+const AdminUsersPage = lazyPage(() => import("../pages/admin/users-page"), "AdminUsersPage");
+const AdminRolesPage = lazyPage(() => import("../pages/admin/roles-page"), "AdminRolesPage");
+const AdminPermissionsPage = lazyPage(() => import("../pages/admin/permissions-page"), "AdminPermissionsPage");
+const AdminStaffPage = lazyPage(() => import("../pages/admin/staff-page"), "AdminStaffPage");
+const AdminStaffNewPage = lazyPage(() => import("../pages/admin/staff-new-page"), "AdminStaffNewPage");
+const AdminStaffDetailPage = lazyPage(() => import("../pages/admin/staff-detail-page"), "AdminStaffDetailPage");
+const AdminTeacherWorkloadPage = lazyPage(() => import("../pages/admin/teacher-workload-page"), "AdminTeacherWorkloadPage");
+const AdminFinanceSetupPage = lazyPage(() => import("../pages/admin/finance-setup-page"), "AdminFinanceSetupPage");
+const AdminFinanceDashboardPage = lazyPage(() => import("../pages/admin/finance-dashboard-page"), "AdminFinanceDashboardPage");
+const AdminFeeHeadsPage = lazyPage(() => import("../pages/admin/fee-heads-page"), "AdminFeeHeadsPage");
+const AdminFeeSchedulesPage = lazyPage(() => import("../pages/admin/fee-schedules-page"), "AdminFeeSchedulesPage");
+const AdminFeeStructuresPage = lazyPage(() => import("../pages/admin/fee-structures-page"), "AdminFeeStructuresPage");
+const AdminFeeMappingsPage = lazyPage(() => import("../pages/admin/fee-mappings-page"), "AdminFeeMappingsPage");
+const AdminFinanceCollectionsPage = lazyPage(() => import("../pages/admin/finance-collections-page"), "AdminFinanceCollectionsPage");
+const AdminFinanceOutstandingPage = lazyPage(() => import("../pages/admin/finance-outstanding-page"), "AdminFinanceOutstandingPage");
+const AdminFinanceReceiptsPage = lazyPage(() => import("../pages/admin/finance-receipts-page"), "AdminFinanceReceiptsPage");
+const AdminFinanceReconciliationPage = lazyPage(() => import("../pages/admin/finance-reconciliation-page"), "AdminFinanceReconciliationPage");
+const AdminReceiptTemplatePage = lazyPage(() => import("../pages/admin/receipt-template-page"), "AdminReceiptTemplatePage");
+const AdminGeneralChargesPage = lazyPage(() => import("../pages/admin/general-charges-page"), "AdminGeneralChargesPage");
+const AdminStudentsPage = lazyPage(() => import("../pages/admin/students-page"), "AdminStudentsPage");
+const AdminStudentDetailPage = lazyPage(() => import("../pages/admin/student-detail-page"), "AdminStudentDetailPage");
+const AdminStudentDocumentsPage = lazyPage(() => import("../pages/admin/student-documents-page"), "AdminStudentDocumentsPage");
+const AdminCampusTransfersPage = lazyPage(() => import("../pages/admin/campus-transfers-page"), "AdminCampusTransfersPage");
+const AdminAdmissionsEnquiriesPage = lazyPage(() => import("../pages/admin/admissions-enquiries-page"), "AdminAdmissionsEnquiriesPage");
+const AdminAdmissionsApplicationsPage = lazyPage(() => import("../pages/admin/admissions-applications-page"), "AdminAdmissionsApplicationsPage");
+const AdminAdmissionApplicationDetailPage = lazyPage(() => import("../pages/admin/admission-application-detail-page"), "AdminAdmissionApplicationDetailPage");
+const AdminAdmittedStudentsPage = lazyPage(() => import("../pages/admin/admitted-students-page"), "AdminAdmittedStudentsPage");
+const PrincipalDashboardPage = lazyPage(() => import("../pages/principal/dashboard-page"), "PrincipalDashboardPage");
+const HodDashboardPage = lazyPage(() => import("../pages/hod/dashboard-page"), "HodDashboardPage");
+const AccountantDashboardPage = lazyPage(() => import("../pages/accountant/dashboard-page"), "AccountantDashboardPage");
+const AccountantCollectionsPage = lazyPage(() => import("../pages/accountant/collections-page"), "AccountantCollectionsPage");
+const AccountantOutstandingPage = lazyPage(() => import("../pages/accountant/outstanding-page"), "AccountantOutstandingPage");
+const AccountantReceiptsPage = lazyPage(() => import("../pages/accountant/receipts-page"), "AccountantReceiptsPage");
+const AccountantReconciliationPage = lazyPage(() => import("../pages/accountant/reconciliation-page"), "AccountantReconciliationPage");
+const AdmissionsDashboardPage = lazyPage(() => import("../pages/admissions/dashboard-page"), "AdmissionsDashboardPage");
+const AdmissionsEnquiriesPage = lazyPage(() => import("../pages/admissions/enquiries-page"), "AdmissionsEnquiriesPage");
+const AdmissionsApplicationsPage = lazyPage(() => import("../pages/admissions/applications-page"), "AdmissionsApplicationsPage");
+const TeacherDashboardPage = lazyPage(() => import("../pages/teacher/dashboard-page"), "TeacherDashboardPage");
+const ClassTeacherDashboardPage = lazyPage(() => import("../pages/class-teacher/dashboard-page"), "ClassTeacherDashboardPage");
+const StudentDashboardPage = lazyPage(() => import("../pages/student/dashboard-page"), "StudentDashboardPage");
+const ParentDashboardPage = lazyPage(() => import("../pages/parent/dashboard-page"), "ParentDashboardPage");
+const LibraryDashboardPage = lazyPage(() => import("../pages/library/dashboard-page"), "LibraryDashboardPage");
+const TransportDashboardPage = lazyPage(() => import("../pages/transport/dashboard-page"), "TransportDashboardPage");
+const HostelDashboardPage = lazyPage(() => import("../pages/hostel/dashboard-page"), "HostelDashboardPage");
+const ExamsDashboardPage = lazyPage(() => import("../pages/exams/dashboard-page"), "ExamsDashboardPage");
+const HrDashboardPage = lazyPage(() => import("../pages/hr/dashboard-page"), "HrDashboardPage");
+const NotFoundPage = lazyPage(() => import("../pages/not-found/ui/not-found-page"), "NotFoundPage");
 
 export function AppRoutes() {
   return (
+    <Suspense fallback={<div className="grid min-h-screen place-items-center bg-slate-50 text-sm font-medium text-slate-600">Loading workspace...</div>}>
     <Routes>
       <Route element={<AuthLayout />}>
         <Route path="/" element={<Navigate to="/login" replace />} />
@@ -89,7 +95,8 @@ export function AppRoutes() {
         <Route path="/logout" element={<LogoutPage />} />
       </Route>
       <Route element={<ProtectedRoutes />}>
-        <Route element={<PlatformLayout />}>
+        <Route element={<ProtectedRoutes allowedRoles={["SUPER_ADMIN"]} />}>
+          <Route element={<PlatformLayout />}>
           <Route path="/platform/dashboard" element={<PlatformDashboardPage />} />
           <Route path="/platform/tenants" element={<PlatformTenantsPage />} />
           <Route path="/platform/tenants/new" element={<PlatformTenantNewPage />} />
@@ -100,16 +107,16 @@ export function AppRoutes() {
           <Route path="/platform/entitlements" element={<PlatformEntitlementsPage />} />
           <Route path="/platform/integrations" element={<PlatformIntegrationsPage />} />
           <Route path="/platform/operations" element={<PlatformOperationsPage />} />
+          </Route>
         </Route>
-        <Route element={<TenantLayout />}>
+        <Route element={<ProtectedRoutes allowedRoles={["TENANT_ADMIN", "ADMIN"]} />}>
+          <Route element={<TenantLayout />}>
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/profile" element={<AdminProfilePage />} />
           <Route path="/admin/setup/institution" element={<Navigate to="/admin/profile" replace />} />
           <Route path="/admin/setup/campuses" element={<AdminCampusesPage />} />
-          <Route path="/admin/setup/academic-years" element={<AdminAcademicYearsPage />} />
           <Route path="/admin/setup/academic-structure" element={<AdminAcademicStructurePage />} />
-          <Route path="/admin/academics/teaching-assignments" element={<AdminTeachingAssignmentsPage />} />
-          <Route path="/admin/setup/readiness" element={<AdminSetupReadinessPage />} />
+          <Route path="/admin/academics/class-setup" element={<AdminClassSetupPage />} />
           <Route path="/admin/setup/templates" element={<AdminTemplatesPage />} />
           <Route path="/admin/setup/numbering" element={<AdminNumberingPage />} />
           <Route path="/admin/setup/notifications" element={<AdminNotificationsPage />} />
@@ -133,14 +140,17 @@ export function AppRoutes() {
           <Route path="/admin/students" element={<AdminStudentsPage />} />
           <Route path="/admin/students/:studentId" element={<AdminStudentDetailPage />} />
           <Route path="/admin/student-documents" element={<AdminStudentDocumentsPage />} />
+          <Route path="/admin/campus-transfers" element={<AdminCampusTransfersPage />} />
           <Route path="/admin/staff" element={<AdminStaffPage />} />
           <Route path="/admin/staff/new" element={<AdminStaffNewPage />} />
           <Route path="/admin/staff/:employeeId" element={<AdminStaffDetailPage />} />
+          <Route path="/admin/teachers/:teacherId/workload" element={<AdminTeacherWorkloadPage />} />
           <Route path="/admin/admissions/enquiries" element={<AdminAdmissionsEnquiriesPage />} />
           <Route path="/admin/admissions/applications" element={<AdminAdmissionsApplicationsPage />} />
           <Route path="/admin/admissions/applications/:applicationId" element={<AdminAdmissionApplicationDetailPage />} />
           <Route path="/admin/admissions/admitted-students" element={<AdminAdmittedStudentsPage />} />
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          </Route>
         </Route>
         <Route element={<RoleLayout />}>
           <Route path="/principal/dashboard" element={<PrincipalDashboardPage />} />
@@ -166,5 +176,6 @@ export function AppRoutes() {
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
   );
 }

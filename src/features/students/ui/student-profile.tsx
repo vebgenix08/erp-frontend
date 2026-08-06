@@ -1,5 +1,4 @@
 import {
-  Award,
   Banknote,
   BookOpen,
   Building2,
@@ -11,7 +10,6 @@ import {
   CreditCard,
   Download,
   Eye,
-  FileCheck,
   FileText,
   GraduationCap,
   Pencil,
@@ -41,7 +39,7 @@ import type {
   FinanceReceipt,
   PaymentMethod,
 } from "../../finance/model/finance-operations.types";
-import { changeStudentEnrollment, createStudentNote, getStudent, listStudentNotes, updateStudentNote, type StudentNote } from "../api/students.api";
+import { changeStudentEnrollment, createCampusTransfer, createStudentNote, getStudent, listCampusTransfers, listStudentNotes, updateStudentNote, type CampusTransfer, type StudentNote } from "../api/students.api";
 import type { Student } from "../model/student.types";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import {
@@ -79,9 +77,7 @@ type Tab =
   | "finance"
   | "documents"
   | "timeline"
-  | "notes"
-  | "attendance"
-  | "examinations";
+  | "notes";
 
 const tabLabels: Record<Tab, { label: string; icon: LucideIcon }> = {
   summary: { label: "Summary", icon: UserRound },
@@ -90,8 +86,6 @@ const tabLabels: Record<Tab, { label: string; icon: LucideIcon }> = {
   documents: { label: "Documents", icon: FileText },
   timeline: { label: "Timeline", icon: Clock },
   notes: { label: "Notes", icon: Pencil },
-  attendance: { label: "Attendance", icon: Calendar },
-  examinations: { label: "Examinations", icon: FileCheck },
 };
 
 const studentDocumentTypes = [
@@ -144,6 +138,7 @@ export function StudentProfile() {
   const [documents, setDocuments] = useState<StoredFile[]>([]);
   const [issuedDocuments, setIssuedDocuments] = useState<StudentDocument[]>([]);
   const [notes, setNotes] = useState<StudentNote[]>([]);
+  const [campusTransfers, setCampusTransfers] = useState<CampusTransfer[]>([]);
   const [noteBody, setNoteBody] = useState("");
   const [editingNoteId, setEditingNoteId] = useState("");
   const [savingNote, setSavingNote] = useState(false);
@@ -161,7 +156,6 @@ export function StudentProfile() {
   const [editingEnrollment, setEditingEnrollment] = useState(false);
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
-  const [rollNumber, setRollNumber] = useState("");
   const [changeReason, setChangeReason] = useState("");
   const [savingEnrollment, setSavingEnrollment] = useState(false);
   const [collectingOrder, setCollectingOrder] = useState<FeeOrder | null>(null);
@@ -186,6 +180,7 @@ export function StudentProfile() {
         issuedDocumentRows,
         campusRows,
         noteRows,
+        transferRows,
       ] = await Promise.all([
         listPrograms(record.enrollment.campusId),
         listClasses(record.enrollment.campusId),
@@ -208,6 +203,7 @@ export function StudentProfile() {
         listStudentDocuments({ studentId: record.id }),
         listCampuses(),
         listStudentNotes(record.id),
+        listCampusTransfers(record.id),
       ]);
       setStudent(record);
       setOrders(feeOrders);
@@ -219,6 +215,7 @@ export function StudentProfile() {
       setPrograms(programsData);
       setCampuses(campusRows);
       setNotes(noteRows);
+      setCampusTransfers(transferRows);
       setLabels({
         program:
           programsData.find((item) => item.id === record.enrollment.programId)
@@ -360,7 +357,6 @@ export function StudentProfile() {
     setTargetSections(sections);
     setClassId(student.enrollment.classId);
     setSectionId(student.enrollment.sectionId ?? "");
-    setRollNumber(student.enrollment.rollNumber ?? "");
     setChangeReason("");
     setError(null);
     setEditingEnrollment(true);
@@ -370,7 +366,6 @@ export function StudentProfile() {
     setTargetCampusId(cId);
     setClassId("");
     setSectionId("");
-    setRollNumber("");
     if (!cId) {
       setTargetPrograms([]);
       setTargetClasses([]);
@@ -396,12 +391,17 @@ export function StudentProfile() {
     try {
       setSavingEnrollment(true);
       setError(null);
+      if (targetCampusId !== student.enrollment.campusId) {
+        const transfer = await createCampusTransfer({ studentId: student.id, targetCampusId, academicYearId: student.enrollment.academicYearId, targetClassId: classId, ...(sectionId ? { targetSectionId: sectionId } : {}), effectiveAt: new Date().toISOString(), reason: changeReason.trim(), clientRequestId: crypto.randomUUID() });
+        setCampusTransfers((current) => [transfer, ...current]);
+        setEditingEnrollment(false);
+        return;
+      }
       const record = await changeStudentEnrollment(student.id, {
         campusId: targetCampusId,
         academicYearId: student.enrollment.academicYearId,
         classId,
         ...(sectionId ? { sectionId } : {}),
-        ...(rollNumber.trim() ? { rollNumber: rollNumber.trim() } : {}),
         reason: changeReason.trim(),
       });
       setStudent(record);
@@ -494,7 +494,7 @@ export function StudentProfile() {
   if (!student) return null;
 
   const currentCampusName = campuses.find((c) => c.id === student.enrollment.campusId)?.name || "—";
-  const overdueOrders = orders.filter((o) => o.balanceMinor > 0 && o.status !== "PAID" && o.status !== "CANCELLED");
+  const overdueOrders = orders.filter((o) => o.balanceMinor > 0 && !["PAID", "CLOSED", "CANCELLED"].includes(o.status));
   const overdueTotalMinor = overdueOrders.reduce((sum, o) => sum + o.balanceMinor, 0);
 
   return (
@@ -831,6 +831,7 @@ export function StudentProfile() {
       {/* TAB 2: ACADEMIC VIEW (STRICTLY REAL DATA) */}
       {tab === "academic" && (
         <div className="space-y-5">
+          {campusTransfers.length > 0 && <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs"><div className="flex items-center justify-between"><div><h3 className="text-sm font-extrabold text-slate-900">Campus transfer history</h3><p className="mt-1 text-xs text-slate-500">Cross-campus changes are coordinated with Finance before the enrollment is switched.</p></div><Badge variant={campusTransfers[0]?.status === "COMPLETED" ? "success" : campusTransfers[0]?.status === "FAILED" ? "destructive" : "warning"}>{campusTransfers[0]?.status.replaceAll("_", " ")}</Badge></div><div className="mt-4 divide-y divide-slate-100 border-y border-slate-100">{campusTransfers.map((item)=><div key={item.id} className="grid gap-2 py-3 text-xs sm:grid-cols-[1fr_auto]"><div><strong className="text-slate-800">{campuses.find(c=>c.id===item.source.campusId)?.name??"Previous campus"} to {campuses.find(c=>c.id===item.target.campusId)?.name??"Target campus"}</strong><p className="mt-1 text-slate-500">{item.reason}</p>{item.warning&&<p className="mt-1 font-semibold text-amber-700">{item.warning}</p>}{item.failureReason&&<p className="mt-1 font-semibold text-rose-700">{item.failureReason}</p>}</div><div className="text-right text-slate-500"><div>{dateStr(item.effectiveAt)}</div><div className="mt-1 font-semibold">Registration: {item.registrationAction.toLowerCase()}</div></div></div>)}</div></div>}
           {/* Top Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
@@ -1235,28 +1236,6 @@ export function StudentProfile() {
         </div>
       )}
 
-      {/* TAB 7: ATTENDANCE VIEW (STRICTLY REAL DATA) */}
-      {tab === "attendance" && (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-2 shadow-2xs">
-          <Calendar size={32} className="mx-auto text-slate-300" />
-          <h3 className="text-xs font-extrabold text-slate-800">Attendance Log</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Daily attendance check-ins recorded by the class teacher will appear here automatically.
-          </p>
-        </div>
-      )}
-
-      {/* TAB 8: EXAMINATIONS VIEW (STRICTLY REAL DATA) */}
-      {tab === "examinations" && (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-2 shadow-2xs">
-          <Award size={32} className="mx-auto text-slate-300" />
-          <h3 className="text-xs font-extrabold text-slate-800">Examination Results & Marksheets</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Exam scores and term report cards published for {labels.academicClass} will appear here.
-          </p>
-        </div>
-      )}
-
       {/* TAB 4: DOCUMENTS VIEW */}
       {tab === "documents" && (
         <div className="space-y-4">
@@ -1571,8 +1550,8 @@ export function StudentProfile() {
       {/* Change Enrollment Assignment Modal */}
       <Modal
         open={editingEnrollment}
-        title="Change Class & Section Assignment"
-        description="Select target class and section."
+        title="Change Academic Placement"
+        description="Same-campus changes update placement. A campus change starts the audited transfer workflow with Finance review."
         onClose={() => setEditingEnrollment(false)}
       >
         <form
@@ -1659,7 +1638,7 @@ export function StudentProfile() {
               Cancel
             </Button>
             <Button size="sm" variant="brand" disabled={savingEnrollment || !targetCampusId || !classId || !changeReason.trim()} className="h-8 text-xs font-bold">
-              {savingEnrollment ? "Saving..." : "Confirm Assignment"}
+              {savingEnrollment ? "Saving..." : targetCampusId !== student.enrollment.campusId ? "Start Campus Transfer" : "Confirm Assignment"}
             </Button>
           </div>
         </form>

@@ -1,4 +1,4 @@
-export type FeeOrderStatus = "OPEN" | "PARTIALLY_PAID" | "PAID" | "CANCELLED";
+export type FeeOrderStatus = "OPEN" | "PARTIALLY_PAID" | "PAID" | "CLOSED" | "CANCELLED";
 export interface FeeOrderCharge {
   id: string;
   feeHeadId: string;
@@ -9,6 +9,7 @@ export interface FeeOrderCharge {
   amountMinor: number;
   paidMinor: number;
   balanceMinor: number;
+  creditMinor?: number;
 }
 export interface FeeOrder {
   id: string;
@@ -35,6 +36,12 @@ export interface FeeOrder {
   totalMinor: number;
   paidMinor: number;
   balanceMinor: number;
+  transferId?: string;
+  transferCreditMinor?: number;
+  residualTransferCreditMinor?: number;
+  closedBalanceMinor?: number;
+  closureReason?: "CAMPUS_TRANSFER";
+  closedAt?: string;
   status: FeeOrderStatus;
   createdAt: string;
   updatedAt: string;

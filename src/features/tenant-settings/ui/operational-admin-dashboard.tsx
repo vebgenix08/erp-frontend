@@ -1,7 +1,6 @@
 import {
   AlertTriangle,
   Banknote,
-  CheckCircle2,
   ClipboardCheck,
   Download,
   FileSpreadsheet,
@@ -15,17 +14,11 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getTenantAdminDashboard, getTenantReadiness } from "../api/settings.api";
-import { listApplications } from "../../admissions/api/applications.api";
-import { listStudentPage } from "../../students/api/students.api";
-import { listClasses } from "../../academic-structure/api/academic-structure.api";
-import type { AcademicClass } from "../../academic-structure/model/academic-structure.types";
-import type { TenantAdminDashboard, TenantReadiness } from "../model/settings.types";
-import type { AdmissionApplication } from "../../admissions/model/application.types";
-import type { Student } from "../../students/model/student.types";
+import { getTenantAdminDashboard } from "../api/settings.api";
+import type { TenantAdminDashboard } from "../model/settings.types";
 import { useSelectedAcademicYear } from "../model/selected-academic-year-provider";
 import { useSelectedCampus } from "../model/selected-campus-provider";
-import { SvgBarChart, SvgDonutChart, SvgLineChart } from "./dashboard-charts";
+import { SvgDonutChart, SvgLineChart } from "./dashboard-charts";
 import { Badge } from "../../../shared/ui/badge";
 import { Button } from "../../../shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../shared/ui/card";
@@ -45,10 +38,6 @@ export function OperationalAdminDashboard() {
   const { selectedAcademicYear } = useSelectedAcademicYear();
 
   const [data, setData] = useState<TenantAdminDashboard | null>(null);
-  const [readiness, setReadiness] = useState<TenantReadiness | null>(null);
-  const [applications, setApplications] = useState<AdmissionApplication[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [classes, setClasses] = useState<AcademicClass[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -57,22 +46,12 @@ export function OperationalAdminDashboard() {
     setRefreshing(true);
     setError(null);
 
-    Promise.all([
-      getTenantAdminDashboard({
+    getTenantAdminDashboard({
         campusId: selectedCampus.id,
         academicYearId: selectedAcademicYear.id,
-      }),
-      getTenantReadiness(),
-      listApplications({ campusId: selectedCampus.id, academicYearId: selectedAcademicYear.id }),
-      loadAllStudents(selectedCampus.id, selectedAcademicYear.id),
-      listClasses(selectedCampus.id),
-    ])
-      .then(([dash, read, apps, stus, classRows]) => {
+      })
+      .then((dash) => {
         setData(dash);
-        setReadiness(read);
-        setApplications(apps);
-        setStudents(stus);
-        setClasses(classRows);
       })
       .catch((value) =>
         setError(value instanceof Error ? value.message : "Unable to load operational dashboard"),
@@ -84,48 +63,30 @@ export function OperationalAdminDashboard() {
     loadData();
   }, [loadData]);
 
-  // Real Application Status breakdown from live database
   const applicationsByStatusData = useMemo(() => {
-    const counts: Record<string, { label: string; count: number; color: string }> = {
-      SUBMITTED: { label: "Submitted", count: 0, color: "#3b82f6" },
-      UNDER_REVIEW: { label: "Under Review", count: 0, color: "#06b6d4" },
-      CORRECTION_REQUIRED: { label: "Correction Required", count: 0, color: "#f59e0b" },
-      APPROVED: { label: "Approved", count: 0, color: "#10b981" },
-      CONFIRMED: { label: "Confirmed", count: 0, color: "#8b5cf6" },
-      REJECTED: { label: "Rejected", count: 0, color: "#f43f5e" },
-      CANCELLED: { label: "Cancelled", count: 0, color: "#64748b" },
+    const colors: Record<string, string> = {
+      DRAFT: "#64748b",
+      SUBMITTED: "#3b82f6",
+      APPROVED: "#10b981",
+      CONFIRMED: "#8b5cf6",
+      REJECTED: "#f43f5e",
+      CANCELLED: "#94a3b8",
     };
+    return (data?.applicationStatusDistribution ?? []).map((item) => ({
+      label: item.label,
+      value: item.count,
+      color: colors[item.key] ?? "#06b6d4",
+    }));
+  }, [data]);
 
-    applications.forEach((app) => {
-      const key = app.status;
-      if (counts[key]) counts[key].count += 1;
-    });
-
-    return Object.values(counts)
-      .filter((item) => item.count > 0)
-      .map((item) => ({
-        label: item.label,
-        value: item.count,
-        color: item.color,
-      }));
-  }, [applications]);
-
-  // Real Student Class breakdown from live database
   const studentsByClassData = useMemo(() => {
-    const classNames = new Map(classes.map((item) => [item.id, item.name]));
-    const classCounts = new Map<string, number>();
-    students.forEach((stu) => {
-      const cId = stu.enrollment?.classId || "Unassigned";
-      classCounts.set(cId, (classCounts.get(cId) || 0) + 1);
-    });
-
     const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#6366f1", "#14b8a6"];
-    return Array.from(classCounts.entries()).map(([cId, count], idx) => ({
-      label: cId === "Unassigned" ? "Unassigned" : (classNames.get(cId) ?? "Unknown class"),
-      value: count,
+    return (data?.studentClassDistribution ?? []).map((item, idx) => ({
+      label: item.label,
+      value: item.count,
       color: colors[idx % colors.length]!,
     }));
-  }, [classes, students]);
+  }, [data]);
 
   if (!selectedCampus || !selectedAcademicYear) {
     return (
@@ -155,7 +116,7 @@ export function OperationalAdminDashboard() {
       subtext: "Teaching & non-teaching staff",
       badgeBg: "bg-emerald-50 text-emerald-600 border-emerald-200",
       icon: UsersRound,
-      to: "/admin/access/employees",
+      to: "/admin/staff",
     },
     {
       title: "Applications Pending",
@@ -207,34 +168,13 @@ export function OperationalAdminDashboard() {
     },
   ];
 
-  // REAL ADMISSIONS TREND
-  const admissionsTrendLabels = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
-  const admissionsSeries = [
-    {
-      name: selectedAcademicYear.code,
-      color: "#2563eb",
-      values: Array.from({ length: 12 }, () => 0), // Default real zeros
-    },
-  ];
-
-  // REAL FEE COLLECTION TREND
-  const collectionLabels = ["Week 1", "Week 2", "Week 3", "Week 4"];
+  const collectionLabels = data.collectionTrend.map((item) => item.label);
   const collectionSeries = [
     {
       name: "Collection (₹)",
       color: "#2563eb",
-      values: [data.collectedTodayMinor / 100, 0, 0, 0],
+      values: data.collectionTrend.map((item) => item.value / 100),
     },
-  ];
-
-  // REAL ATTENDANCE BARS
-  const attendanceBars = [
-    { label: "Mon", value: 0, color: "#3b82f6" },
-    { label: "Tue", value: 0, color: "#3b82f6" },
-    { label: "Wed", value: 0, color: "#3b82f6" },
-    { label: "Thu", value: 0, color: "#3b82f6" },
-    { label: "Fri", value: 0, color: "#3b82f6" },
-    { label: "Sat", value: 0, color: "#3b82f6" },
   ];
 
   return (
@@ -268,28 +208,6 @@ export function OperationalAdminDashboard() {
         </div>
       </header>
 
-      {/* SETUP WARNINGS OR CORE READY BADGE */}
-      {readiness && !readiness.ready ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2 font-bold">
-            <AlertTriangle size={16} className="text-amber-600 shrink-0" />
-            <span>Setup Warning: {readiness.completedRequired} of {readiness.totalRequired} core setup tasks completed ({readiness.percentage}% ready).</span>
-          </div>
-          <Link to="/admin/setup/readiness">
-            <Button size="sm" variant="outline" className="h-7 text-xs font-bold bg-white border-amber-300 text-amber-900 hover:bg-amber-100">
-              View Readiness Checklist
-            </Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between bg-emerald-50/70 border border-emerald-200 rounded-lg px-3 py-1.5 text-xs text-emerald-800 font-semibold">
-          <span className="flex items-center gap-2">
-            <CheckCircle2 size={14} className="text-emerald-600" /> Core institution setup verified & operational.
-          </span>
-          <Badge variant="success" className="font-extrabold text-[10px]">Core Setup Ready</Badge>
-        </div>
-      )}
-
       {/* ROW 1: 8 CLICKABLE SUMMARY KPI CARDS GRID */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
         {summaryCards.map((card) => {
@@ -319,14 +237,23 @@ export function OperationalAdminDashboard() {
 
       {/* ROW 2: MAIN TREND CHARTS (3 COLUMNS) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* 1. Admissions Trend (4 Cols) */}
+        {/* 1. Real Today's Financial & Operational Realization */}
         <Card className="lg:col-span-4 p-0 overflow-hidden">
           <CardHeader className="p-3.5 pb-2 border-b border-slate-100 flex-row items-center justify-between">
-            <CardTitle className="text-xs font-bold text-slate-900">Admissions Trend</CardTitle>
-            <Badge variant="secondary" className="text-[10px] font-semibold">{selectedAcademicYear.code}</Badge>
+            <CardTitle className="text-xs font-bold text-slate-900">Today's Operational Summary</CardTitle>
+            <Badge variant="secondary" className="text-[10px] font-semibold">Live Real-Time</Badge>
           </CardHeader>
-          <CardContent className="p-3">
-            <SvgLineChart labels={admissionsTrendLabels} series={admissionsSeries} height={170} />
+          <CardContent className="grid grid-cols-3 gap-2 p-3">
+            {[
+              ["Enquiries", data.enquiriesToday, "/admin/admissions/enquiries"],
+              ["Follow-ups", data.pendingEnquiryFollowUps, "/admin/admissions/enquiries"],
+              ["Applications", data.applicationsSubmittedToday, "/admin/admissions/applications"],
+            ].map(([label, value, to]) => (
+              <Link key={String(label)} to={String(to)} className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-center hover:border-brand-200 transition-all">
+                <p className="text-xl font-extrabold text-slate-900">{Number(value).toLocaleString("en-IN")}</p>
+                <p className="mt-1 text-[10px] font-bold uppercase text-slate-500">{label}</p>
+              </Link>
+            ))}
           </CardContent>
         </Card>
 
@@ -334,7 +261,7 @@ export function OperationalAdminDashboard() {
         <Card className="lg:col-span-4 p-0 overflow-hidden">
           <CardHeader className="p-3.5 pb-2 border-b border-slate-100 flex-row items-center justify-between">
             <CardTitle className="text-xs font-bold text-slate-900">Fee Collection Trend</CardTitle>
-            <Badge variant="secondary" className="text-[10px] font-semibold">Active Month</Badge>
+            <Badge variant="secondary" className="text-[10px] font-semibold">{data.paymentsToday} payments today</Badge>
           </CardHeader>
           <CardContent className="p-3">
             <SvgLineChart labels={collectionLabels} series={collectionSeries} height={170} unit="₹" />
@@ -345,24 +272,24 @@ export function OperationalAdminDashboard() {
         <Card className="lg:col-span-4 p-0 overflow-hidden">
           <CardHeader className="p-3.5 pb-2 border-b border-slate-100 flex-row items-center justify-between">
             <CardTitle className="text-xs font-bold text-slate-900">Students by Class</CardTitle>
-            <Badge variant="secondary" className="text-[10px] font-semibold">{students.length} Enrolled</Badge>
+            <Badge variant="secondary" className="text-[10px] font-semibold">{data.activeStudents} Enrolled</Badge>
           </CardHeader>
           <CardContent className="p-3">
-            <SvgDonutChart segments={studentsByClassData} totalLabel="Total Students" totalValue={students.length} size={150} />
+            <SvgDonutChart segments={studentsByClassData} totalLabel="Total Students" totalValue={data.activeStudents} size={150} />
           </CardContent>
         </Card>
       </div>
 
-      {/* ROW 3: SUB-CHARTS & TODAY'S SUMMARY (4 COLUMNS) */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* ROW 3: SUB-CHARTS & TODAY'S SUMMARY */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* 1. Applications by Status */}
         <Card className="p-0 overflow-hidden">
           <CardHeader className="p-3.5 pb-2 border-b border-slate-100 flex-row items-center justify-between">
             <CardTitle className="text-xs font-bold text-slate-900">Applications by Status</CardTitle>
-            <Badge variant="secondary" className="text-[10px] font-semibold">{applications.length} Total</Badge>
+            <Badge variant="secondary" className="text-[10px] font-semibold">{data.applicationCount} Total</Badge>
           </CardHeader>
           <CardContent className="p-3">
-            <SvgDonutChart segments={applicationsByStatusData} totalLabel="Total Apps" totalValue={applications.length} size={135} />
+            <SvgDonutChart segments={applicationsByStatusData} totalLabel="Total Apps" totalValue={data.applicationCount} size={135} />
           </CardContent>
         </Card>
 
@@ -417,30 +344,109 @@ export function OperationalAdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* 4. Attendance Trend */}
+      </div>
+
+      {/* ROW 4: EXCEPTIONS, OUTSTANDING CLASSES, AND SECURITY CHANGES */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="p-0 overflow-hidden">
+          <CardHeader className="p-3.5 pb-2 border-b border-slate-100">
+            <CardTitle className="text-xs font-bold text-slate-900">Actionable Exceptions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 p-3 text-xs">
+            {[
+              ["Students without fee orders", data.studentsMissingFeeOrders, "/admin/finance/reconciliation"],
+              ["Students with unpaid balance", data.unpaidStudents, "/admin/finance/outstanding"],
+              ["Failed staff invitations", data.failedStaffInvites, "/admin/staff"],
+              ["Failed finance events", data.failedFinanceEvents, "/admin/finance/reconciliation"],
+              ["Failed admission events", data.failedAdmissionEvents, "/admin/admissions/applications"],
+            ].map(([label, value, to]) => (
+              <Link key={String(label)} to={String(to)} className="flex items-center justify-between rounded-lg bg-slate-50 p-2 hover:bg-slate-100">
+                <span className="font-semibold text-slate-700">{label}</span>
+                <Badge variant={Number(value) > 0 ? "warning" : "secondary"}>{Number(value).toLocaleString("en-IN")}</Badge>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
         <Card className="p-0 overflow-hidden">
           <CardHeader className="p-3.5 pb-2 border-b border-slate-100 flex-row items-center justify-between">
-            <CardTitle className="text-xs font-bold text-slate-900">Attendance Logged</CardTitle>
-            <Badge variant="secondary" className="text-[10px] font-semibold">Weekly</Badge>
+            <CardTitle className="text-xs font-bold text-slate-900">Top Outstanding Classes</CardTitle>
+            <Link to="/admin/finance/outstanding" className="text-[11px] font-bold text-brand-600 hover:underline">View all</Link>
           </CardHeader>
-          <CardContent className="p-3">
-            <SvgBarChart bars={attendanceBars} height={145} />
+          <CardContent className="p-0">
+            {data.topOutstandingClasses.length ? (
+              <Table>
+                <TableHeader><TableRow><TableHead>Class</TableHead><TableHead>Students</TableHead><TableHead className="text-right">Outstanding</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {data.topOutstandingClasses.map((item) => (
+                    <TableRow key={item.classId}>
+                      <TableCell className="font-semibold">{item.className}</TableCell>
+                      <TableCell>{item.studentCount}</TableCell>
+                      <TableCell className="text-right font-bold text-rose-700">{money(item.outstandingMinor)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : <EmptyState title="No outstanding balances" description="No collectible class balances remain." />}
+          </CardContent>
+        </Card>
+
+        <Card className="p-0 overflow-hidden">
+          <CardHeader className="p-3.5 pb-2 border-b border-slate-100 flex-row items-center justify-between">
+            <CardTitle className="text-xs font-bold text-slate-900">Access and Permission Changes</CardTitle>
+            <Link to="/admin/access/roles" className="text-[11px] font-bold text-brand-600 hover:underline">Manage access</Link>
+          </CardHeader>
+          <CardContent className="space-y-2 p-3">
+            {data.recentSecurityChanges.length ? data.recentSecurityChanges.map((item) => (
+              <div key={item.id} className="rounded-lg border border-slate-100 p-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-slate-800">{item.change}</p>
+                  <Badge variant="secondary" className="text-[9px]">{item.status}</Badge>
+                </div>
+                <p className="mt-1 truncate text-[11px] text-slate-500">{item.subject}</p>
+                <p className="mt-1 text-[10px] text-slate-400">{new Date(item.occurredAt).toLocaleString("en-IN")}</p>
+              </div>
+            )) : <EmptyState title="No recent access changes" description="Role and permission changes will appear here." />}
           </CardContent>
         </Card>
       </div>
 
-      {/* ROW 4: REAL OPERATIONAL TABLES & RECENT ACTIVITY (12 COLS GRID) */}
+      {/* COLLECTION BY PAYMENT METHOD */}
+      <Card className="p-0 overflow-hidden">
+        <CardHeader className="p-3.5 pb-2 border-b border-slate-100 flex-row items-center justify-between">
+          <CardTitle className="text-xs font-bold text-slate-900">Today's Collection by Payment Method</CardTitle>
+          <Link to="/admin/finance/collections" className="text-[11px] font-bold text-brand-600 hover:underline">Open collections</Link>
+        </CardHeader>
+        <CardContent className="p-0">
+          {data.collectionByPaymentMethod.length ? (
+            <Table>
+              <TableHeader><TableRow><TableHead>Method</TableHead><TableHead>Payments</TableHead><TableHead className="text-right">Collected</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {data.collectionByPaymentMethod.map((item) => (
+                  <TableRow key={item.method}>
+                    <TableCell className="font-semibold">{item.method.replaceAll("_", " ")}</TableCell>
+                    <TableCell>{item.paymentCount}</TableCell>
+                    <TableCell className="text-right font-bold text-emerald-700">{money(item.amountMinor)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : <EmptyState title="No collections today" description="Successful payments collected today will be grouped here." />}
+        </CardContent>
+      </Card>
+
+      {/* ROW 5: REAL OPERATIONAL TABLES & RECENT ACTIVITY (12 COLS GRID) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* Real Admission Applications Table (6 Cols) */}
         <Card className="lg:col-span-6 p-0 overflow-hidden">
           <CardHeader className="p-3.5 pb-2 border-b border-slate-100 flex-row items-center justify-between">
             <CardTitle className="text-xs font-bold text-slate-900">Admission Applications</CardTitle>
             <Link to="/admin/admissions/applications" className="text-[11px] font-bold text-brand-600 hover:underline">
-              View All ({applications.length})
+              View All ({data.applicationCount})
             </Link>
           </CardHeader>
           <CardContent className="p-0">
-            {applications.length ? (
+            {data.recentApplications.length ? (
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -451,10 +457,10 @@ export function OperationalAdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {applications.slice(0, 5).map((app) => (
+                  {data.recentApplications.slice(0, 5).map((app) => (
                     <TableRow key={app.id} className="text-xs">
                       <TableCell className="py-2 font-bold text-brand-700">
-                        <Link to="/admin/admissions/applications" className="hover:underline">{app.applicationNumber}</Link>
+                        <Link to={`/admin/admissions/applications/${app.id}`} className="hover:underline">{app.applicationNumber ?? "Draft"}</Link>
                       </TableCell>
                       <TableCell className="py-2 font-semibold text-slate-800">{app.studentName}</TableCell>
                       <TableCell className="py-2 text-slate-600 font-medium">{app.phone || "-"}</TableCell>
@@ -524,7 +530,7 @@ export function OperationalAdminDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <Link to="/admin/admissions/applications">
               <Button size="sm" variant="outline" className="h-8 text-xs font-bold gap-1.5 bg-white">
-                <UserPlus size={14} className="text-brand-600" /> New Application
+                <UserPlus size={14} className="text-brand-600" /> Manage Applications
               </Button>
             </Link>
             <Link to="/admin/finance/collections">
@@ -532,14 +538,14 @@ export function OperationalAdminDashboard() {
                 <Banknote size={14} className="text-emerald-600" /> Collect Fee
               </Button>
             </Link>
-            <Link to="/admin/access/employees">
+            <Link to="/admin/staff/new">
               <Button size="sm" variant="outline" className="h-8 text-xs font-bold gap-1.5 bg-white">
                 <UsersRound size={14} className="text-purple-600" /> Invite Staff
               </Button>
             </Link>
-            <Link to="/admin/finance/reports">
+            <Link to="/admin/finance/reconciliation">
               <Button size="sm" variant="outline" className="h-8 text-xs font-bold gap-1.5 bg-white">
-                <FileSpreadsheet size={14} className="text-amber-600" /> Generate Report
+                <FileSpreadsheet size={14} className="text-amber-600" /> Reconciliation
               </Button>
             </Link>
           </div>
@@ -547,30 +553,4 @@ export function OperationalAdminDashboard() {
       </Card>
     </section>
   );
-}
-
-async function loadAllStudents(campusId: string, academicYearId: string) {
-  const pageSize = 100;
-  const first = await listStudentPage({
-    campusId,
-    academicYearId,
-    page: 1,
-    pageSize,
-    sortBy: "name",
-    sortDirection: "ASC",
-  });
-  if (first.totalPages <= 1) return first.items;
-  const remaining = await Promise.all(
-    Array.from({ length: first.totalPages - 1 }, (_, index) =>
-      listStudentPage({
-        campusId,
-        academicYearId,
-        page: index + 2,
-        pageSize,
-        sortBy: "name",
-        sortDirection: "ASC",
-      }),
-    ),
-  );
-  return [first, ...remaining].flatMap((page) => page.items);
 }

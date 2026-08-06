@@ -1,5 +1,5 @@
 import { Ban, Check, KeyRound, Plus, Search, ShieldCheck, UserRound, UsersRound } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { listCampuses } from "../../tenant-settings/api/settings.api";
 import type { Campus } from "../../tenant-settings/model/settings.types";
 import { Modal } from "../../../shared/ui/modal";
@@ -8,13 +8,14 @@ import {
   assignIdentityUserRole,
   createIdentityRole,
   getIdentityAccess,
-  listIdentityRoles,
-  listIdentityUsers,
+  listIdentityAssignmentPage,
+  listIdentityRolePage,
+  listIdentityUserPage,
   revokeIdentityUserRole,
   saveIdentityRolePermissions,
   updateIdentityRole,
 } from "../api/access.api";
-import type { AccessScopeType, IdentityAccessSnapshot, IdentityRole, IdentityUser } from "../model/access.types";
+import type { AccessScopeType, IdentityAccessSnapshot, IdentityRole, IdentityUser, UserRoleAssignment } from "../model/access.types";
 import { cn } from "../../../shared/ui/utils";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
@@ -29,6 +30,7 @@ export type AccessView = "users" | "roles" | "permissions";
 export function AccessManagement({ view }: { view: AccessView }) {
   const [users, setUsers] = useState<IdentityUser[]>([]);
   const [roles, setRoles] = useState<IdentityRole[]>([]);
+  const [roleOptions, setRoleOptions] = useState<IdentityRole[]>([]);
   const [access, setAccess] = useState<IdentityAccessSnapshot | null>(null);
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,9 @@ export function AccessManagement({ view }: { view: AccessView }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
   const [profileUser, setProfileUser] = useState<IdentityUser | null>(null);
+  const [profileAssignments, setProfileAssignments] = useState<UserRoleAssignment[]>([]);
   const [roleModal, setRoleModal] = useState(false);
   const [assignModal, setAssignModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IdentityUser | null>(null);
@@ -49,18 +53,17 @@ export function AccessManagement({ view }: { view: AccessView }) {
     campusIds: [] as string[],
   });
 
-  const load = async () => {
+  const loadBase = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [nextUsers, nextRoles, nextAccess, nextCampuses] = await Promise.all([
-        listIdentityUsers(),
-        listIdentityRoles(),
+      const [roleLookup, nextAccess, nextCampuses] = await Promise.all([
+        listIdentityRolePage({ page: 1, pageSize: 100 }),
         getIdentityAccess(),
         listCampuses(),
       ]);
-      setUsers(nextUsers);
-      setRoles(nextRoles);
+      setRoles(roleLookup.items);
+      setRoleOptions(roleLookup.items);
       setAccess(nextAccess);
       setCampuses(nextCampuses.filter((item) => item.status === "ACTIVE"));
     } catch (value) {
@@ -71,39 +74,54 @@ export function AccessManagement({ view }: { view: AccessView }) {
   };
 
   useEffect(() => {
-    void load();
+    void loadBase();
   }, []);
 
-  const query = search.trim().toLowerCase();
-  const visibleUsers = useMemo(
-    () =>
-      users.filter(
-        (item) =>
-          !query ||
-          item.name.toLowerCase().includes(query) ||
-          item.email.toLowerCase().includes(query),
-      ),
-    [query, users],
-  );
-
-  const visibleRoles = useMemo(
-    () =>
-      roles.filter(
-        (item) =>
-          !query ||
-          item.name.toLowerCase().includes(query) ||
-          item.description?.toLowerCase().includes(query),
-      ),
-    [query, roles],
-  );
-  const userPage = visibleUsers.slice((page - 1) * pageSize, page * pageSize);
-  const rolePage = visibleRoles.slice((page - 1) * pageSize, page * pageSize);
+  useEffect(() => {
+    if (loading || view === "permissions") return;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setError(null);
+        try {
+          if (view === "users") {
+            const query = search.trim();
+            const result = await listIdentityUserPage({ ...(query ? { search: query } : {}), page, pageSize });
+            setUsers(result.items);
+            setTotal(result.total);
+            const assignments = result.items.length
+              ? await listIdentityAssignmentPage({ userIds: result.items.map((item) => item.id), page: 1, pageSize: 100 })
+              : { items: [] as UserRoleAssignment[] };
+            setAccess((current) => current ? { ...current, assignments: assignments.items } : current);
+          } else {
+            const query = search.trim();
+            const result = await listIdentityRolePage({ ...(query ? { search: query } : {}), page, pageSize });
+            setRoles(result.items);
+            setTotal(result.total);
+          }
+        } catch (value) {
+          setError(value instanceof Error ? value.message : "Unable to load access records");
+        }
+      })();
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [loading, page, pageSize, search, view]);
 
   useEffect(() => setPage(1), [search, view]);
 
-  const roleName = (id: string) => roles.find((item) => item.id === id)?.name ?? "Unavailable role";
+  const roleName = (id: string) => roleOptions.find((item) => item.id === id)?.name ?? "Unavailable role";
   const assignmentsFor = (userId: string) =>
     access?.assignments.filter((item) => item.userId === userId && item.isActive) ?? [];
+
+  async function openProfile(user: IdentityUser) {
+    setProfileUser(user);
+    setProfileAssignments([]);
+    try {
+      const history = await listIdentityAssignmentPage({ userId: user.id, page: 1, pageSize: 100 });
+      setProfileAssignments(history.items);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "Unable to load role history");
+    }
+  }
 
   const scopeLabel = (scope: { scopeType: AccessScopeType; campusIds?: string[] }) =>
     scope.scopeType === "TENANT"
@@ -125,6 +143,8 @@ export function AccessManagement({ view }: { view: AccessView }) {
         code: roleForm.code.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_"),
       });
       setRoles((current) => [...current, saved].sort((a, b) => a.name.localeCompare(b.name)));
+      setRoleOptions((current) => [...current, saved].sort((a, b) => a.name.localeCompare(b.name)));
+      setTotal((current) => current + 1);
       setRoleModal(false);
       setRoleForm({ code: "", name: "", description: "" });
     } catch (value) {
@@ -210,7 +230,7 @@ export function AccessManagement({ view }: { view: AccessView }) {
   }
 
   if (loading) return <LoadingState label="Loading users and access" />;
-  if (error && !access) return <ErrorState message={error} retry={() => void load()} />;
+  if (error && !access) return <ErrorState message={error} retry={() => void loadBase()} />;
 
   return (
     <section className="space-y-6">
@@ -259,9 +279,9 @@ export function AccessManagement({ view }: { view: AccessView }) {
 
       {/* Users view */}
       {view === "users" && (
-        visibleUsers.length ? (
+        users.length ? (
           <div className="space-y-3">
-            {userPage.map((user) => (
+            {users.map((user) => (
               <Card key={user.id}>
                 <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5">
                   <div className="flex items-center gap-3">
@@ -308,7 +328,7 @@ export function AccessManagement({ view }: { view: AccessView }) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setProfileUser(user)}
+                      onClick={() => void openProfile(user)}
                     >
                       <UserRound size={14} /> Profile
                     </Button>
@@ -318,7 +338,7 @@ export function AccessManagement({ view }: { view: AccessView }) {
                       onClick={() => {
                         setSelectedUser(user);
                         setAssignment({
-                          roleId: roles.find((role) => role.isActive)?.id ?? "",
+                          roleId: roleOptions.find((role) => role.isActive)?.id ?? "",
                           scopeType: "TENANT",
                           campusIds: [],
                         });
@@ -331,7 +351,7 @@ export function AccessManagement({ view }: { view: AccessView }) {
                 </CardContent>
               </Card>
             ))}
-            <ServerPagination page={page} pageSize={pageSize} total={visibleUsers.length} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
+            <ServerPagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
           </div>
         ) : (
           <EmptyState
@@ -343,9 +363,9 @@ export function AccessManagement({ view }: { view: AccessView }) {
 
       {/* Roles view */}
       {view === "roles" && (
-        visibleRoles.length ? (
+        roles.length ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {rolePage.map((role) => (
+            {roles.map((role) => (
               <Card key={role.id} className="flex flex-col justify-between">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-4">
@@ -379,9 +399,10 @@ export function AccessManagement({ view }: { view: AccessView }) {
                         size="sm"
                         disabled={busy}
                         onClick={() =>
-                          void updateIdentityRole(role.id, { isActive: !role.isActive }).then((saved) =>
-                            setRoles((current) => current.map((item) => (item.id === saved.id ? saved : item))),
-                          )
+                          void updateIdentityRole(role.id, { isActive: !role.isActive }).then((saved) => {
+                            setRoles((current) => current.map((item) => (item.id === saved.id ? saved : item)));
+                            setRoleOptions((current) => current.map((item) => (item.id === saved.id ? saved : item)));
+                          })
                         }
                       >
                         {role.isActive ? "Deactivate" : "Activate"}
@@ -392,7 +413,7 @@ export function AccessManagement({ view }: { view: AccessView }) {
               </Card>
             ))}
             <div className="sm:col-span-2">
-              <ServerPagination page={page} pageSize={pageSize} total={visibleRoles.length} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
+              <ServerPagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
             </div>
           </div>
         ) : (
@@ -412,18 +433,18 @@ export function AccessManagement({ view }: { view: AccessView }) {
               <div><dt className="text-slate-500">Status</dt><dd className="font-semibold">{profileUser.status}</dd></div>
               <div><dt className="text-slate-500">Created</dt><dd className="font-semibold">{new Date(profileUser.createdAt).toLocaleString()}</dd></div>
               <div><dt className="text-slate-500">Last updated</dt><dd className="font-semibold">{new Date(profileUser.updatedAt).toLocaleString()}</dd></div>
-              <div><dt className="text-slate-500">Active assignments</dt><dd className="font-semibold">{assignmentsFor(profileUser.id).length}</dd></div>
+              <div><dt className="text-slate-500">Active assignments</dt><dd className="font-semibold">{profileAssignments.filter((item) => item.isActive).length}</dd></div>
             </dl>
             <Separator />
             <div className="space-y-2">
               <h4 className="font-semibold text-slate-900">Role and scope history</h4>
-              {(access?.assignments.filter((item) => item.userId === profileUser.id) ?? []).map((item) => (
+              {profileAssignments.map((item) => (
                 <div key={item.id} className="rounded-md border border-slate-200 p-3 text-sm">
                   <div className="flex justify-between gap-3"><strong>{roleName(item.roleId)}</strong><Badge variant={item.isActive ? "success" : "secondary"}>{item.isActive ? "ACTIVE" : "REVOKED"}</Badge></div>
                   <p className="mt-1 text-slate-500">{scopeLabel(item.scope)} · {new Date(item.createdAt).toLocaleString()}</p>
                 </div>
               ))}
-              {!assignmentsFor(profileUser.id).length ? <p className="text-sm text-slate-500">No role assignment history.</p> : null}
+              {!profileAssignments.length ? <p className="text-sm text-slate-500">No role assignment history.</p> : null}
             </div>
           </div>
         ) : null}
@@ -439,7 +460,7 @@ export function AccessManagement({ view }: { view: AccessView }) {
             </CardHeader>
             <Separator />
             <div className="p-1.5 space-y-0.5">
-              {roles
+              {roleOptions
                 .filter((role) => role.isActive)
                 .map((role) => (
                   <button
@@ -573,7 +594,7 @@ export function AccessManagement({ view }: { view: AccessView }) {
               onChange={(event) => setAssignment((v) => ({ ...v, roleId: event.target.value }))}
               className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
             >
-              {roles
+              {roleOptions
                 .filter((role) => role.isActive)
                 .map((role) => (
                   <option key={role.id} value={role.id}>

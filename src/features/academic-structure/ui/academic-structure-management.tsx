@@ -1,556 +1,379 @@
-import { BookOpen, GraduationCap, Layers3, Plus, School } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  ArrowRight,
+  FolderTree,
+  GraduationCap,
+  Layers3,
+  Plus,
+  School,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "../../../shared/ui/badge";
+import { Button } from "../../../shared/ui/button";
+import { Input } from "../../../shared/ui/input";
+import { Label } from "../../../shared/ui/label";
 import { Modal } from "../../../shared/ui/modal";
 import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
+import { listCampusAcademicUnits } from "../../tenant-settings/api/settings.api";
+import type { CampusAcademicUnit } from "../../tenant-settings/model/settings.types";
+import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
 import {
   createClass,
   createProgram,
   createSection,
-  createSubject,
   listClasses,
   listPrograms,
   listSections,
-  listSubjects,
 } from "../api/academic-structure.api";
-import type { AcademicClass, Program, Section, Subject, SubjectType } from "../model/academic-structure.types";
-import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
+import type { AcademicClass, Program, Section } from "../model/academic-structure.types";
 import { AcademicStructurePlanner } from "./academic-structure-planner";
-import { Button } from "../../../shared/ui/button";
-import { Input } from "../../../shared/ui/input";
-import { Label } from "../../../shared/ui/label";
-import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
-import { Separator } from "../../../shared/ui/separator";
-import { cn } from "../../../shared/ui/utils";
 
-type Tab = "programs" | "classes" | "sections" | "subjects";
+type CreateTarget = "program" | "class" | "section";
 
-const tabs = [
-  { key: "programs", label: "Programs", icon: GraduationCap },
-  { key: "classes", label: "Classes", icon: School },
-  { key: "sections", label: "Sections", icon: Layers3 },
-  { key: "subjects", label: "Subjects", icon: BookOpen },
-] as const;
-
-const singular: Record<Tab, string> = {
-  programs: "program",
-  classes: "class",
-  sections: "section",
-  subjects: "subject",
-};
-
-const SUBJECT_SUGGESTIONS = {
-  SCHOOL: [
-    "English",
-    "Kannada",
-    "Hindi",
-    "Mathematics",
-    "Science",
-    "Social Science",
-    "Computer Science",
-    "Physical Education",
-  ],
-  COLLEGE: [
-    "English",
-    "Kannada",
-    "Physics",
-    "Chemistry",
-    "Mathematics",
-    "Biology",
-    "Computer Science",
-    "Economics",
-    "Business Studies",
-    "Accountancy",
-  ],
-  DEGREE_COLLEGE: ["English", "Environmental Studies", "Constitution of India", "Computer Applications", "Physical Education"],
-} as const;
+const targetLabel = {
+  program: "program or level",
+  class: "class, year or semester",
+  section: "section",
+} satisfies Record<CreateTarget, string>;
 
 export function AcademicStructureManagement() {
-  const [tab, setTab] = useState<Tab>("programs");
   const { selectedCampus, loading: campusLoading, error: campusError } = useSelectedCampus();
   const campusId = selectedCampus?.id ?? "";
-
+  const [academicUnits, setAcademicUnits] = useState<CampusAcademicUnit[]>([]);
+  const [academicUnitId, setAcademicUnitId] = useState("");
   const [programs, setPrograms] = useState<Program[]>([]);
   const [classes, setClasses] = useState<AcademicClass[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [createTarget, setCreateTarget] = useState<CreateTarget | null>(null);
   const [programId, setProgramId] = useState("");
   const [classId, setClassId] = useState("");
-  const [subjectType, setSubjectType] = useState<SubjectType>("THEORY");
-  const [credits, setCredits] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const load = () => {
-    if (!campusId) return;
-    setLoading(true);
+  const selectedAcademicUnit =
+    academicUnits.find((unit) => unit.id === academicUnitId) ?? academicUnits[0];
+
+  useEffect(() => {
+    if (!campusId) {
+      setAcademicUnits([]);
+      setAcademicUnitId("");
+      setLoading(false);
+      return;
+    }
     setError(null);
-    Promise.all([
-      listPrograms(campusId),
-      listClasses(campusId),
-      listSections(campusId),
-      listSubjects(campusId),
-    ])
-      .then(([p, c, s, u]) => {
-        setPrograms(p);
-        setClasses(c);
-        setSections(s);
-        setSubjects(u);
+    void listCampusAcademicUnits(campusId)
+      .then((records) => {
+        const active = records.filter((record) => record.status === "ACTIVE");
+        setAcademicUnits(active);
+        setAcademicUnitId((current) =>
+          active.some((record) => record.id === current) ? current : active[0]?.id ?? "",
+        );
       })
       .catch((value) =>
-        setError(value instanceof Error ? value.message : "Unable to load academic structure"),
-      )
-      .finally(() => setLoading(false));
-  };
+        setError(value instanceof Error ? value.message : "Unable to load academic units"),
+      );
+  }, [campusId]);
 
-  useEffect(load, [campusId]);
+  const load = useCallback(async () => {
+    if (!campusId || !selectedAcademicUnit?.id) {
+      setPrograms([]);
+      setClasses([]);
+      setSections([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const [programRows, classRows, sectionRows] = await Promise.all([
+        listPrograms(campusId, selectedAcademicUnit.id),
+        listClasses(campusId),
+        listSections(campusId),
+      ]);
+      const programIds = new Set(programRows.map((program) => program.id));
+      const filteredClasses = classRows.filter((academicClass) =>
+        programIds.has(academicClass.programId),
+      );
+      const classIds = new Set(filteredClasses.map((academicClass) => academicClass.id));
+      setPrograms(programRows);
+      setClasses(filteredClasses);
+      setSections(sectionRows.filter((section) => classIds.has(section.classId)));
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "Unable to load academic structure");
+    } finally {
+      setLoading(false);
+    }
+  }, [campusId, selectedAcademicUnit?.id]);
 
-  const activePrograms = programs.filter((item) => item.status === "ACTIVE");
-  const availableClasses = classes.filter(
-    (item) => item.status === "ACTIVE" && (!programId || item.programId === programId),
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const totals = useMemo(
+    () => ({ programs: programs.length, classes: classes.length, sections: sections.length }),
+    [programs, classes, sections],
   );
 
-  const rows = useMemo(
-    () =>
-      tab === "programs"
-        ? programs
-        : tab === "classes"
-          ? classes
-          : tab === "sections"
-            ? sections
-            : subjects,
-    [tab, programs, classes, sections, subjects],
-  );
-
-  const programName = (value: string) => programs.find((item) => item.id === value)?.name ?? "—";
-  const className = (value?: string) =>
-    value ? classes.find((item) => item.id === value)?.name ?? "—" : "All classes";
-
-  const count = (key: Tab) => {
-    if (key === "programs") return programs.length;
-    if (key === "classes") return classes.length;
-    if (key === "sections") return sections.length;
-    return subjects.length;
-  };
-
-  const language =
-    selectedCampus?.campusType === "SCHOOL"
-      ? {
-          program: "school level",
-          programs: "School levels",
-          class: "class",
-          classes: "Classes",
-          subject: "subject",
-          subjects: "Subjects",
-        }
-      : selectedCampus?.campusType === "DEGREE_COLLEGE"
-        ? { program: "program", programs: "Programs", class: "semester", classes: "Semesters", subject: "course", subjects: "Courses" }
-        : { program: "program", programs: "Programs", class: "year", classes: "Years", subject: "subject", subjects: "Subjects" };
-
-  const labelText = (key: Tab) => {
-    if (key === "programs") return language.programs;
-    if (key === "classes") return language.classes;
-    if (key === "subjects") return language.subjects;
-    return "Sections";
-  };
-
-  const itemName = (key: Tab) => {
-    if (key === "programs") return language.program;
-    if (key === "classes") return language.class;
-    if (key === "subjects") return language.subject;
-    return "section";
-  };
-
-  function startCreate() {
+  function openCreate(target: CreateTarget, selectedProgramId = "", selectedClassId = "") {
+    setCreateTarget(target);
+    setProgramId(selectedProgramId || programs[0]?.id || "");
+    setClassId(selectedClassId);
     setName("");
     setDescription("");
-    setProgramId(activePrograms[0]?.id ?? "");
-    setClassId("");
-    setSubjectType("THEORY");
-    setCredits("");
-    setOpen(true);
+    setError(null);
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (!createTarget || !selectedAcademicUnit) return;
     setBusy(true);
     setError(null);
     try {
-      if (
-        tab === "subjects" &&
-        credits &&
-        (!Number.isFinite(Number(credits)) || Number(credits) < 0)
-      ) {
-        throw new Error("Credits or periods must be a valid non-negative value.");
-      }
-      if (tab === "programs") {
-        const created = await createProgram({ campusId, name, ...(description ? { description } : {}) });
-        setPrograms((value) => [...value, created]);
-      }
-      if (tab === "classes") {
-        const created = await createClass({ campusId, programId, name, ...(description ? { description } : {}) });
-        setClasses((value) => [...value, created]);
-      }
-      if (tab === "sections") {
-        const created = await createSection({
+      if (createTarget === "program") {
+        await createProgram({
+          campusId,
+          academicUnitId: selectedAcademicUnit.id,
+          name,
+          ...(description.trim() ? { description: description.trim() } : {}),
+        });
+      } else if (createTarget === "class") {
+        await createClass({
           campusId,
           programId,
-          classId,
           name,
-          ...(description ? { description } : {}),
+          ...(description.trim() ? { description: description.trim() } : {}),
         });
-        setSections((value) => [...value, created]);
+      } else {
+        const academicClass = classes.find((item) => item.id === classId);
+        if (!academicClass) throw new Error("Select a class before creating a section");
+        await createSection({
+          campusId,
+          programId: academicClass.programId,
+          classId: academicClass.id,
+          name,
+          ...(description.trim() ? { description: description.trim() } : {}),
+        });
       }
-      if (tab === "subjects") {
-        const names = [
-          ...new Set(
-            name
-              .split(/[\n,]/)
-              .map((value) => value.trim())
-              .filter(Boolean),
-          ),
-        ];
-        const existing = subjects
-          .filter((item) => item.programId === programId && (item.classId ?? "") === classId)
-          .map((item) => item.name.toLowerCase());
-        const created: Subject[] = [];
-        for (const subjectName of names) {
-          if (!existing.includes(subjectName.toLowerCase())) {
-            created.push(
-              await createSubject({
-                campusId,
-                programId,
-                name: subjectName,
-                subjectType,
-                ...(classId ? { classId } : {}),
-                ...(credits ? { credits: Number(credits) } : {}),
-              }),
-            );
-          }
-        }
-        setSubjects((value) => [...value, ...created]);
-      }
-      setOpen(false);
+      setCreateTarget(null);
+      await load();
     } catch (value) {
-      setError(value instanceof Error ? value.message : `Unable to create ${singular[tab]}`);
+      setError(value instanceof Error ? value.message : `Unable to create ${targetLabel[createTarget]}`);
     } finally {
       setBusy(false);
     }
   }
 
-  if (loading || campusLoading) return <LoadingState label="Loading academic structure" />;
+  if (campusLoading || loading) return <LoadingState label="Loading academic structure" />;
   if (campusError) return <ErrorState message={campusError} />;
   if (!selectedCampus) {
+    return <EmptyState title="Create a campus first" description="Academic setup belongs to an active campus." />;
+  }
+  if (!academicUnits.length) {
     return (
       <EmptyState
-        title="Create a campus first"
-        description="Academic setup must belong to an active school or college campus."
+        title="Configure an academic unit first"
+        description="Add a school, PU college or degree college unit under the selected campus."
       />
     );
   }
-  if (error && !rows.length) return <ErrorState message={error} retry={load} />;
-
-  const dependencyMissing = tab !== "programs" && !activePrograms.length;
 
   return (
     <section className="space-y-5">
-      {/* Header */}
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Academic structure</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Configure {selectedCampus.name}'s {selectedCampus.campusType === "SCHOOL" ? "school" : "college"} curriculum. Change campus from the top bar.
+          <h2 className="text-lg font-bold text-slate-900">Interactive Structure Tree</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Manage programs, classes and sections together for {selectedCampus.name}.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            aria-label="Academic unit"
+            value={selectedAcademicUnit?.id ?? ""}
+            onChange={(event) => setAcademicUnitId(event.target.value)}
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800"
+          >
+            {academicUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+          </select>
           <AcademicStructurePlanner
             campusId={campusId}
             campusName={selectedCampus.name}
-            campusType={selectedCampus.campusType}
+            academicUnitId={selectedAcademicUnit!.id}
+            academicUnitType={selectedAcademicUnit!.type}
             programs={programs}
             classes={classes}
-            onApplied={load}
+            onApplied={() => void load()}
           />
-          <Button size="sm" disabled={dependencyMissing} onClick={startCreate}>
-            <Plus size={15} /> Add {tab === "subjects" ? language.subjects.toLowerCase() : itemName(tab)}
+          <Button size="sm" onClick={() => openCreate("program")}>
+            <Plus size={14} /> Add program
           </Button>
         </div>
       </header>
 
-      {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      {error ? (
+        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
           {error}
         </div>
-      )}
+      ) : null}
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200" role="tablist">
-        {tabs.map(({ key, icon: Icon }) => {
-          const isActive = tab === key;
-          return (
-            <button
-              key={key}
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setTab(key)}
-              className={cn(
-                "flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-all outline-none",
-                isActive
-                  ? "border-accent-600 text-accent-700"
-                  : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300",
-              )}
-            >
-              <Icon size={15} className={isActive ? "text-accent-650" : "text-slate-400"} />
-              <span>{labelText(key)}</span>
-              <span
-                className={cn(
-                  "ml-1 rounded-full px-1.5 py-0.5 text-xs font-normal",
-                  isActive ? "bg-accent-100 text-accent-700" : "bg-slate-100 text-slate-500",
-                )}
-              >
-                {count(key)}
-              </span>
-            </button>
-          );
-        })}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Summary label="Programs / levels" value={totals.programs} icon={GraduationCap} />
+        <Summary label="Classes / semesters" value={totals.classes} icon={School} />
+        <Summary label="Sections" value={totals.sections} icon={Layers3} />
       </div>
 
-      {/* Content */}
-      {dependencyMissing ? (
-        <EmptyState
-          title="Create a program first"
-          description="Classes, sections, and subjects must belong to an active program."
-        />
-      ) : rows.length ? (
-        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Reference</TableHead>
-                {tab !== "programs" && <TableHead>Program</TableHead>}
-                {(tab === "sections" || tab === "subjects") && <TableHead>Class</TableHead>}
-                {tab === "subjects" && <TableHead>Type</TableHead>}
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-semibold text-slate-900">{row.name}</TableCell>
-                  <TableCell className="text-xs font-mono text-slate-500">{row.code}</TableCell>
-                  {"programId" in row && (
-                    <TableCell className="text-slate-650 text-sm">
-                      {programName(row.programId)}
-                    </TableCell>
-                  )}
-                  {"classId" in row && (tab === "sections" || tab === "subjects") && (
-                    <TableCell className="text-slate-650 text-sm">
-                      {className(row.classId)}
-                    </TableCell>
-                  )}
-                  {"subjectType" in row && (
-                    <TableCell className="text-slate-650 text-sm">
-                      {row.subjectType.replaceAll("_", " ")}
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <Badge variant={row.status === "ACTIVE" ? "success" : "secondary"}>
-                      {row.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      <div className="rounded-md border border-slate-200 bg-white">
+        <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
+          <FolderTree size={16} className="text-blue-600" />
+          <h3 className="text-sm font-bold text-slate-900">{selectedAcademicUnit?.name}</h3>
+          <Badge variant="secondary">{selectedAcademicUnit?.type}</Badge>
         </div>
-      ) : (
-        <EmptyState
-          title={`No ${labelText(tab).toLowerCase()} configured`}
-          description={`Add the first ${itemName(tab)} to continue academic setup.`}
-        />
-      )}
 
-      {/* Add Modal */}
+        {!programs.length ? (
+          <div className="p-8">
+            <EmptyState
+              title="No academic structure"
+              description="Use Guided setup or add the first program or school level."
+            />
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-200">
+            {programs.map((program) => {
+              const programClasses = classes.filter((item) => item.programId === program.id);
+              return (
+                <div key={program.id} className="p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+                        <GraduationCap size={16} />
+                      </span>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{program.name}</p>
+                        <p className="text-[11px] text-slate-500">{programClasses.length} classes, years or semesters</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => openCreate("class", program.id)}>
+                      <Plus size={13} /> Add class
+                    </Button>
+                  </div>
+
+                  <div className="mt-3 space-y-2 pl-0 sm:pl-10">
+                    {programClasses.map((academicClass) => {
+                      const classSections = sections.filter((item) => item.classId === academicClass.id);
+                      return (
+                        <div key={academicClass.id} className="rounded-md border border-slate-200 bg-slate-50/50 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <School size={15} className="text-violet-600" />
+                              <div>
+                                <p className="text-xs font-bold text-slate-900">{academicClass.name}</p>
+                                <p className="text-[11px] text-slate-500">{classSections.length} sections</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openCreate("section", program.id, academicClass.id)}
+                              >
+                                <Plus size={13} /> Add section
+                              </Button>
+                              <Button asChild size="sm" variant="ghost">
+                                <Link to={`/admin/academics/class-setup?classId=${academicClass.id}`}>
+                                  Open Class Setup <ArrowRight size={13} />
+                                </Link>
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {classSections.length ? classSections.map((section) => (
+                              <Link
+                                key={section.id}
+                                to={`/admin/academics/class-setup?classId=${academicClass.id}&sectionId=${section.id}`}
+                                className="inline-flex items-center gap-1.5 rounded-md border border-violet-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-50"
+                              >
+                                <Layers3 size={13} /> {section.name}
+                              </Link>
+                            )) : <span className="text-[11px] text-slate-400">No sections configured</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {!programClasses.length ? (
+                      <p className="rounded-md border border-dashed border-slate-200 p-3 text-xs text-slate-500">
+                        Add the first class, year or semester under {program.name}.
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <Modal
-        open={open}
-        title={`Add ${tab === "subjects" ? language.subjects.toLowerCase() : itemName(tab)}`}
-        description={
-          tab === "subjects"
-            ? `Add several ${language.subjects.toLowerCase()} together. References are generated automatically.`
-            : `This record belongs to ${selectedCampus?.name}. The reference code is generated automatically.`
-        }
-        onClose={() => setOpen(false)}
+        open={Boolean(createTarget)}
+        title={createTarget ? `Add ${targetLabel[createTarget]}` : "Add academic record"}
+        description="Reference codes are generated by the backend."
+        onClose={() => !busy && setCreateTarget(null)}
       >
-        <form onSubmit={(e) => void submit(e)} className="space-y-4">
-          {tab !== "programs" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="prog-sel">{language.program}</Label>
-              <select
-                id="prog-sel"
-                required
-                value={programId}
-                onChange={(e) => {
-                  setProgramId(e.target.value);
-                  setClassId("");
-                }}
-                className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
-              >
-                {activePrograms.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {(tab === "sections" || tab === "subjects") && (
-            <div className="space-y-1.5">
-              <Label htmlFor="class-sel">
-                {language.class}
-                {tab === "subjects" ? " (optional)" : ""}
-              </Label>
-              <select
-                id="class-sel"
-                required={tab === "sections"}
-                value={classId}
-                onChange={(e) => setClassId(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
-              >
-                {tab === "subjects" ? (
-                  <option value="">All {language.classes.toLowerCase()}</option>
-                ) : (
-                  <option value="">Select {language.class}</option>
-                )}
-                {availableClasses.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {tab === "subjects" ? (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="sub-names">
-                  Subject names <small className="text-slate-400">one per line or separated by commas</small>
-                </Label>
-                <textarea
-                  id="sub-names"
-                  required
-                  rows={4}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="English&#10;Mathematics&#10;Science"
-                  className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600 resize-none"
-                />
-              </div>
-
-              {/* Suggestions */}
-              <div className="space-y-1">
-                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">
-                  Common {language.subjects.toLowerCase()}
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {SUBJECT_SUGGESTIONS[selectedCampus.campusType].map((suggestion) => {
-                    const chosen = name
-                      .split(/[\n,]/)
-                      .map((val) => val.trim())
-                      .includes(suggestion);
-                    return (
-                      <button
-                        type="button"
-                        key={suggestion}
-                        onClick={() => {
-                          if (chosen) return;
-                          setName((val) => (val.trim() ? `${val.trim()}\n${suggestion}` : suggestion));
-                        }}
-                        className={cn(
-                          "rounded px-2.5 py-1 text-xs font-medium transition-colors border",
-                          chosen
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100",
-                        )}
-                      >
-                        {chosen ? "✓" : "+"} {suggestion}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="sub-type">Subject type</Label>
-                  <select
-                    id="sub-type"
-                    value={subjectType}
-                    onChange={(e) => setSubjectType(e.target.value as SubjectType)}
-                    className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
-                  >
-                    <option value="THEORY">Theory</option>
-                    <option value="PRACTICAL">Practical</option>
-                    <option value="MIXED">Theory and practical</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="sub-credits">
-                    {selectedCampus.campusType === "SCHOOL" ? "Periods per week" : "Credits"}{" "}
-                    <small className="text-slate-400">(optional)</small>
-                  </Label>
-                  <Input
-                    id="sub-credits"
-                    value={credits}
-                    onChange={(e) => {
-                      if (/^\d*(\.\d?)?$/.test(e.target.value)) setCredits(e.target.value);
-                    }}
-                    placeholder={selectedCampus.campusType === "SCHOOL" ? "Example: 5" : "Example: 3.5"}
-                  />
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="field-name">Name</Label>
-                <Input id="field-name" required value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="field-desc">Description</Label>
-                <textarea
-                  id="field-desc"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600 resize-none"
-                />
-              </div>
-            </>
-          )}
-
-          <Separator />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" disabled={busy}>
-              {busy
-                ? "Creating..."
-                : tab === "subjects"
-                  ? `Create ${name.split(/[\n,]/).filter((val) => val.trim()).length || ""} ${language.subjects.toLowerCase()}`
-                  : "Create"}
-            </Button>
+        <form onSubmit={(event) => void submit(event)} className="space-y-4">
+          {createTarget === "class" ? (
+            <FieldSelect label="Program or level" value={programId} onChange={setProgramId} options={programs} />
+          ) : null}
+          {createTarget === "section" ? (
+            <FieldSelect
+              label="Class, year or semester"
+              value={classId}
+              onChange={setClassId}
+              options={classes.filter((item) => !programId || item.programId === programId)}
+            />
+          ) : null}
+          <div className="space-y-1.5">
+            <Label htmlFor="academic-record-name">Name</Label>
+            <Input id="academic-record-name" required value={name} onChange={(event) => setName(event.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="academic-record-description">Description</Label>
+            <textarea
+              id="academic-record-description"
+              rows={3}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-xs"
+            />
+          </div>
+          <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+            <Button type="button" variant="outline" disabled={busy} onClick={() => setCreateTarget(null)}>Cancel</Button>
+            <Button type="submit" disabled={busy}>{busy ? "Creating..." : "Create"}</Button>
           </div>
         </form>
       </Modal>
     </section>
+  );
+}
+
+function Summary({ label, value, icon: Icon }: { label: string; value: number; icon: typeof School }) {
+  return (
+    <div className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-3">
+      <div><p className="text-[11px] font-semibold text-slate-500">{label}</p><p className="text-xl font-bold text-slate-900">{value}</p></div>
+      <Icon size={18} className="text-blue-600" />
+    </div>
+  );
+}
+
+function FieldSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<{ id: string; name: string }> }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <select required value={value} onChange={(event) => onChange(event.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-xs">
+        <option value="">Select {label.toLowerCase()}</option>
+        {options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+      </select>
+    </div>
   );
 }

@@ -25,6 +25,10 @@ export interface Employee {
   lastInviteAttemptAt?: string;
   invitedAt?: string;
   externalHrCode?: string;
+  profilePhotoFileId?: string;
+  templateId?: string;
+  templateVersion?: number;
+  customFields?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
   endedAt?: string;
@@ -48,6 +52,24 @@ export interface CreateEmployeeInput {
   scopeType: "TENANT" | "CAMPUS";
   templateId: string;
   templateVersion: number;
+  profilePhotoFileId?: string;
+  customFields?: Record<string, unknown>;
+}
+export interface UpdateEmployeeInput {
+  fullName?: string;
+  phone?: string;
+  staffCategory?: StaffCategory;
+  staffType?: StaffType;
+  employmentType?: EmploymentType;
+  designation?: string;
+  department?: string;
+  primaryCampusId?: string;
+  campusIds?: string[];
+  joiningDate?: string;
+  externalHrCode?: string;
+  profilePhotoFileId?: string;
   customFields?: Record<string, unknown>;
 }
 export interface EmployeeInviteAttempt { id:string; employeeId:string; email:string; attemptNumber:number; status:"SENT"|"FAILED"; provider:string; error?:string; createdAt:string; }
+export interface EmployeeInviteDeliveryEvent { id:string;messageId:string;eventType:"SEND"|"DELIVERY"|"DELIVERY_DELAY"|"BOUNCE"|"COMPLAINT"|"REJECT"|"RENDERING_FAILURE";occurredAt:string;recipients:string[] }
+export interface EmployeePage { items:Employee[];page:number;pageSize:number;total:number;totalPages:number;sortBy:"fullName"|"employeeCode"|"joiningDate"|"createdAt";sortDirection:"ASC"|"DESC";summary:{total:number;active:number;teaching:number;nonTeaching:number;loginReady:number;inviteIssues:number}; }

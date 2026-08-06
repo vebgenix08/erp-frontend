@@ -1,10 +1,11 @@
 import {
+  ArrowRight,
   Building2,
-  CheckCircle2,
   CreditCard,
   FileText,
   Hourglass,
   Layers,
+  Plus,
   Receipt,
   RotateCcw,
   Wallet,
@@ -67,7 +68,7 @@ export function FinanceDashboard({
       .then(([summaryRes, paymentsRes]) => {
         if (active) {
           setData(summaryRes);
-          setRecentPayments(paymentsRes.slice(0, 5));
+          setRecentPayments(paymentsRes.slice(0, 6));
         }
       })
       .catch((value) => {
@@ -90,7 +91,7 @@ export function FinanceDashboard({
     return (
       <EmptyState
         title="Select campus and academic year"
-        description="Finance metrics follow the operating context."
+        description="Finance metrics follow the operating campus context."
       />
     );
   if (error) return <ErrorState message={error} />;
@@ -101,289 +102,311 @@ export function FinanceDashboard({
   const totalOutstandingVal = data.outstandingMinor;
   const todayCollectionVal = data.collectedTodayMinor;
 
+  const collectionPercent = totalFeeOrdersVal > 0
+    ? Math.min(100, Math.round((totalCollectionsVal / totalFeeOrdersVal) * 100))
+    : 0;
+
   return (
-    <section className="space-y-6 pb-12">
-      {/* Top Header & Context Controls */}
+    <section className="space-y-6 font-sans text-slate-900 pb-12">
+      {/* Top Header & Context Actions */}
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Finance Dashboard</h2>
+          <h1 className="text-xl font-bold text-slate-900">Finance Dashboard</h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Overview of income, collections, and outstanding for {selectedCampus.name} · {selectedAcademicYear.name}.
+            Real-time financial overview of collections, dues, and fee orders for {selectedCampus.name} ({selectedAcademicYear.name})
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="px-3 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-800">
-            {selectedCampus.name}
-          </span>
-          <span className="px-3 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-800">
-            {selectedAcademicYear.name}
-          </span>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`${basePath}/fee-schedules`)}
+            className="h-9 px-3 text-xs font-semibold border-slate-200 text-slate-700 hover:bg-slate-50"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" /> Fee Schedule
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => navigate(`${basePath}/collections`)}
+            className="h-9 px-4 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
+          >
+            <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
+          </Button>
         </div>
       </header>
 
-      {/* Top 5 Summary KPI Cards Row (100% REAL LIVE BACKEND DATA) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {/* Top 5 Summary KPI Cards Bar */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {/* Card 1: Total Fee Orders */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="h-10 w-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <Wallet size={18} />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[104px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Total Fee Orders
+            </span>
+            <div className="h-7 w-7 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+              <Wallet className="h-3.5 w-3.5" />
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Total Fee Orders</span>
           </div>
-          <div>
-            <strong className="text-lg font-black text-slate-900 leading-tight block">
-              {money(totalFeeOrdersVal)}
-            </strong>
-            <div className="flex items-center justify-between mt-1 text-[10.5px]">
-              <span className="text-slate-500 font-semibold">{data.openOrders + data.paidOrders} Orders</span>
-              <span className="font-bold text-emerald-600">Assigned</span>
-            </div>
+          <div className="text-xl font-black text-slate-900 leading-none">{money(totalFeeOrdersVal)}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none flex items-center justify-between">
+            <span>{data.openOrders + data.paidOrders} Orders</span>
+            <span className="font-bold text-emerald-600">Assigned</span>
           </div>
         </div>
 
         {/* Card 2: Total Collections */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="h-10 w-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center">
-              <CreditCard size={18} />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[104px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Total Collections
+            </span>
+            <div className="h-7 w-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+              <CreditCard className="h-3.5 w-3.5" />
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Total Collections</span>
           </div>
-          <div>
-            <strong className="text-lg font-black text-slate-900 leading-tight block">
-              {money(totalCollectionsVal)}
-            </strong>
-            <div className="flex items-center justify-between mt-1 text-[10.5px]">
-              <span className="text-slate-500 font-semibold">{data.paymentCount} Payments</span>
-              <span className="font-bold text-emerald-600">Collected</span>
-            </div>
+          <div className="text-xl font-black text-slate-900 leading-none">{money(totalCollectionsVal)}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none flex items-center justify-between">
+            <span>{data.paymentCount} Payments</span>
+            <span className="font-bold text-blue-600">Collected</span>
           </div>
         </div>
 
         {/* Card 3: Total Outstanding */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center">
-              <Hourglass size={18} />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[104px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Total Outstanding
+            </span>
+            <div className="h-7 w-7 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+              <Hourglass className="h-3.5 w-3.5" />
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Total Outstanding</span>
           </div>
-          <div>
-            <strong className="text-lg font-black text-slate-900 leading-tight block">
-              {money(totalOutstandingVal)}
-            </strong>
-            <div className="flex items-center justify-between mt-1 text-[10.5px]">
-              <span className="text-slate-500 font-semibold">{data.openOrders} Open Orders</span>
-              <span className="font-bold text-amber-600">Pending</span>
-            </div>
+          <div className="text-xl font-black text-slate-900 leading-none">{money(totalOutstandingVal)}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none flex items-center justify-between">
+            <span>{data.openOrders} Open Orders</span>
+            <span className="font-bold text-amber-600">Pending</span>
           </div>
         </div>
 
         {/* Card 4: Paid Orders */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="h-10 w-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
-              <RotateCcw size={18} />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[104px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Paid Orders
+            </span>
+            <div className="h-7 w-7 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+              <RotateCcw className="h-3.5 w-3.5" />
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Paid Orders</span>
           </div>
-          <div>
-            <strong className="text-lg font-black text-slate-900 leading-tight block">
-              {data.paidOrders}
-            </strong>
-            <div className="flex items-center justify-between mt-1 text-[10.5px]">
-              <span className="text-slate-500 font-semibold">Completed Orders</span>
-              <span className="font-bold text-emerald-600">Paid</span>
-            </div>
+          <div className="text-xl font-black text-slate-900 leading-none">{data.paidOrders}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none flex items-center justify-between">
+            <span>Completed Orders</span>
+            <span className="font-bold text-emerald-600">100% Paid</span>
           </div>
         </div>
 
         {/* Card 5: Today's Collection */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="h-10 w-10 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center">
-              <Building2 size={18} />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[104px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Today's Collection
+            </span>
+            <div className="h-7 w-7 rounded-full bg-sky-50 flex items-center justify-center text-sky-600 shrink-0">
+              <Building2 className="h-3.5 w-3.5" />
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Today's Collection</span>
           </div>
-          <div>
-            <strong className="text-lg font-black text-slate-900 leading-tight block">
-              {money(todayCollectionVal)}
-            </strong>
-            <div className="flex items-center justify-between mt-1 text-[10.5px]">
-              <span className="text-slate-500 font-semibold">Today</span>
-              <span className="font-bold text-emerald-600">Collected Today</span>
-            </div>
+          <div className="text-xl font-black text-slate-900 leading-none">{money(todayCollectionVal)}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none flex items-center justify-between">
+            <span>Today's Receipts</span>
+            <span className="font-bold text-sky-600">Collected</span>
           </div>
         </div>
       </div>
 
-      {/* Middle Content Row (Summary Metrics & Quick Actions) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4">
-        {/* Collection Summary Box */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
-          <h3 className="text-xs font-extrabold text-slate-900 border-b border-slate-100 pb-2">
-            Collection & Outstanding Summary
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Middle Content Section: Collection Progress & Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Collection & Progress Card (8 Cols) */}
+        <div className="lg:col-span-8 rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900">Collection & Outstanding Analysis</h2>
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+              {collectionPercent}% Collected
+            </span>
+          </div>
+
+          {/* Visual Collection Progress Bar */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs font-semibold text-slate-600">
+              <span>Collection Realization Rate</span>
+              <span>{money(totalCollectionsVal)} of {money(totalFeeOrdersVal)}</span>
+            </div>
+            <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                style={{ width: `${collectionPercent}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Total Fee Assigned</span>
-              <strong className="text-xl font-black text-slate-900 block">{money(totalFeeOrdersVal)}</strong>
-              <span className="text-[11px] text-slate-500 font-medium">{data.openOrders + data.paidOrders} total fee orders</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Fee Assigned</span>
+              <strong className="text-lg font-black text-slate-900 block">{money(totalFeeOrdersVal)}</strong>
+              <span className="text-[11px] text-slate-500 font-medium">{data.openOrders + data.paidOrders} fee orders</span>
             </div>
             <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-1">
-              <span className="text-[10px] font-bold text-emerald-700 uppercase">Total Collected</span>
-              <strong className="text-xl font-black text-emerald-800 block">{money(totalCollectionsVal)}</strong>
-              <span className="text-[11px] text-emerald-600 font-medium">{data.paymentCount} payments recorded</span>
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Total Collected</span>
+              <strong className="text-lg font-black text-emerald-800 block">{money(totalCollectionsVal)}</strong>
+              <span className="text-[11px] text-emerald-600 font-medium">{data.paymentCount} payments</span>
             </div>
             <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/40 space-y-1">
-              <span className="text-[10px] font-bold text-amber-700 uppercase">Total Outstanding</span>
-              <strong className="text-xl font-black text-amber-800 block">{money(totalOutstandingVal)}</strong>
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Total Outstanding</span>
+              <strong className="text-lg font-black text-amber-800 block">{money(totalOutstandingVal)}</strong>
               <span className="text-[11px] text-amber-600 font-medium">{data.openOrders} pending orders</span>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions Box */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
-          <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">
-            Quick Actions
-          </h3>
-          <div className="space-y-1.5 text-xs font-bold text-slate-700">
-            <button
-              type="button"
-              onClick={() => navigate(`${basePath}/fee-schedules`)}
-              className="w-full text-left p-2 rounded-lg hover:bg-slate-100 flex items-center gap-2 cursor-pointer"
-            >
-              <FileText size={14} className="text-brand-600" /> Create Fee Order
-            </button>
+        {/* Quick Navigation Card (4 Cols) */}
+        <div className="lg:col-span-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+          <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
+            Finance Quick Actions
+          </h2>
+          <div className="space-y-2 text-xs font-semibold">
             <button
               type="button"
               onClick={() => navigate(`${basePath}/collections`)}
-              className="w-full text-left p-2 rounded-lg hover:bg-slate-100 flex items-center gap-2 cursor-pointer"
+              className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 flex items-center justify-between text-slate-800 transition-all"
             >
-              <CreditCard size={14} className="text-brand-600" /> Record Payment
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-blue-600" />
+                <span>Record Fee Payment</span>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
             </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(`${basePath}/fee-schedules`)}
+              className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 flex items-center justify-between text-slate-800 transition-all"
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-purple-600" />
+                <span>Fee Schedules & Orders</span>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
+            </button>
+
             <button
               type="button"
               onClick={() => navigate(`${basePath}/receipts`)}
-              className="w-full text-left p-2 rounded-lg hover:bg-slate-100 flex items-center gap-2 cursor-pointer"
+              className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 flex items-center justify-between text-slate-800 transition-all"
             >
-              <Receipt size={14} className="text-brand-600" /> Generate Receipt
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-emerald-600" />
+                <span>Generate Fee Receipt</span>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
             </button>
+
             <button
               type="button"
               onClick={() => navigate(`${basePath}/outstanding`)}
-              className="w-full text-left p-2 rounded-lg hover:bg-slate-100 flex items-center gap-2 cursor-pointer"
+              className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 flex items-center justify-between text-slate-800 transition-all"
             >
-              <Hourglass size={14} className="text-brand-600" /> Outstanding Report
+              <div className="flex items-center gap-2">
+                <Hourglass className="h-4 w-4 text-amber-600" />
+                <span>Outstanding Dues Report</span>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
             </button>
+
             <button
               type="button"
               onClick={() => navigate(`${basePath}/reconciliation`)}
-              className="w-full text-left p-2 rounded-lg hover:bg-slate-100 flex items-center gap-2 cursor-pointer"
+              className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 flex items-center justify-between text-slate-800 transition-all"
             >
-              <Layers size={14} className="text-brand-600" /> Fee Reconciliation
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-sky-600" />
+                <span>Fee Reconciliation</span>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Bottom Content Row (100% REAL RECENT PAYMENTS) */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-          <h3 className="text-xs font-extrabold text-slate-900">Recent Collections ({recentPayments.length})</h3>
-          <Button size="sm" variant="ghost" onClick={() => navigate(`${basePath}/collections`)} className="h-6 text-xs font-bold text-brand-600">
-            View All Collections →
+      {/* Bottom Table: Recent Collections */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Recent Collections ({recentPayments.length})</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Latest fee collection receipts recorded in the system</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`${basePath}/collections`)}
+            className="h-8 text-xs font-semibold text-blue-600 border-blue-200 hover:bg-blue-50"
+          >
+            View All Collections <ArrowRight className="h-3.5 w-3.5 ml-1" />
           </Button>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50 text-xs font-bold text-slate-600">
-              <TableHead>Receipt No.</TableHead>
-              <TableHead>Payment ID</TableHead>
-              <TableHead>Payment Date</TableHead>
-              <TableHead>Mode</TableHead>
-              <TableHead>Reference No.</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="text-xs">
-            {recentPayments.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-slate-400 font-medium">
-                  No fee collections recorded yet for this campus.
-                </TableCell>
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <Table>
+            <TableHeader className="bg-slate-50">
+              <TableRow className="border-b border-slate-200">
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Receipt No.</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Payment ID</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Payment Date</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Mode</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Ref No.</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Amount</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">Status</TableHead>
               </TableRow>
-            ) : (
-              recentPayments.map((p) => (
-                <TableRow key={p.id} className="hover:bg-slate-50/60">
-                  <TableCell className="font-mono font-bold text-brand-700">{p.receiptNumber}</TableCell>
-                  <TableCell className="font-mono text-slate-600 text-[11px]">{p.id.substring(0, 8)}</TableCell>
-                  <TableCell className="text-slate-600 font-medium">{dateStr(p.paidAt)}</TableCell>
-                  <TableCell>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-[10.5px] font-bold">
-                      {p.method.replaceAll("_", " ")}
-                    </span>
-                  </TableCell>
-                  <TableCell className="font-mono text-slate-600 text-[11px]">{p.reference || "—"}</TableCell>
-                  <TableCell className="font-extrabold text-slate-900">{money(p.amountMinor)}</TableCell>
-                  <TableCell>
-                    <Badge variant={p.status === "SUCCESS" ? "success" : "secondary"}>
-                      {p.status}
-                    </Badge>
+            </TableHeader>
+            <TableBody className="divide-y divide-slate-100">
+              {recentPayments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-xs text-slate-400 font-medium">
+                    No fee collections recorded yet for this campus.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Bottom Summary KPI Strip (100% REAL BACKEND METRICS) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-            <Wallet size={18} />
-          </div>
-          <div>
-            <span className="text-[10.5px] font-bold text-slate-400 block uppercase">Total Fee Orders</span>
-            <p className="text-base font-black text-slate-900 leading-tight">{data.openOrders + data.paidOrders}</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center shrink-0">
-            <Hourglass size={18} />
-          </div>
-          <div>
-            <span className="text-[10.5px] font-bold text-slate-400 block uppercase">Open Orders</span>
-            <p className="text-base font-black text-slate-900 leading-tight">{data.openOrders}</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-            <CheckCircle2 size={18} />
-          </div>
-          <div>
-            <span className="text-[10.5px] font-bold text-slate-400 block uppercase">Paid Orders</span>
-            <p className="text-base font-black text-slate-900 leading-tight">{data.paidOrders}</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-            <Receipt size={18} />
-          </div>
-          <div>
-            <span className="text-[10.5px] font-bold text-slate-400 block uppercase">Payments Received</span>
-            <p className="text-base font-black text-slate-900 leading-tight">{data.paymentCount}</p>
-          </div>
+              ) : (
+                recentPayments.map((p) => (
+                  <TableRow key={p.id} className="hover:bg-slate-50/60 transition-colors">
+                    <TableCell className="font-mono text-xs font-bold text-blue-700 py-3">
+                      {p.receiptNumber}
+                    </TableCell>
+                    <TableCell className="font-mono text-slate-500 text-[11px] py-3">
+                      {p.id.substring(0, 8)}
+                    </TableCell>
+                    <TableCell className="text-slate-600 font-medium text-xs py-3">
+                      {dateStr(p.paidAt)}
+                    </TableCell>
+                    <TableCell className="py-3 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-[10.5px] font-bold text-slate-700 border border-slate-200">
+                        {p.method.replaceAll("_", " ")}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono text-slate-500 text-[11px] py-3">
+                      {p.reference || "—"}
+                    </TableCell>
+                    <TableCell className="font-extrabold text-slate-900 text-xs py-3">
+                      {money(p.amountMinor)}
+                    </TableCell>
+                    <TableCell className="py-3 text-right">
+                      <Badge variant={p.status === "SUCCESS" ? "success" : "secondary"}>
+                        {p.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </section>

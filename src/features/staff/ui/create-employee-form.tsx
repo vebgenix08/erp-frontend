@@ -8,6 +8,7 @@ import { listTenantTemplates } from "../../tenant-settings/api/settings.api";
 import type { TenantTemplate } from "../../tenant-settings/model/settings.types";
 import { TemplateFields } from "../../tenant-settings/ui/template-fields";
 import { createEmployee } from "../api/staff.api";
+import { deleteFile, uploadFile } from "../../storage/api/files.api";
 import type { EmploymentType, StaffCategory, StaffType } from "../model/staff.types";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
@@ -102,6 +103,9 @@ export function CreateEmployeeForm() {
   const inviteTemplateField = template?.fields.find((field) =>
     field.label.toLowerCase().includes("portal activation invite"),
   );
+  const profilePhotoField = template?.fields.find((field) =>
+    field.label.trim().toLowerCase() === "profile photo",
+  );
 
   const submit = async (event: FormEvent, invite: boolean) => {
     event.preventDefault();
@@ -111,11 +115,37 @@ export function CreateEmployeeForm() {
     }
     setBusy(true);
     setError(null);
+    const uploadedFileIds: string[] = [];
     try {
       const email = form.email.trim(),
         phone = form.phone.trim(),
         designation = form.designation.trim(),
         department = form.department.trim();
+      const uploadedCustomFields = { ...customFields };
+      let profilePhotoFileId: string | undefined;
+      for (const [fieldKey, value] of Object.entries(customFields)) {
+        if (!(value instanceof File)) continue;
+        const stored = await uploadFile({
+          file: value,
+          scopeType: "TENANT",
+          metadata: {
+            category: "staff_onboarding",
+            fieldKey,
+            ...(email ? { employeeEmail: email } : {}),
+          },
+        });
+        uploadedFileIds.push(stored.id);
+        if (fieldKey === profilePhotoField?.key) {
+          profilePhotoFileId = stored.id;
+          delete uploadedCustomFields[fieldKey];
+        } else {
+          uploadedCustomFields[fieldKey] = {
+            fileId: stored.id,
+            fileName: stored.fileName,
+            contentType: stored.contentType,
+          };
+        }
+      }
       const saved = await createEmployee({
         fullName: form.fullName,
         staffCategory: form.staffCategory,
@@ -129,7 +159,8 @@ export function CreateEmployeeForm() {
         scopeType: form.scopeType,
         templateId: template.id,
         templateVersion: template.publishedVersion ?? template.version,
-        customFields,
+        customFields: uploadedCustomFields,
+        ...(profilePhotoFileId ? { profilePhotoFileId } : {}),
         ...(email ? { email } : {}),
         ...(phone ? { phone } : {}),
         ...(designation ? { designation } : {}),
@@ -137,6 +168,7 @@ export function CreateEmployeeForm() {
       });
       navigate(`/admin/staff/${saved.id}`);
     } catch (value) {
+      await Promise.allSettled(uploadedFileIds.map((fileId) => deleteFile(fileId)));
       setError(value instanceof Error ? value.message : "Unable to create employee");
     } finally {
       setBusy(false);

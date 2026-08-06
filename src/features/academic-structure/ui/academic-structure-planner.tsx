@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight, Check, Plus, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Modal } from "../../../shared/ui/modal";
-import type { InstitutionType } from "../../tenant-settings/model/settings.types";
+import type { AcademicUnitType } from "../../tenant-settings/model/settings.types";
 import { createClass, createProgram } from "../api/academic-structure.api";
 import type { AcademicClass, Program } from "../model/academic-structure.types";
 import { Button } from "../../../shared/ui/button";
@@ -26,30 +26,32 @@ const COLLEGE_PLAN: PlanRow[] = [
 const DEGREE_SUGGESTIONS = ["B.Com", "B.Sc", "B.A", "BBA", "BCA"];
 const DEGREE_CLASSES = "Semester 1, Semester 2, Semester 3, Semester 4, Semester 5, Semester 6";
 
-function initialPlan(type: InstitutionType): PlanRow[] {
+function initialPlan(type: AcademicUnitType): PlanRow[] {
   if (type === "SCHOOL") return SCHOOL_PLAN.map((row) => ({ ...row }));
-  if (type === "COLLEGE") return COLLEGE_PLAN.map((row) => ({ ...row }));
+  if (type === "PU") return COLLEGE_PLAN.map((row) => ({ ...row }));
   return [{ id: crypto.randomUUID(), program: "B.Com", classes: DEGREE_CLASSES }];
 }
 
 export function AcademicStructurePlanner({
   campusId,
   campusName,
-  campusType,
+  academicUnitId,
+  academicUnitType,
   programs,
   classes,
   onApplied,
 }: {
   campusId: string;
   campusName: string;
-  campusType: InstitutionType;
+  academicUnitId: string;
+  academicUnitType: AcademicUnitType;
   programs: Program[];
   classes: AcademicClass[];
   onApplied: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [plan, setPlan] = useState<PlanRow[]>(() => initialPlan(campusType));
+  const [plan, setPlan] = useState<PlanRow[]>(() => initialPlan(academicUnitType));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +65,7 @@ export function AcademicStructurePlanner({
   );
 
   function show() {
-    setPlan(initialPlan(campusType));
+    setPlan(initialPlan(academicUnitType));
     setStep(1);
     setError(null);
     setOpen(true);
@@ -76,7 +78,7 @@ export function AcademicStructurePlanner({
   function addProgram(name = "") {
     setPlan((current) => [
       ...current,
-      { id: crypto.randomUUID(), program: name, classes: campusType === "DEGREE_COLLEGE" ? DEGREE_CLASSES : "" },
+      { id: crypto.randomUUID(), program: name, classes: academicUnitType === "DEGREE" ? DEGREE_CLASSES : "" },
     ]);
   }
 
@@ -116,6 +118,7 @@ export function AcademicStructurePlanner({
         if (!program) {
           program = await createProgram({
             campusId,
+            academicUnitId,
             name: row.program,
             description: `Guided setup for ${campusName}`,
           });
@@ -145,14 +148,14 @@ export function AcademicStructurePlanner({
       </Button>
       <Modal
         open={open}
-        title={`${campusType === "SCHOOL" ? "School" : campusType === "COLLEGE" ? "College" : "Degree college"} structure plan`}
+        title={`${academicUnitType === "SCHOOL" ? "School" : academicUnitType === "PU" ? "PU college" : "Degree college"} structure plan`}
         description={`Review the suggested structure for ${campusName}. Edit every name before applying.`}
         onClose={() => !busy && setOpen(false)}
       >
         <div className="space-y-5 text-sm">
           {/* Progress Flow */}
           <div className="flex items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
-            {["Levels / programs", campusType === "SCHOOL" ? "Classes" : "Years / semesters", "Review"].map(
+            {["Levels / programs", academicUnitType === "SCHOOL" ? "Classes" : "Years / semesters", "Review"].map(
               (label, index) => {
                 const isActive = step === index + 1;
                 const isComplete = step > index + 1;
@@ -202,7 +205,7 @@ export function AcademicStructurePlanner({
           {/* Step 1: Program Configuration */}
           {step === 1 && (
             <div className="space-y-4">
-              {campusType === "DEGREE_COLLEGE" && (
+              {academicUnitType === "DEGREE" && (
                 <div className="space-y-1.5">
                   <span className="text-xs text-slate-400 font-semibold block">Suggestions</span>
                   <div className="flex flex-wrap gap-1.5">
@@ -227,7 +230,7 @@ export function AcademicStructurePlanner({
                     <span className="text-xs font-semibold text-slate-400 w-5 text-center">{index + 1}</span>
                     <div className="flex-1 space-y-1">
                       <Label className="text-xs">
-                        {campusType === "SCHOOL" ? "School level" : "Program"}
+                        {academicUnitType === "SCHOOL" ? "School level" : "Program"}
                       </Label>
                       <Input
                         value={row.program}
@@ -250,7 +253,7 @@ export function AcademicStructurePlanner({
               </div>
 
               <Button variant="outline" size="sm" onClick={() => addProgram()} className="w-full h-8">
-                <Plus size={14} /> Add another {campusType === "SCHOOL" ? "level" : "program"}
+                <Plus size={14} /> Add another {academicUnitType === "SCHOOL" ? "level" : "program"}
               </Button>
             </div>
           )}
@@ -263,7 +266,7 @@ export function AcademicStructurePlanner({
                   <div className="flex items-center justify-between">
                     <strong className="text-sm font-semibold text-slate-800">{row.program}</strong>
                     <Badge variant="secondary">
-                      {campusType === "SCHOOL" ? "Classes" : campusType === "COLLEGE" ? "Years" : "Semesters"}
+                      {academicUnitType === "SCHOOL" ? "Classes" : academicUnitType === "PU" ? "Years" : "Semesters"}
                     </Badge>
                   </div>
                   <textarea

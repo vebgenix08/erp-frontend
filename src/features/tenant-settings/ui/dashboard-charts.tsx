@@ -7,6 +7,14 @@ export interface LineSeries {
   values: number[];
 }
 
+function formatAxisValue(value: number, unit: string) {
+  if (unit !== "₹") return `${unit}${Math.round(value).toLocaleString("en-IN")}`;
+  if (value >= 10_000_000) return `₹${(value / 10_000_000).toFixed(1)}Cr`;
+  if (value >= 100_000) return `₹${(value / 100_000).toFixed(1)}L`;
+  if (value >= 1_000) return `₹${Math.round(value / 1_000)}K`;
+  return `₹${Math.round(value)}`;
+}
+
 export function SvgLineChart({
   labels,
   series,
@@ -26,8 +34,8 @@ export function SvgLineChart({
   const maxValInSeries = allValues.length ? Math.max(...allValues, 0) : 0;
   const maxValue = yMax ?? (maxValInSeries > 0 ? maxValInSeries * 1.2 : 10);
 
-  const paddingLeft = 40;
-  const paddingBottom = 26;
+  const paddingLeft = 48;
+  const paddingBottom = 28;
   const paddingTop = 14;
   const paddingRight = 16;
 
@@ -49,13 +57,22 @@ export function SvgLineChart({
 
   const yTicks = [0, maxValue * 0.25, maxValue * 0.5, maxValue * 0.75, maxValue];
   const hasData = allValues.some((v) => v > 0);
+  const maxXLabels = 6;
+  const xTickStep = Math.max(1, Math.ceil((labels.length - 1) / (maxXLabels - 1)));
+  const visibleLabelIndexes = new Set(
+    labels.map((_, index) => index).filter((index) =>
+      index === 0 || index === labels.length - 1 || index % xTickStep === 0,
+    ),
+  );
 
   return (
-    <div className="relative w-full overflow-x-auto">
+    <div className="relative w-full">
       <svg
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        className="w-full h-auto text-slate-400 select-none overflow-visible"
+        className="h-auto w-full select-none overflow-visible text-slate-400"
         style={{ minWidth: "300px" }}
+        role="img"
+        aria-label="Daily fee collections for the selected period"
       >
         {/* Y Grid Lines */}
         {yTicks.map((tick, i) => {
@@ -77,15 +94,14 @@ export function SvgLineChart({
                 textAnchor="end"
                 className="text-[9px] fill-slate-400 font-medium"
               >
-                {unit}
-                {Math.round(tick).toLocaleString()}
+                {formatAxisValue(tick, unit)}
               </text>
             </g>
           );
         })}
 
         {/* X Labels */}
-        {labels.map((label, i) => (
+        {labels.map((label, i) => visibleLabelIndexes.has(i) ? (
           <text
             key={i}
             x={getX(i)}
@@ -95,7 +111,7 @@ export function SvgLineChart({
           >
             {label}
           </text>
-        ))}
+        ) : null)}
 
         {!hasData ? (
           <text
@@ -112,9 +128,12 @@ export function SvgLineChart({
             const pathD = points.reduce((acc, pt, i) => {
               return i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
             }, "");
+            const areaD = `${pathD} L ${getX(points.length - 1)} ${getY(0)} L ${getX(0)} ${getY(0)} Z`;
 
             return (
               <g key={sIdx}>
+                <path d={areaD} fill={s.color} opacity="0.08" />
+
                 {/* Main Line */}
                 <path
                   d={pathD}
@@ -126,16 +145,29 @@ export function SvgLineChart({
                 />
 
                 {/* Data Points */}
-                {points.map((pt, i) => (
+                {points.map((pt, i) => pt.val > 0 || hoveredIdx === i ? (
                   <circle
                     key={i}
                     cx={pt.x}
                     cy={pt.y}
-                    r={hoveredIdx === i ? "5" : "3"}
+                    r={hoveredIdx === i ? "4.5" : "3.5"}
                     fill="#ffffff"
                     stroke={s.color}
                     strokeWidth="2"
                     className="transition-all cursor-pointer"
+                    onMouseEnter={() => setHoveredIdx(i)}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                  />
+                ) : null)}
+
+                {points.map((pt, i) => (
+                  <rect
+                    key={`hit-${i}`}
+                    x={pt.x - Math.max(5, chartWidth / Math.max(labels.length, 1) / 2)}
+                    y={paddingTop}
+                    width={Math.max(10, chartWidth / Math.max(labels.length, 1))}
+                    height={chartHeight}
+                    fill="transparent"
                     onMouseEnter={() => setHoveredIdx(i)}
                     onMouseLeave={() => setHoveredIdx(null)}
                   />
@@ -179,8 +211,7 @@ export function SvgLineChart({
                     textAnchor="middle"
                     className="text-[10px] fill-white font-bold"
                   >
-                    {unit}
-                    {val.toLocaleString()}
+                    {formatAxisValue(val, unit)}
                   </text>
                 </g>
               );

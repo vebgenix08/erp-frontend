@@ -34,8 +34,8 @@ const DialogContent = forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-0",
-        "bg-white border border-slate-300 shadow-md rounded overflow-hidden",
+        "fixed left-[50%] top-[50%] z-50 flex flex-col w-[92vw] sm:max-w-2xl max-h-[88vh] translate-x-[-50%] translate-y-[-50%] gap-0",
+        "bg-white border border-slate-300 shadow-2xl rounded-2xl overflow-hidden",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -66,7 +66,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col space-y-0.5 px-4 py-3 border-b border-slate-200 bg-slate-50/70",
+      "flex flex-col space-y-0.5 px-4 py-3 border-b border-slate-200 bg-slate-50/70 shrink-0",
       className,
     )}
     {...props}
@@ -80,7 +80,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 px-4 py-2.5 bg-slate-50 border-t border-slate-200",
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 px-4 py-2.5 bg-slate-50 border-t border-slate-200 shrink-0",
       className,
     )}
     {...props}
@@ -116,7 +116,7 @@ const DialogDescription = forwardRef<
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("px-4 py-4 space-y-3", className)} {...props} />
+  <div className={cn("px-4 py-4 space-y-3 overflow-y-auto max-h-[calc(85vh-100px)]", className)} {...props} />
 );
 DialogBody.displayName = "DialogBody";
 

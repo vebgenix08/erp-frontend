@@ -1,4 +1,13 @@
-import { CheckCircle2, PhoneCall, Plus, Search, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  PhoneCall,
+  Plus,
+  Search,
+  UserCheck,
+  UserPlus,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { listClasses } from "../../academic-structure/api/academic-structure.api";
 import type { AcademicClass } from "../../academic-structure/model/academic-structure.types";
@@ -18,7 +27,6 @@ import {
 import type { Enquiry, EnquiryStatus } from "../model/enquiry.types";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
-import { Label } from "../../../shared/ui/label";
 import { Badge } from "../../../shared/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
@@ -102,12 +110,7 @@ export function EnquiryWorkspace() {
       setClasses(academicClasses.filter((item) => item.status === "ACTIVE"));
       setTemplate(
         templates
-          .filter(
-            (item) =>
-              item.status === "PUBLISHED" &&
-              (item.layout === "ENQUIRY_FORM" ||
-                (item.layout === "ADMISSION_FORM" && item.name.toLowerCase().includes("enquiry"))),
-          )
+          .filter((item) => item.status === "PUBLISHED" && item.layout === "ENQUIRY_FORM")
           .sort(
             (left, right) =>
               (right.publishedVersion ?? right.version) -
@@ -200,151 +203,228 @@ export function EnquiryWorkspace() {
   if (error && !items.length && !template)
     return <ErrorState message={error} retry={() => void load()} />;
 
+  const newCount = items.filter((i) => i.status === "NEW").length;
+  const followCount = items.filter((i) => ["CONTACTED", "FOLLOW_UP"].includes(i.status)).length;
+  const convertedCount = items.filter((i) => i.status === "CONVERTED").length;
+
   return (
-    <section className="space-y-5">
-      {/* Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <section className="space-y-6 font-sans text-slate-900 pb-12">
+      {/* Top Header Title */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Enquiry management</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Capture prospective students for the selected campus and academic year.
+          <h1 className="text-xl font-bold text-slate-900">Admission Enquiries</h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Capture and track prospective students for {selectedCampus?.name ?? "Campus"} ({selectedAcademicYear?.name ?? "Academic Year"})
           </p>
         </div>
         <Button
           size="sm"
-          variant="brand"
           disabled={!template || !selectedCampus || !selectedAcademicYear}
           onClick={() => setOpen(true)}
-          className="h-8 text-xs font-bold"
+          className="h-9 px-4 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
         >
-          <Plus size={14} />
-          New enquiry
+          <Plus className="h-4 w-4 mr-1.5" />
+          New Enquiry
         </Button>
-      </header>
+      </div>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs">
           {error}
         </div>
       )}
 
       {!template && (
-        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          Publish an admission form under Setup → Templates before capturing enquiries.
+        <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 shadow-xs">
+          Publish an admission form template under Setup → Templates before capturing new enquiries.
         </div>
       )}
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px]">
+      {/* 4 KPI Summary Cards Bar */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Total Enquiries
+            </span>
+            <div className="h-7 w-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+              <Users className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900 leading-none">{total}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">Overall leads recorded</div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              New Leads
+            </span>
+            <div className="h-7 w-7 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+              <UserPlus className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-amber-600 leading-none">{newCount}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">Awaiting initial contact</div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              In Follow-Up
+            </span>
+            <div className="h-7 w-7 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+              <PhoneCall className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-purple-600 leading-none">{followCount}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">Active follow-ups in progress</div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
+          <div className="h-5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Converted
+            </span>
+            <div className="h-7 w-7 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+              <UserCheck className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-emerald-600 leading-none">{convertedCount}</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">Converted to application</div>
+        </div>
+      </div>
+
+      {/* Toolbar Filter Card */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+        <div className="relative flex-1 min-w-[240px]">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <Input
             aria-label="Search enquiries"
-            placeholder="Search student, parent, phone or number"
+            placeholder="Search student name, parent, phone or enquiry #"
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
               setPage(1);
             }}
-            className="pl-9"
+            className="pl-9 h-9 text-xs"
           />
         </div>
-        <select
-          aria-label="Filter enquiry status"
-          value={status}
-          onChange={(event) => {
-            setStatus(event.target.value as EnquiryStatus | "");
-            setPage(1);
-          }}
-          className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
-        >
-          <option value="">All statuses</option>
-          {statuses.map((value) => (
-            <option key={value} value={value}>
-              {label(value)}
-            </option>
-          ))}
-        </select>
-        <span className="text-sm text-slate-500">{total} enquiries</span>
+
+        <div className="flex items-center gap-2">
+          <select
+            aria-label="Filter enquiry status"
+            value={status}
+            onChange={(event) => {
+              setStatus(event.target.value as EnquiryStatus | "");
+              setPage(1);
+            }}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
+          >
+            <option value="">All Statuses</option>
+            {statuses.map((value) => (
+              <option key={value} value={value}>
+                {label(value)}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 whitespace-nowrap">
+            {total} Record{total === 1 ? "" : "s"}
+          </span>
+        </div>
       </div>
 
-      {/* Data Table */}
+      {/* Data Table Container */}
       {items.length ? (
-        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Prospective student</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Interest</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Next action</TableHead>
+            <TableHeader className="bg-slate-50">
+              <TableRow className="border-b border-slate-200">
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Prospective Student</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Contact Details</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Interested Class</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Lead Source</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">Status</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="divide-y divide-slate-100">
               {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-semibold text-slate-900">{item.studentName}</p>
-                      <p className="text-xs text-slate-500">
-                        {item.enquiryNumber} · Parent: {item.parentName}
-                      </p>
+                <TableRow key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">
+                        {item.studentName.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 text-xs">{item.studentName}</p>
+                        <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                          {item.enquiryNumber} • Parent: {item.parentName}
+                        </p>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <p className="text-sm text-slate-700">{item.phone}</p>
-                    <p className="text-xs text-slate-500">{item.email || "No email"}</p>
+
+                  <TableCell className="py-3 text-xs">
+                    <p className="font-semibold text-slate-800">{item.phone}</p>
+                    <p className="text-[11px] text-slate-400">{item.email || "No email provided"}</p>
                   </TableCell>
-                  <TableCell className="text-slate-650 text-sm">
-                    {item.interestedClass || "Not selected"}
+
+                  <TableCell className="py-3 text-xs font-semibold text-slate-700">
+                    <Badge variant="secondary" className="font-semibold">
+                      {item.interestedClass || "Not selected"}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-slate-650 text-sm">
+
+                  <TableCell className="py-3 text-xs font-medium text-slate-600">
                     {item.source || "—"}
                   </TableCell>
-                  <TableCell>
+
+                  <TableCell className="py-3 text-xs">
                     <Badge variant={getStatusVariant(item.status)}>
                       {label(item.status)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
+
+                  <TableCell className="py-3 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
                       {item.status === "NEW" && (
                         <Button
                           variant="outline"
                           size="sm"
                           disabled={busy}
                           onClick={() => void changeStatus(item, "CONTACTED")}
-                          className="h-8 py-1 px-2.5 text-xs"
+                          className="h-8 px-2.5 text-xs font-semibold text-blue-700 border-blue-200 bg-blue-50/50 hover:bg-blue-100"
                         >
-                          <PhoneCall size={13} />
+                          <PhoneCall className="h-3.5 w-3.5 mr-1" />
                           Contacted
                         </Button>
                       )}
+
                       {["CONTACTED", "FOLLOW_UP"].includes(item.status) && (
                         <Button
                           variant="outline"
                           size="sm"
                           disabled={busy}
                           onClick={() => void changeStatus(item, "CONVERTED")}
-                          className="h-8 py-1 px-2.5 text-xs text-emerald-600 hover:text-emerald-700"
+                          className="h-8 px-2.5 text-xs font-semibold text-emerald-700 border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100"
                         >
-                          <CheckCircle2 size={13} />
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                           Convert
                         </Button>
                       )}
+
                       {!["CLOSED", "CONVERTED"].includes(item.status) && (
                         <Button
                           variant="ghost"
-                          size="icon-sm"
+                          size="sm"
                           title="Close enquiry"
                           aria-label={`Close enquiry for ${item.studentName}`}
                           disabled={busy}
                           onClick={() => void changeStatus(item, "CLOSED")}
-                          className="text-slate-400 hover:text-red-600"
+                          className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                         >
-                          <XCircle size={15} />
+                          <XCircle className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
@@ -353,32 +433,35 @@ export function EnquiryWorkspace() {
               ))}
             </TableBody>
           </Table>
-          <ServerPagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onPageChange={setPage}
-            onPageSizeChange={(value) => {
-              setPageSize(value);
-              setPage(1);
-            }}
-          />
+
+          <div className="border-t border-slate-200 p-3 bg-slate-50">
+            <ServerPagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={(value) => {
+                setPageSize(value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
       ) : (
         <EmptyState
           title="No enquiries found"
-          description="Create the first enquiry or change the selected filters."
+          description="Create your first admission enquiry or adjust the search/filter options."
         />
       )}
 
-      {/* Modal for creating enquiry */}
+      {/* Modal for Creating Enquiry */}
       <Modal
         open={open}
-        title="New enquiry"
-        description={`${template?.name ?? "Admission form"} · ${selectedCampus?.name ?? "No campus"} · ${selectedAcademicYear?.name ?? "No academic year"}`}
+        title="New Admission Enquiry"
+        description={`${template?.name ?? "Admission Form"} • ${selectedCampus?.name ?? "No Campus"} • ${selectedAcademicYear?.name ?? "No Academic Year"}`}
         onClose={() => setOpen(false)}
       >
-        <form onSubmit={(e) => void submit(e)} className="space-y-4">
+        <form onSubmit={(e) => void submit(e)} className="space-y-4 font-sans text-xs">
           {template && (
             <TemplateFields
               template={template}
@@ -403,9 +486,9 @@ export function EnquiryWorkspace() {
                           academicTargetId: event.target.value,
                         }))
                       }
-                      className="flex h-8 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-600"
+                      className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
-                      <option value="">Select academic target</option>
+                      <option value="">Select target class</option>
                       {classes.map((item) => (
                         <option key={item.id} value={item.id}>{item.name}</option>
                       ))}
@@ -421,6 +504,7 @@ export function EnquiryWorkspace() {
                           : selectedAcademicYear?.name ?? ""
                       }
                       disabled
+                      className="h-9 text-xs"
                     />
                   );
                 }
@@ -431,12 +515,12 @@ export function EnquiryWorkspace() {
 
           <Separator />
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)} className="h-9 text-xs font-semibold">
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={busy}>
-              Create enquiry
+            <Button type="submit" size="sm" disabled={busy} className="h-9 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700">
+              Create Enquiry
             </Button>
           </div>
         </form>

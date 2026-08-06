@@ -358,6 +358,21 @@ export function TemplatesManagement() {
       .catch((value) => setError(value instanceof Error ? value.message : "Unable to load templates"));
   }, []);
 
+  useEffect(() => {
+    const current = templates.find((item) => item.layout === layout && item.name === templateName);
+    if (!current) return;
+    const typeName: Record<TenantTemplateFieldType,string> = { text:"Text",textarea:"Textarea",number:"Number",email:"Email",phone:"Text",date:"Date",select:"Dropdown",checkbox:"Checkbox",radio:"Dropdown",document:"File Upload" };
+    const fieldsBySection = new Map<string,FormFieldItem[]>();
+    for (const field of current.fields) {
+      const sectionKey=field.section||"additional";
+      const fields=fieldsBySection.get(sectionKey)??[];
+      fields.push({id:field.key,label:field.label,type:typeName[field.type],required:field.required,visible:field.visible,order:field.order,system:current.requiredSystemKeys.includes(field.key)||!["enquiry.","application.","staff_onboarding."].some(prefix=>field.key.startsWith(prefix)),...(field.options?.length?{options:field.options}:{})});
+      fieldsBySection.set(sectionKey,fields);
+    }
+    const storedSections=(current.sections.length?current.sections:[...fieldsBySection.keys()].map((key,index)=>({key,label:key.replaceAll("_"," "),order:index+1}))).sort((left,right)=>left.order-right.order).map(section=>({id:section.key,title:section.label,open:section.order===1,fields:(fieldsBySection.get(section.key)??[]).sort((left,right)=>left.order-right.order)}));
+    setSections(storedSections);
+  }, [layout, setSections, templateName, templates]);
+
   const toggleSection = (sectionId: string) => {
     setSections((prev) =>
       prev.map((sec) => (sec.id === sectionId ? { ...sec, open: !sec.open } : sec)),
@@ -406,6 +421,9 @@ export function TemplatesManagement() {
   const addFieldToSection = (sectionId: string) => {
     const label = prompt("Enter field label:", "New Field");
     if (!label) return;
+    const normalized=label.trim().toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+    const aliases=["name","student name","full name","full name of student","grade","class","target class","applying for class","phone","mobile","email"];
+    if(aliases.includes(normalized)&&sections.some(section=>section.fields.some(field=>field.label.trim().toLowerCase().replace(/[^a-z0-9]+/g," ").trim()===normalized))){setError(`${label.trim()} already exists in this template.`);return}
     const newF: FormFieldItem = {
       id: `f_${Date.now()}`,
       label,
