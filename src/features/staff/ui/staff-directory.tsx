@@ -22,6 +22,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../../../shared/ui/badge";
 import { cn } from "../../../shared/ui/utils";
 import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
+import { listTenantTemplates } from "../../tenant-settings/api/settings.api";
+import type { TenantTemplateField } from "../../tenant-settings/model/settings.types";
 import { listEmployeePage } from "../api/staff.api";
 import type { Employee, EmployeeLoginStatus, EmployeePage, EmployeeStatus, StaffCategory } from "../model/staff.types";
 
@@ -67,10 +69,26 @@ const formatDate = (value?: string) =>
 
 const displayValue = (value: unknown): string => {
   if (value === undefined || value === null || value === "") return "-";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
   if (Array.isArray(value)) return value.map(displayValue).join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "object") {
+    const document = value as Record<string, unknown>;
+    if (typeof document.fileName === "string") return document.fileName;
+    return "Recorded";
+  }
   return String(value);
 };
+
+const defaultStaffColumns: StaffColumnId[] = [
+  "employee",
+  "code",
+  "campus",
+  "staffType",
+  "designation",
+  "department",
+  "login",
+  "status",
+];
 
 export function StaffDirectory() {
   const navigate = useNavigate();
@@ -83,7 +101,8 @@ export function StaffDirectory() {
   const [selected, setSelected] = useState<Map<string, Employee>>(new Map());
   const [exporting, setExporting] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
-  const [selectedColumnIds, setSelectedColumnIds] = useState<StaffColumnId[] | null>(null);
+  const [selectedColumnIds, setSelectedColumnIds] = useState<StaffColumnId[]>(defaultStaffColumns);
+  const [templateFields, setTemplateFields] = useState<TenantTemplateField[]>([]);
 
   const search = query.get("search") ?? "";
   const [draftSearch, setDraftSearch] = useState(search);
@@ -141,6 +160,18 @@ export function StaffDirectory() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    void listTenantTemplates()
+      .then((templates) => {
+        const fields = templates
+          .filter((template) => template.layout === "STAFF_ONBOARDING")
+          .sort((left, right) => (right.publishedVersion ?? right.version) - (left.publishedVersion ?? left.version))[0]
+          ?.fields.filter((field) => field.visible) ?? [];
+        setTemplateFields(fields);
+      })
+      .catch(() => setTemplateFields([]));
+  }, []);
+
   useEffect(() => setDraftSearch(search), [search]);
 
   useEffect(() => {
@@ -173,21 +204,36 @@ export function StaffDirectory() {
       { id: "status", label: "Status", width: 14, value: (item) => label(item.status) },
       { id: "updatedAt", label: "Last Updated", width: 18, value: (item) => formatDate(item.updatedAt) },
     ];
-    const keys = [...new Set(employees.flatMap((item) => Object.keys(item.customFields ?? {})))].sort();
+    const templateFieldByKey = new Map(templateFields.map((field) => [field.key, field]));
+    const keys = [...new Set([
+      ...templateFields
+        .filter((field) => field.key.startsWith("staff_onboarding."))
+        .map((field) => field.key),
+      ...employees.flatMap((item) => Object.keys(item.customFields ?? {})),
+    ])].sort((left, right) => {
+      const leftOrder = templateFieldByKey.get(left)?.order ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = templateFieldByKey.get(right)?.order ?? Number.MAX_SAFE_INTEGER;
+      return leftOrder - rightOrder || left.localeCompare(right);
+    });
     return [
       ...base,
       ...keys.map<StaffColumn>((key) => ({
         id: `custom:${key}`,
-        label: label(key),
+        label: templateFieldByKey.get(key)?.label ?? label(key),
         width: 18,
-        value: (item) => displayValue(item.customFields?.[key]),
+        value: (item) => {
+          const value = item.customFields?.[key];
+          return templateFieldByKey.get(key)?.type === "date" && typeof value === "string"
+            ? formatDate(value)
+            : displayValue(value);
+        },
       })),
     ];
-  }, [campusName, employees]);
+  }, [campusName, employees, templateFields]);
 
   const visibleColumnIds = useMemo(
-    () => new Set<StaffColumnId>(selectedColumnIds ?? columnDefinitions.map((column) => column.id)),
-    [columnDefinitions, selectedColumnIds],
+    () => new Set<StaffColumnId>(selectedColumnIds),
+    [selectedColumnIds],
   );
   const visibleColumns = useMemo(
     () => columnDefinitions.filter((column) => visibleColumnIds.has(column.id)),
@@ -195,7 +241,7 @@ export function StaffDirectory() {
   );
 
   const toggleColumn = (id: StaffColumnId) => {
-    const current = selectedColumnIds ?? columnDefinitions.map((column) => column.id);
+    const current = selectedColumnIds;
     if (current.includes(id) && current.length === 1) return;
     setSelectedColumnIds(current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   };
@@ -490,13 +536,13 @@ export function StaffDirectory() {
                 <p className="text-[11px] text-slate-500">The same selected columns are used in the table, Excel, and PDF.</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setSelectedColumnIds(null)} className="h-8 text-xs">
+                <Button variant="outline" size="sm" onClick={() => setSelectedColumnIds(columnDefinitions.map((column) => column.id))} className="h-8 text-xs">
                   Select all
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setSelectedColumnIds(["employee", "code", "campus", "designation", "department", "employment", "login", "status"])}
+                  onClick={() => setSelectedColumnIds(defaultStaffColumns)}
                   className="h-8 text-xs"
                 >
                   Compact view
