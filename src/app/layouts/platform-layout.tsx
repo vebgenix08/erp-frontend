@@ -44,8 +44,7 @@ export function PlatformLayout() {
     ["/platform/operations", "Operations", Activity],
   ] as const;
 
-  const activeLabel =
-    links.find(([to]) => location.pathname.startsWith(to))?.[1] ?? "Console";
+  const activeLabel = links.find(([to]) => location.pathname.startsWith(to))?.[1] ?? "Console";
 
   return (
     <TooltipProvider>
@@ -74,7 +73,9 @@ export function PlatformLayout() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-base font-bold text-white leading-tight">Vebgenix ERP</p>
-              <p className="mt-0.5 truncate text-xs font-semibold uppercase tracking-wide text-slate-400">Platform Console</p>
+              <p className="mt-0.5 truncate text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Platform Console
+              </p>
             </div>
             <button
               className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white md:hidden"
@@ -160,7 +161,10 @@ export function PlatformLayout() {
               </button>
 
               {/* Breadcrumbs */}
-              <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-500 font-medium truncate">
+              <nav
+                aria-label="Breadcrumb"
+                className="flex items-center gap-1.5 text-xs text-slate-500 font-medium truncate"
+              >
                 <Home size={14} className="text-slate-400 shrink-0" />
                 <ChevronRight size={12} className="text-slate-300 shrink-0" />
                 <span className="font-semibold text-slate-600">Platform Control</span>

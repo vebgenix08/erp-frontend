@@ -21,20 +21,21 @@ import type {
   FinanceDashboard,
   FinancePaymentAdjustment,
 } from "../model/finance-operations.types";
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from "../../../shared/ui/page-state";
+import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import { Button } from "../../../shared/ui/button";
 import { Card, CardContent } from "../../../shared/ui/card";
 import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 
 const money = (minor: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
-    minor / 100,
-  );
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(minor / 100);
 
 const date = (value: string) =>
   new Intl.DateTimeFormat("en-IN", {
@@ -80,11 +81,7 @@ export function FinanceReconciliation() {
       setAdjustments(adjustmentRows);
       setRecoveries(recoveryRows);
     } catch (value) {
-      setError(
-        value instanceof Error
-          ? value.message
-          : "Unable to load reconciliation statement",
-      );
+      setError(value instanceof Error ? value.message : "Unable to load reconciliation statement");
     } finally {
       setLoading(false);
     }
@@ -126,12 +123,7 @@ export function FinanceReconciliation() {
   if (loading) return <LoadingState label="Loading reconciliation statement" />;
   if (error) return <ErrorState message={error} retry={() => void load()} />;
   if (!summary) {
-    return (
-      <ErrorState
-        message="Reconciliation summary is unavailable"
-        retry={() => void load()}
-      />
-    );
+    return <ErrorState message="Reconciliation summary is unavailable" retry={() => void load()} />;
   }
 
   return (
@@ -141,7 +133,8 @@ export function FinanceReconciliation() {
         <div>
           <h2 className="text-xl font-bold text-slate-900">Internal reconciliation</h2>
           <p className="mt-1 text-sm text-slate-500">
-            {selectedCampus.name} · {selectedAcademicYear.name}. Gross receipts less recorded voids and refunds.
+            {selectedCampus.name} · {selectedAcademicYear.name}. Gross receipts less recorded voids
+            and refunds.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()}>
@@ -154,8 +147,12 @@ export function FinanceReconciliation() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="relative overflow-hidden">
           <CardContent className="pt-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Gross collection</p>
-            <p className="mt-1.5 text-2xl font-bold text-slate-900">{money(summary.grossCollectedMinor)}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Gross collection
+            </p>
+            <p className="mt-1.5 text-2xl font-bold text-slate-900">
+              {money(summary.grossCollectedMinor)}
+            </p>
             <span className="absolute right-4 top-4 text-blue-500 opacity-60">
               <BadgeIndianRupee size={20} />
             </span>
@@ -163,8 +160,12 @@ export function FinanceReconciliation() {
         </Card>
         <Card className="relative overflow-hidden">
           <CardContent className="pt-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Voids and refunds</p>
-            <p className="mt-1.5 text-2xl font-bold text-slate-905">{money(summary.reversedMinor)}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Voids and refunds
+            </p>
+            <p className="mt-1.5 text-2xl font-bold text-slate-905">
+              {money(summary.reversedMinor)}
+            </p>
             <span className="absolute right-4 top-4 text-rose-500 opacity-60">
               <ArrowDownLeft size={20} />
             </span>
@@ -172,8 +173,12 @@ export function FinanceReconciliation() {
         </Card>
         <Card className="relative overflow-hidden">
           <CardContent className="pt-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Net collection</p>
-            <p className="mt-1.5 text-2xl font-bold text-slate-900">{money(summary.collectedMinor)}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Net collection
+            </p>
+            <p className="mt-1.5 text-2xl font-bold text-slate-900">
+              {money(summary.collectedMinor)}
+            </p>
             <span className="absolute right-4 top-4 text-emerald-500 opacity-60">
               <CheckCircle2 size={20} />
             </span>
@@ -185,15 +190,21 @@ export function FinanceReconciliation() {
       <Card>
         <CardContent className="p-5 flex flex-wrap items-center gap-6 divide-x divide-slate-200">
           <div className="space-y-0.5">
-            <strong className="block text-xl font-bold text-slate-900">{summary.paymentCount}</strong>
+            <strong className="block text-xl font-bold text-slate-900">
+              {summary.paymentCount}
+            </strong>
             <span className="block text-xs text-slate-500">Receipts</span>
           </div>
           <div className="pl-6 space-y-0.5">
-            <strong className="block text-xl font-bold text-slate-900">{summary.adjustmentCount}</strong>
+            <strong className="block text-xl font-bold text-slate-900">
+              {summary.adjustmentCount}
+            </strong>
             <span className="block text-xs text-slate-500">Adjustments</span>
           </div>
           <div className="pl-6 space-y-0.5">
-            <strong className="block text-xl font-bold text-slate-900">{summary.paymentCount + summary.adjustmentCount}</strong>
+            <strong className="block text-xl font-bold text-slate-900">
+              {summary.paymentCount + summary.adjustmentCount}
+            </strong>
             <span className="block text-xs text-slate-500">Ledger records explained</span>
           </div>
         </CardContent>
@@ -222,12 +233,16 @@ export function FinanceReconciliation() {
                     <TableCell>
                       <div>
                         <p className="font-semibold text-slate-900">{item.studentName}</p>
-                        <p className="text-xs text-slate-500 font-mono">{item.registrationNumber}</p>
+                        <p className="text-xs text-slate-500 font-mono">
+                          {item.registrationNumber}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell className="text-slate-650 text-sm">{item.attempts}</TableCell>
                     <TableCell className="text-red-650 text-xs">{item.lastError}</TableCell>
-                    <TableCell className="text-slate-500 text-xs">{date(item.lastAttemptAt)}</TableCell>
+                    <TableCell className="text-slate-500 text-xs">
+                      {date(item.lastAttemptAt)}
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="outline"
@@ -267,15 +282,23 @@ export function FinanceReconciliation() {
               <TableBody>
                 {adjustments.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-semibold text-slate-900">{item.adjustmentNumber}</TableCell>
-                    <TableCell className="text-slate-700 font-medium">{item.receiptNumber}</TableCell>
+                    <TableCell className="font-semibold text-slate-900">
+                      {item.adjustmentNumber}
+                    </TableCell>
+                    <TableCell className="text-slate-700 font-medium">
+                      {item.receiptNumber}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={item.type === "VOID" ? "destructive" : "secondary"}>
                         {item.type}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-slate-900 font-semibold">{money(item.amountMinor)}</TableCell>
-                    <TableCell className="text-slate-650 text-sm max-w-xs truncate">{item.reason}</TableCell>
+                    <TableCell className="text-slate-900 font-semibold">
+                      {money(item.amountMinor)}
+                    </TableCell>
+                    <TableCell className="text-slate-650 text-sm max-w-xs truncate">
+                      {item.reason}
+                    </TableCell>
                     <TableCell className="text-slate-505 text-xs">{date(item.createdAt)}</TableCell>
                   </TableRow>
                 ))}

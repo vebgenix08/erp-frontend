@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "./api-error";
-import {
-  coordinatedRequest,
-  invalidateRequestCache,
-} from "./request-coordinator";
+import { coordinatedRequest, invalidateRequestCache } from "./request-coordinator";
 
 describe("coordinatedRequest", () => {
   beforeEach(() => {
@@ -14,7 +11,10 @@ describe("coordinatedRequest", () => {
   it("coalesces identical in-flight requests", async () => {
     let resolve!: (value: string) => void;
     const operation = vi.fn(
-      () => new Promise<string>((done) => { resolve = done; }),
+      () =>
+        new Promise<string>((done) => {
+          resolve = done;
+        }),
     );
     const first = coordinatedRequest(operation, { key: "students:one" });
     const second = coordinatedRequest(operation, { key: "students:one" });
@@ -34,9 +34,7 @@ describe("coordinatedRequest", () => {
         }),
       )
       .mockResolvedValue("ready");
-    await expect(
-      coordinatedRequest(transient, { key: "dashboard:retry" }),
-    ).resolves.toBe("ready");
+    await expect(coordinatedRequest(transient, { key: "dashboard:retry" })).resolves.toBe("ready");
     expect(transient).toHaveBeenCalledTimes(2);
 
     const permanent = vi.fn().mockRejectedValue(
@@ -46,9 +44,9 @@ describe("coordinatedRequest", () => {
         retryable: false,
       }),
     );
-    await expect(
-      coordinatedRequest(permanent, { key: "dashboard:invalid" }),
-    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(coordinatedRequest(permanent, { key: "dashboard:invalid" })).rejects.toMatchObject(
+      { code: "VALIDATION_ERROR" },
+    );
     expect(permanent).toHaveBeenCalledTimes(1);
   });
 });

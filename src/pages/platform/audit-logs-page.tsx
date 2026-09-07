@@ -8,9 +8,25 @@ export function PlatformAuditLogsPage() {
   const [items, setItems] = useState<PlatformAuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const load = () => { setLoading(true); void listPlatformAuditLogs().then(setItems).catch((value) => setError(value instanceof Error ? value.message : "Unable to load audit logs")).finally(() => setLoading(false)); };
+  const load = () => {
+    setLoading(true);
+    void listPlatformAuditLogs()
+      .then(setItems)
+      .catch((value) =>
+        setError(value instanceof Error ? value.message : "Unable to load audit logs"),
+      )
+      .finally(() => setLoading(false));
+  };
   useEffect(load, []);
-  if (loading) return <LoadingState label="Loading platform audit logs"/>;
-  if (error) return <ErrorState message={error} retry={load}/>;
-  return <section className="space-y-5"><header><h2 className="text-xl font-bold text-slate-900">Audit logs</h2><p className="mt-1 text-sm text-slate-500">Append-only platform administrative activity.</p></header><PlatformAuditLogList items={items}/></section>;
+  if (loading) return <LoadingState label="Loading platform audit logs" />;
+  if (error) return <ErrorState message={error} retry={load} />;
+  return (
+    <section className="space-y-5">
+      <header>
+        <h2 className="text-xl font-bold text-slate-900">Audit logs</h2>
+        <p className="mt-1 text-sm text-slate-500">Append-only platform administrative activity.</p>
+      </header>
+      <PlatformAuditLogList items={items} />
+    </section>
+  );
 }

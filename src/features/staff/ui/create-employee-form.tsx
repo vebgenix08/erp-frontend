@@ -21,6 +21,7 @@ const teaching: Array<[StaffType, string]> = [
   ["VICE_PRINCIPAL", "Vice principal"],
   ["DEAN", "Dean"],
   ["HOD", "Head of department"],
+  ["ACADEMIC_COORDINATOR", "Academic coordinator"],
   ["TEACHER", "Teacher"],
   ["LECTURER", "Lecturer"],
   ["LAB_FACULTY", "Lab faculty"],
@@ -64,21 +65,16 @@ export function CreateEmployeeForm() {
         setRoles(roleItems.filter((item) => item.isActive));
         setTemplate(
           templates
-            .filter(
-              (item) => item.layout === "STAFF_ONBOARDING" && item.status === "PUBLISHED",
-            )
+            .filter((item) => item.layout === "STAFF_ONBOARDING" && item.status === "PUBLISHED")
             .sort(
               (left, right) =>
-                (right.publishedVersion ?? right.version) -
-                (left.publishedVersion ?? left.version),
+                (right.publishedVersion ?? right.version) - (left.publishedVersion ?? left.version),
             )[0] ?? null,
         );
       })
       .catch((value) =>
         setError(
-          value instanceof Error
-            ? value.message
-            : "Unable to load employee form configuration",
+          value instanceof Error ? value.message : "Unable to load employee form configuration",
         ),
       );
   }, []);
@@ -103,8 +99,8 @@ export function CreateEmployeeForm() {
   const inviteTemplateField = template?.fields.find((field) =>
     field.label.toLowerCase().includes("portal activation invite"),
   );
-  const profilePhotoField = template?.fields.find((field) =>
-    field.label.trim().toLowerCase() === "profile photo",
+  const profilePhotoField = template?.fields.find(
+    (field) => field.label.trim().toLowerCase() === "profile photo",
   );
 
   const submit = async (event: FormEvent, invite: boolean) => {
@@ -181,7 +177,10 @@ export function CreateEmployeeForm() {
   return (
     <section className="space-y-6 max-w-4xl mx-auto">
       {/* Back Link */}
-      <Link to="/admin/staff" className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
+      <Link
+        to="/admin/staff"
+        className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+      >
         <ArrowLeft size={14} /> Back to Staff directory
       </Link>
 
@@ -196,13 +195,19 @@ export function CreateEmployeeForm() {
       </header>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {error}
         </div>
       )}
 
       {!template && (
-        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+        >
           Publish a staff onboarding form under Setup → Templates before adding an employee.
         </div>
       )}
@@ -238,7 +243,9 @@ export function CreateEmployeeForm() {
 
                 {/* Staff Category */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="staffCategory">{fieldLabel("staffCategory", "Staff category")}</Label>
+                  <Label htmlFor="staffCategory">
+                    {fieldLabel("staffCategory", "Staff category")}
+                  </Label>
                   <select
                     id="staffCategory"
                     value={form.staffCategory}
@@ -276,11 +283,15 @@ export function CreateEmployeeForm() {
 
                 {/* Employment Type */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="employmentType">{fieldLabel("employmentType", "Employment type")}</Label>
+                  <Label htmlFor="employmentType">
+                    {fieldLabel("employmentType", "Employment type")}
+                  </Label>
                   <select
                     id="employmentType"
                     value={form.employmentType}
-                    onChange={(e) => setForm({ ...form, employmentType: e.target.value as EmploymentType })}
+                    onChange={(e) =>
+                      setForm({ ...form, employmentType: e.target.value as EmploymentType })
+                    }
                     className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
                   >
                     <option value="FULL_TIME">Full time</option>
@@ -324,7 +335,9 @@ export function CreateEmployeeForm() {
 
                 {/* Primary Campus */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="primaryCampusId">{fieldLabel("primaryCampusId", "Primary campus")}</Label>
+                  <Label htmlFor="primaryCampusId">
+                    {fieldLabel("primaryCampusId", "Primary campus")}
+                  </Label>
                   <select
                     id="primaryCampusId"
                     required
@@ -387,9 +400,7 @@ export function CreateEmployeeForm() {
                   joiningDate: form.joiningDate,
                   primaryCampusId: form.primaryCampusId,
                   roleIds: form.roleIds,
-                  ...(inviteTemplateField
-                    ? { [inviteTemplateField.key]: form.loginEnabled }
-                    : {}),
+                  ...(inviteTemplateField ? { [inviteTemplateField.key]: form.loginEnabled } : {}),
                 }}
                 systemKeys={[
                   "fullName",
@@ -459,7 +470,9 @@ export function CreateEmployeeForm() {
                         className="flex h-8 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs"
                       >
                         {staffTypes.map(([value, text]) => (
-                          <option key={value} value={value}>{text}</option>
+                          <option key={value} value={value}>
+                            {text}
+                          </option>
                         ))}
                       </select>
                     );
@@ -494,17 +507,16 @@ export function CreateEmployeeForm() {
                           setForm((current) => ({
                             ...current,
                             primaryCampusId,
-                            campusIds: [
-                              primaryCampusId,
-                              ...current.campusIds.filter((id) => id !== primaryCampusId),
-                            ].filter(Boolean),
+                            campusIds: primaryCampusId ? [primaryCampusId] : [],
                           }));
                         }}
                         className="flex h-8 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs"
                       >
                         <option value="">Select campus</option>
                         {campuses.map((campus) => (
-                          <option key={campus.id} value={campus.id}>{campus.name}</option>
+                          <option key={campus.id} value={campus.id}>
+                            {campus.name}
+                          </option>
                         ))}
                       </select>
                     );
@@ -599,7 +611,6 @@ export function CreateEmployeeForm() {
                         </select>
                       </div>
                     </div>
-
                   </div>
                 )}
               </div>

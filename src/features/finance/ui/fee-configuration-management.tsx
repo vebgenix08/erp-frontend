@@ -11,10 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import {
-  listClasses,
-  listSections,
-} from "../../academic-structure/api/academic-structure.api";
+import { listClasses, listSections } from "../../academic-structure/api/academic-structure.api";
 import type {
   AcademicClass,
   Section,
@@ -22,11 +19,7 @@ import type {
 import { useSelectedAcademicYear } from "../../tenant-settings/model/selected-academic-year-provider";
 import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
 import { Modal } from "../../../shared/ui/modal";
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from "../../../shared/ui/page-state";
+import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import {
   createFeeHead,
   createFeeMapping,
@@ -46,7 +39,14 @@ import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
 import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { cn } from "../../../shared/ui/utils";
 
 export type FeeConfigurationTab = "heads" | "schedules" | "structures" | "mappings";
@@ -77,14 +77,11 @@ const empty: FeeConfiguration = {
 };
 
 const money = (minor: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
-    minor / 100,
-  );
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(minor / 100);
 
 const minor = (value: string) => {
   const number = Number(value);
-  if (!Number.isFinite(number) || number <= 0)
-    throw new Error("Enter an amount greater than zero");
+  if (!Number.isFinite(number) || number <= 0) throw new Error("Enter an amount greater than zero");
   return Math.round(number * 100);
 };
 
@@ -94,7 +91,11 @@ interface FeeConfigurationManagementProps {
 
 export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementProps) {
   const { selectedCampus, loading: campusLoading, error: campusError } = useSelectedCampus();
-  const { selectedAcademicYear, loading: yearLoading, error: yearError } = useSelectedAcademicYear();
+  const {
+    selectedAcademicYear,
+    loading: yearLoading,
+    error: yearError,
+  } = useSelectedAcademicYear();
   const [data, setData] = useState<FeeConfiguration>(empty);
   const [classes, setClasses] = useState<AcademicClass[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
@@ -153,7 +154,9 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
       return;
     }
     listSections(campusId)
-      .then((items) => setSections(items.filter((item) => item.status === "ACTIVE" && item.classId === classId)))
+      .then((items) =>
+        setSections(items.filter((item) => item.status === "ACTIVE" && item.classId === classId)),
+      )
       .catch(() => setSections([]));
   }, [campusId, classId]);
 
@@ -176,7 +179,13 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
     const structureMap = new Map(data.structures.map((item) => [item.id, item.name]));
     const classMap = new Map(classes.map((item) => [item.id, item.name]));
     const sectionMap = new Map(sections.map((item) => [item.id, item.name]));
-    return { heads: headMap, schedules: scheduleMap, structures: structureMap, classes: classMap, sections: sectionMap };
+    return {
+      heads: headMap,
+      schedules: scheduleMap,
+      structures: structureMap,
+      classes: classMap,
+      sections: sectionMap,
+    };
   }, [data, classes, sections]);
 
   function begin() {
@@ -244,8 +253,7 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
           components: components.map((item) => ({
             feeHeadId: item.feeHeadId,
             amountMinor: minor(item.amount),
-            allocationPriority:
-              components.findIndex((component) => component.id === item.id) + 1,
+            allocationPriority: components.findIndex((component) => component.id === item.id) + 1,
           })),
         });
       }
@@ -272,7 +280,8 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
     }
   }
 
-  if (campusLoading || yearLoading || loading) return <LoadingState label="Loading finance setup" />;
+  if (campusLoading || yearLoading || loading)
+    return <LoadingState label="Loading finance setup" />;
   if (campusError || yearError)
     return <ErrorState message={campusError ?? yearError ?? "Unable to load finance context"} />;
   if (!selectedCampus) {
@@ -294,7 +303,8 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
 
   const blocked =
     (tab === "structures" && !activeHeads.length) ||
-    (tab === "mappings" && (!activeStructures.length || !activeSchedules.length || !classes.length));
+    (tab === "mappings" &&
+      (!activeStructures.length || !activeSchedules.length || !classes.length));
 
   const rows =
     tab === "heads"
@@ -316,7 +326,13 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="brand" disabled={blocked} onClick={begin} className="h-8 text-xs font-bold">
+          <Button
+            size="sm"
+            variant="brand"
+            disabled={blocked}
+            onClick={begin}
+            className="h-8 text-xs font-bold"
+          >
             <Plus size={14} />
             Add{" "}
             {tab === "heads"
@@ -331,7 +347,10 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
       </header>
 
       {error && (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 font-medium">
+        <div
+          role="alert"
+          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 font-medium"
+        >
           {error}
         </div>
       )}
@@ -364,7 +383,9 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
               <span
                 className={cn(
                   "ml-1 rounded border px-1.5 py-0.2 text-[10px] font-mono font-bold",
-                  isActive ? "bg-brand-50 text-brand-700 border-brand-200" : "bg-slate-100 text-slate-500 border-slate-200",
+                  isActive
+                    ? "bg-brand-50 text-brand-700 border-brand-200"
+                    : "bg-slate-100 text-slate-500 border-slate-200",
                 )}
               >
                 {count}
@@ -527,9 +548,7 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
                 <select
                   id="schedule-pattern"
                   value={schedulePattern}
-                  onChange={(event) =>
-                    setSchedulePattern(event.target.value as FeeSchedulePattern)
-                  }
+                  onChange={(event) => setSchedulePattern(event.target.value as FeeSchedulePattern)}
                   className="flex h-8 w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-600"
                 >
                   <option value="ANNUAL">Annual collection</option>
@@ -579,7 +598,11 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
                     onClick={() =>
                       setComponents((curr) => [
                         ...curr,
-                        { id: `comp_${curr.length + 1}`, feeHeadId: activeHeads[0]?.id ?? "", amount: "" },
+                        {
+                          id: `comp_${curr.length + 1}`,
+                          feeHeadId: activeHeads[0]?.id ?? "",
+                          amount: "",
+                        },
                       ])
                     }
                     className="h-6 text-[11px] px-2"
@@ -630,16 +653,16 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
                         size="icon-sm"
                         title="Move earlier in payment allocation"
                         disabled={componentIndex === 0}
-                          onClick={() =>
-                            setComponents((current) => {
-                              const next = [...current];
-                              const currentItem = next[componentIndex];
-                              const previousItem = next[componentIndex - 1];
-                              if (!currentItem || !previousItem) return current;
-                              next[componentIndex - 1] = currentItem;
-                              next[componentIndex] = previousItem;
-                              return next;
-                            })
+                        onClick={() =>
+                          setComponents((current) => {
+                            const next = [...current];
+                            const currentItem = next[componentIndex];
+                            const previousItem = next[componentIndex - 1];
+                            if (!currentItem || !previousItem) return current;
+                            next[componentIndex - 1] = currentItem;
+                            next[componentIndex] = previousItem;
+                            return next;
+                          })
                         }
                         className="h-8 w-8"
                       >
@@ -651,16 +674,16 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
                         size="icon-sm"
                         title="Move later in payment allocation"
                         disabled={componentIndex === components.length - 1}
-                          onClick={() =>
-                            setComponents((current) => {
-                              const next = [...current];
-                              const currentItem = next[componentIndex];
-                              const nextItem = next[componentIndex + 1];
-                              if (!currentItem || !nextItem) return current;
-                              next[componentIndex] = nextItem;
-                              next[componentIndex + 1] = currentItem;
-                              return next;
-                            })
+                        onClick={() =>
+                          setComponents((current) => {
+                            const next = [...current];
+                            const currentItem = next[componentIndex];
+                            const nextItem = next[componentIndex + 1];
+                            if (!currentItem || !nextItem) return current;
+                            next[componentIndex] = nextItem;
+                            next[componentIndex + 1] = currentItem;
+                            return next;
+                          })
                         }
                         className="h-8 w-8"
                       >
@@ -671,7 +694,9 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => setComponents((curr) => curr.filter((item) => item.id !== comp.id))}
+                          onClick={() =>
+                            setComponents((curr) => curr.filter((item) => item.id !== comp.id))
+                          }
                           className="h-8 w-8 text-slate-400 hover:text-red-600"
                         >
                           <Trash2 size={13} />
@@ -680,8 +705,8 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
                     </div>
                   ))}
                   <p className="text-xs text-slate-500">
-                    Payments are allocated from top to bottom. Use the arrow
-                    controls to change priority.
+                    Payments are allocated from top to bottom. Use the arrow controls to change
+                    priority.
                   </p>
                 </div>
               </div>
@@ -761,10 +786,23 @@ export function FeeConfigurationManagement({ tab }: FeeConfigurationManagementPr
 
           {/* Dialog Action Footer */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)} disabled={busy} className="h-8 text-xs">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setOpen(false)}
+              disabled={busy}
+              className="h-8 text-xs"
+            >
               Cancel
             </Button>
-            <Button type="submit" variant="brand" size="sm" disabled={busy} className="h-8 text-xs font-bold">
+            <Button
+              type="submit"
+              variant="brand"
+              size="sm"
+              disabled={busy}
+              className="h-8 text-xs font-bold"
+            >
               {busy ? "Saving..." : "Save configuration"}
             </Button>
           </div>

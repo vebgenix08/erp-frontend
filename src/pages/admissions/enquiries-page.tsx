@@ -1,3 +1,7 @@
 export function AdmissionsEnquiriesPage() {
-  return <main><h1>Enquiries</h1></main>;
+  return (
+    <main>
+      <h1>Enquiries</h1>
+    </main>
+  );
 }

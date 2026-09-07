@@ -155,7 +155,9 @@ export function TemplateFields({
       {sections
         .sort((left, right) => left.order - right.order)
         .map((section) => {
-          const sectionFields = fields.filter((field) => (field.section || "additional") === section.key);
+          const sectionFields = fields.filter(
+            (field) => (field.section || "additional") === section.key,
+          );
           if (!sectionFields.length) return null;
 
           return (
@@ -186,11 +188,13 @@ export function TemplateFields({
                           {field.label}
                           {field.required && <span className="text-red-500 ml-0.5">*</span>}
                         </Label>
-                        {systemControl ?? <TemplateInput
-                          field={field}
-                          value={values[field.key]}
-                          onChange={(val) => onChange(field.key, val)}
-                        />}
+                        {systemControl ?? (
+                          <TemplateInput
+                            field={field}
+                            value={values[field.key]}
+                            onChange={(val) => onChange(field.key, val)}
+                          />
+                        )}
                         {field.description && field.type !== "checkbox" && (
                           <p className="text-[10px] text-slate-400">{field.description}</p>
                         )}

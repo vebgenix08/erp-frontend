@@ -1,7 +1,16 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { fetchSession } from "../api/session.api";
 import { storeCognitoIdToken, clearCognitoIdToken } from "../../../shared/auth/cognito-token";
 import type { SessionPayload, SessionStatus } from "./session.types";
+import { isSessionExpiredError, SESSION_EXPIRED_EVENT } from "../../../shared/auth/session-expiry";
 
 interface SessionContextValue {
   status: SessionStatus;
@@ -27,19 +36,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setStatus("authenticated");
     } catch (err) {
-      setSession(null);
-      setStatus("anonymous");
       const message = err instanceof Error ? err.message : "Unable to load session";
-      const staleLocalSession = /No active Cognito session|Cognito session has expired|Invalid Cognito ID token/.test(message);
-      if (staleLocalSession) clearCognitoIdToken();
-      setError(staleLocalSession ? null : message);
+      const staleLocalSession = isSessionExpiredError(err);
+      if (staleLocalSession) {
+        clearCognitoIdToken();
+        setSession(null);
+        setStatus("anonymous");
+        setError(null);
+      } else {
+        setSession(null);
+        setStatus("error");
+        setError(message);
+      }
     }
   }, []);
 
-  const establishSession = useCallback(async (idToken: string) => {
-    storeCognitoIdToken(idToken);
-    await refreshSession();
-  }, [refreshSession]);
+  const establishSession = useCallback(
+    async (idToken: string) => {
+      storeCognitoIdToken(idToken);
+      await refreshSession();
+    },
+    [refreshSession],
+  );
 
   const clearSession = useCallback(() => {
     clearCognitoIdToken();
@@ -52,8 +70,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void refreshSession();
   }, [refreshSession]);
 
+  useEffect(() => {
+    window.addEventListener(SESSION_EXPIRED_EVENT, clearSession);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, clearSession);
+  }, [clearSession]);
+
   const value = useMemo<SessionContextValue>(
-    () => ({ status, session, error, refreshSession, establishSession, clearSession }),
+    () => ({
+      status,
+      session,
+      error,
+      refreshSession,
+      establishSession,
+      clearSession,
+    }),
     [clearSession, error, establishSession, refreshSession, session, status],
   );
 

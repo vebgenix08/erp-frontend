@@ -11,13 +11,27 @@ import {
   reactivateCampus,
   updateCampus,
 } from "../api/settings.api";
-import type { AcademicUnitType, Campus, CampusAcademicUnit, CampusAcademicUnitInput, CampusInput } from "../model/settings.types";
+import type {
+  AcademicUnitType,
+  Campus,
+  CampusAcademicUnit,
+  CampusAcademicUnitInput,
+  CampusInput,
+} from "../model/settings.types";
 import { useSelectedCampus } from "../model/selected-campus-provider";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
+import { ModernSelect } from "../../../shared/ui/select";
 import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
 import { Spinner } from "../../../shared/ui/spinner";
 
@@ -30,7 +44,11 @@ const emptyForm: CampusInput = {
 const unitDefaults: Record<AcademicUnitType, CampusAcademicUnitInput> = {
   SCHOOL: { type: "SCHOOL", name: "School", curriculumOrAffiliationId: "CBSE" },
   PU: { type: "PU", name: "PU College", curriculumOrAffiliationId: "KARNATAKA_PUE" },
-  DEGREE: { type: "DEGREE", name: "Degree College", curriculumOrAffiliationId: "BENGALURU_UNIVERSITY" },
+  DEGREE: {
+    type: "DEGREE",
+    name: "Degree College",
+    curriculumOrAffiliationId: "BENGALURU_UNIVERSITY",
+  },
 };
 
 export function CampusesManagement() {
@@ -45,13 +63,18 @@ export function CampusesManagement() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"ALL" | Campus["status"]>("ALL");
   const [units, setUnits] = useState<CampusAcademicUnit[]>([]);
-  const [unitDrafts, setUnitDrafts] = useState<CampusAcademicUnitInput[]>([{ ...unitDefaults.SCHOOL }]);
+  const [unitDrafts, setUnitDrafts] = useState<CampusAcademicUnitInput[]>([
+    { ...unitDefaults.SCHOOL },
+  ]);
 
   const load = () => {
     setLoading(true);
     setError(null);
     Promise.all([listCampuses(), listCampusAcademicUnits()])
-      .then(([campuses, academicUnits]) => { setItems(campuses); setUnits(academicUnits); })
+      .then(([campuses, academicUnits]) => {
+        setItems(campuses);
+        setUnits(academicUnits);
+      })
       .catch((value) =>
         setError(value instanceof Error ? value.message : "Unable to load campuses"),
       )
@@ -66,8 +89,8 @@ export function CampusesManagement() {
         const query = search.trim().toLowerCase();
         return (
           !query ||
-          [item.name, item.address, item.contactEmail, item.contactPhone].some(
-            (value) => value?.toLowerCase().includes(query),
+          [item.name, item.address, item.contactEmail, item.contactPhone].some((value) =>
+            value?.toLowerCase().includes(query),
           )
         );
       }),
@@ -86,12 +109,15 @@ export function CampusesManagement() {
         ...(form.contactEmail?.trim() ? { contactEmail: form.contactEmail.trim() } : {}),
         ...(form.contactPhone?.trim() ? { contactPhone: form.contactPhone.trim() } : {}),
       };
-      const setup = editing ? null : await createCampusSetup({ ...campusInput, academicUnits: unitDrafts });
+      const setup = editing
+        ? null
+        : await createCampusSetup({ ...campusInput, academicUnits: unitDrafts });
       const saved = editing ? await updateCampus(editing.id, campusInput) : setup!.campus;
       if (setup) setUnits((current) => [...current, ...setup.academicUnits]);
       if (editing && unitDrafts.length) {
         const created: CampusAcademicUnit[] = [];
-        for (const draft of unitDrafts) created.push(await createCampusAcademicUnit(editing.id, draft));
+        for (const draft of unitDrafts)
+          created.push(await createCampusAcademicUnit(editing.id, draft));
         setUnits((current) => [...current, ...created]);
       }
       setItems((current) =>
@@ -139,14 +165,10 @@ export function CampusesManagement() {
         item.status === "ACTIVE"
           ? await deactivateCampus(item.id)
           : await reactivateCampus(item.id);
-      setItems((current) =>
-        current.map((campus) => (campus.id === updated.id ? updated : campus)),
-      );
+      setItems((current) => current.map((campus) => (campus.id === updated.id ? updated : campus)));
       await refreshCampuses();
     } catch (value) {
-      setError(
-        value instanceof Error ? value.message : "Unable to change campus status",
-      );
+      setError(value instanceof Error ? value.message : "Unable to change campus status");
     } finally {
       setBusy(false);
     }
@@ -170,7 +192,10 @@ export function CampusesManagement() {
       </header>
 
       {error && (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 font-medium">
+        <div
+          role="alert"
+          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 font-medium"
+        >
           {error}
         </div>
       )}
@@ -178,7 +203,10 @@ export function CampusesManagement() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+          />
           <Input
             aria-label="Search campuses"
             placeholder="Search campus, location, email, or phone"
@@ -187,16 +215,17 @@ export function CampusesManagement() {
             className="pl-9 h-8 text-xs"
           />
         </div>
-        <select
+        <ModernSelect
           aria-label="Campus status"
           value={status}
-          onChange={(e) => setStatus(e.target.value as typeof status)}
-          className="h-8 rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-600 shadow-2xs"
-        >
-          <option value="ALL">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-        </select>
+          onValueChange={(val) => setStatus(val as typeof status)}
+          className="w-[130px]"
+          options={[
+            { label: "All statuses", value: "ALL" },
+            { label: "Active", value: "ACTIVE" },
+            { label: "Inactive", value: "INACTIVE" },
+          ]}
+        />
         <span className="text-xs text-slate-500 font-medium">
           {visibleItems.length} campus{visibleItems.length === 1 ? "" : "es"}
         </span>
@@ -233,11 +262,21 @@ export function CampusesManagement() {
                   </TableCell>
                   <TableCell className="text-slate-600">
                     <div className="flex flex-wrap gap-1">
-                      {units.filter((unit) => unit.campusId === item.id && unit.status === "ACTIVE").map((unit) => (
-                        <Badge key={unit.id} variant="secondary">{unit.type === "SCHOOL" ? unit.curriculumOrAffiliationId.replaceAll("_", " ") : unit.name}</Badge>
-                      ))}
-                      {!units.some((unit) => unit.campusId === item.id && unit.status === "ACTIVE") && (
-                        <span className="text-xs text-amber-700">Academic units not configured</span>
+                      {units
+                        .filter((unit) => unit.campusId === item.id && unit.status === "ACTIVE")
+                        .map((unit) => (
+                          <Badge key={unit.id} variant="secondary">
+                            {unit.type === "SCHOOL"
+                              ? unit.curriculumOrAffiliationId.replaceAll("_", " ")
+                              : unit.name}
+                          </Badge>
+                        ))}
+                      {!units.some(
+                        (unit) => unit.campusId === item.id && unit.status === "ACTIVE",
+                      ) && (
+                        <span className="text-xs text-amber-700">
+                          Academic units not configured
+                        </span>
                       )}
                     </div>
                   </TableCell>
@@ -320,44 +359,118 @@ export function CampusesManagement() {
               />
             </div>
             <fieldset className="space-y-3 sm:col-span-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <legend className="text-sm font-semibold text-slate-900">
-                    {editing ? "Add another board or academic unit" : "Education offered at this campus"}
-                  </legend>
-                  <div className="flex flex-wrap gap-2">
-                    {(["SCHOOL", "PU", "DEGREE"] as AcademicUnitType[]).map((type) => (
-                      <Button key={type} type="button" size="sm" variant="outline" onClick={() => setUnitDrafts((current) => [...current, { ...unitDefaults[type] }])}>
-                        <Plus size={13} /> {type === "SCHOOL" ? "Add school board" : type === "PU" ? "Add PU unit" : "Add degree unit"}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                {unitDrafts.map((unit, index) => (
-                  <div key={`${unit.type}-${index}`} className="grid gap-3 rounded-md border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_auto]">
-                    <div className="space-y-1.5">
-                      <Label>{unit.type === "SCHOOL" ? "School name" : unit.type === "PU" ? "PU unit name" : "Degree unit name"}</Label>
-                      <Input value={unit.name} onChange={(event) => setUnitDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} required />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>{unit.type === "DEGREE" ? "University / affiliation" : "Board / curriculum"}</Label>
-                      <select
-                        value={unit.curriculumOrAffiliationId}
-                        onChange={(event) => setUnitDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, curriculumOrAffiliationId: event.target.value } : item))}
-                        className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
-                      >
-                        {unit.type === "SCHOOL" && <><option value="CBSE">CBSE</option><option value="STATE_BOARD">State Board</option><option value="ICSE">ICSE</option></>}
-                        {unit.type === "PU" && <option value="KARNATAKA_PUE">Karnataka Pre-University Education</option>}
-                        {unit.type === "DEGREE" && <><option value="BENGALURU_UNIVERSITY">Bengaluru University</option><option value="AUTONOMOUS">Autonomous</option></>}
-                      </select>
-                    </div>
-                    <Button type="button" variant="ghost" size="icon-sm" className="self-end" aria-label={`Remove ${unit.name}`} onClick={() => setUnitDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
-                      <Trash2 size={14} />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <legend className="text-sm font-semibold text-slate-900">
+                  {editing
+                    ? "Add another board or academic unit"
+                    : "Education offered at this campus"}
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {(["SCHOOL", "PU", "DEGREE"] as AcademicUnitType[]).map((type) => (
+                    <Button
+                      key={type}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setUnitDrafts((current) => [...current, { ...unitDefaults[type] }])
+                      }
+                    >
+                      <Plus size={13} />{" "}
+                      {type === "SCHOOL"
+                        ? "Add school board"
+                        : type === "PU"
+                          ? "Add PU unit"
+                          : "Add degree unit"}
                     </Button>
+                  ))}
+                </div>
+              </div>
+              {unitDrafts.map((unit, index) => (
+                <div
+                  key={`${unit.type}-${index}`}
+                  className="grid gap-3 rounded-md border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_auto]"
+                >
+                  <div className="space-y-1.5">
+                    <Label>
+                      {unit.type === "SCHOOL"
+                        ? "School name"
+                        : unit.type === "PU"
+                          ? "PU unit name"
+                          : "Degree unit name"}
+                    </Label>
+                    <Input
+                      value={unit.name}
+                      onChange={(event) =>
+                        setUnitDrafts((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, name: event.target.value } : item,
+                          ),
+                        )
+                      }
+                      required
+                    />
                   </div>
-                ))}
-                {!editing && unitDrafts.length === 0 && <p className="text-xs font-medium text-amber-700">Add at least one academic unit.</p>}
-                <p className="text-xs text-slate-500">Classes, streams, programs and semesters are configured after the campus is saved.</p>
-              </fieldset>
+                  <div className="space-y-1.5">
+                    <Label>
+                      {unit.type === "DEGREE" ? "University / affiliation" : "Board / curriculum"}
+                    </Label>
+                    <select
+                      value={unit.curriculumOrAffiliationId}
+                      onChange={(event) =>
+                        setUnitDrafts((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, curriculumOrAffiliationId: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                      className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                    >
+                      {unit.type === "SCHOOL" && (
+                        <>
+                          <option value="CBSE">CBSE</option>
+                          <option value="STATE_BOARD">State Board</option>
+                          <option value="ICSE">ICSE</option>
+                        </>
+                      )}
+                      {unit.type === "PU" && (
+                        <option value="KARNATAKA_PUE">Karnataka Pre-University Education</option>
+                      )}
+                      {unit.type === "DEGREE" && (
+                        <>
+                          <option value="BENGALURU_UNIVERSITY">Bengaluru University</option>
+                          <option value="AUTONOMOUS">Autonomous</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="self-end"
+                    aria-label={`Remove ${unit.name}`}
+                    onClick={() =>
+                      setUnitDrafts((current) =>
+                        current.filter((_, itemIndex) => itemIndex !== index),
+                      )
+                    }
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
+              ))}
+              {!editing && unitDrafts.length === 0 && (
+                <p className="text-xs font-medium text-amber-700">
+                  Add at least one academic unit.
+                </p>
+              )}
+              <p className="text-xs text-slate-500">
+                Classes, streams, programs and semesters are configured after the campus is saved.
+              </p>
+            </fieldset>
             <div className="space-y-1.5">
               <Label htmlFor="campus-email">Contact email</Label>
               <Input

@@ -15,7 +15,14 @@ import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
 import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
 import { Spinner } from "../../../shared/ui/spinner";
 
@@ -91,9 +98,7 @@ export function AcademicYearsManagement() {
       setAction(null);
       setReason("");
     } catch (value) {
-      setError(
-        value instanceof Error ? value.message : "Unable to change academic year lifecycle",
-      );
+      setError(value instanceof Error ? value.message : "Unable to change academic year lifecycle");
     } finally {
       setBusy(false);
     }
@@ -112,13 +117,21 @@ export function AcademicYearsManagement() {
             Control the institution-wide operating period. Only one year can be current.
           </p>
         </div>
-        <Button size="sm" variant="brand" onClick={() => setOpen(true)} className="h-8 text-xs font-bold">
+        <Button
+          size="sm"
+          variant="brand"
+          onClick={() => setOpen(true)}
+          className="h-8 text-xs font-bold"
+        >
           <Plus size={14} /> Add academic year
         </Button>
       </header>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {error}
         </div>
       )}
@@ -195,7 +208,10 @@ export function AcademicYearsManagement() {
                           title="Close academic year"
                           aria-label={`Close ${item.name}`}
                           disabled={busy}
-                          onClick={() => { setAction({ type: "close", year: item }); setReason(""); }}
+                          onClick={() => {
+                            setAction({ type: "close", year: item });
+                            setReason("");
+                          }}
                         >
                           <LockKeyhole size={15} />
                         </Button>
@@ -207,7 +223,10 @@ export function AcademicYearsManagement() {
                           title="Reopen academic year"
                           aria-label={`Reopen ${item.name}`}
                           disabled={busy}
-                          onClick={() => { setAction({ type: "reopen", year: item }); setReason(""); }}
+                          onClick={() => {
+                            setAction({ type: "reopen", year: item });
+                            setReason("");
+                          }}
                         >
                           <RotateCcw size={15} />
                         </Button>
@@ -272,7 +291,13 @@ export function AcademicYearsManagement() {
               Cancel
             </Button>
             <Button type="submit" size="sm" disabled={busy}>
-              {busy ? <><Spinner className="h-3.5 w-3.5" /> Creating…</> : "Create academic year"}
+              {busy ? (
+                <>
+                  <Spinner className="h-3.5 w-3.5" /> Creating…
+                </>
+              ) : (
+                "Create academic year"
+              )}
             </Button>
           </div>
         </form>
@@ -310,7 +335,9 @@ export function AcademicYearsManagement() {
             </Button>
             <Button type="submit" size="sm" disabled={busy}>
               {busy ? (
-                <><Spinner className="h-3.5 w-3.5" /> Saving…</>
+                <>
+                  <Spinner className="h-3.5 w-3.5" /> Saving…
+                </>
               ) : action?.type === "close" ? (
                 "Close academic year"
               ) : (

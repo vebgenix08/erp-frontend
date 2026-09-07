@@ -8,7 +8,10 @@ import { getFeeConfiguration } from "../api/fee-configuration.api";
 import { createGeneralCharge, listGeneralCharges } from "../api/finance-operations.api";
 import type { FeeHead } from "../model/fee-configuration.types";
 import type { GeneralCharge } from "../model/finance-operations.types";
-import type { AcademicClass, Section } from "../../academic-structure/model/academic-structure.types";
+import type {
+  AcademicClass,
+  Section,
+} from "../../academic-structure/model/academic-structure.types";
 import type { Student } from "../../students/model/student.types";
 import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import { Modal } from "../../../shared/ui/modal";
@@ -16,13 +19,19 @@ import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
 import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
 import { cn } from "../../../shared/ui/utils";
 
 const money = (minor: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(minor / 100);
-
 
 export function GeneralChargeManagement() {
   const { selectedCampus } = useSelectedCampus();
@@ -55,7 +64,10 @@ export function GeneralChargeManagement() {
     setError(null);
     try {
       const [history, config, classRows, sectionRows, studentRows] = await Promise.all([
-        listGeneralCharges({ campusId: selectedCampus.id, academicYearId: selectedAcademicYear.id }),
+        listGeneralCharges({
+          campusId: selectedCampus.id,
+          academicYearId: selectedAcademicYear.id,
+        }),
         getFeeConfiguration(selectedCampus.id, selectedAcademicYear.id),
         listClasses(selectedCampus.id),
         listSections(selectedCampus.id),
@@ -86,12 +98,7 @@ export function GeneralChargeManagement() {
   }, [load]);
 
   useEffect(() => {
-    if (
-      targetType !== "STUDENT" ||
-      !selectedCampus ||
-      !selectedAcademicYear
-    )
-      return;
+    if (targetType !== "STUDENT" || !selectedCampus || !selectedAcademicYear) return;
     const timer = window.setTimeout(() => {
       void listStudentPage({
         campusId: selectedCampus.id,
@@ -105,11 +112,7 @@ export function GeneralChargeManagement() {
       })
         .then((page) => setStudents(page.items))
         .catch((value) =>
-          setError(
-            value instanceof Error
-              ? value.message
-              : "Unable to search students",
-          ),
+          setError(value instanceof Error ? value.message : "Unable to search students"),
         );
     }, 250);
     return () => window.clearTimeout(timer);
@@ -132,7 +135,9 @@ export function GeneralChargeManagement() {
         }));
     }
     return students
-      .filter((item) => !query || `${item.name} ${item.registrationNumber}`.toLowerCase().includes(query))
+      .filter(
+        (item) => !query || `${item.name} ${item.registrationNumber}`.toLowerCase().includes(query),
+      )
       .map((item) => ({ id: item.id, label: item.name, detail: item.registrationNumber }));
   }, [classes, search, sections, students, targetType]);
 
@@ -206,7 +211,8 @@ export function GeneralChargeManagement() {
         <div>
           <h2 className="text-xl font-bold text-slate-900">Additional fee assignment</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Collect exam, transport, library, hostel, activity, and other fees through configured fee heads.
+            Collect exam, transport, library, hostel, activity, and other fees through configured
+            fee heads.
           </p>
         </div>
         <Button size="sm" variant="brand" onClick={startCreate} className="h-8 text-xs font-bold">
@@ -240,9 +246,7 @@ export function GeneralChargeManagement() {
                         {charge.collectionPolicy.replaceAll("_", " ").toLowerCase()}
                       </span>
                       {charge.note ? (
-                        <p className="mt-1 max-w-sm text-xs text-slate-500">
-                          {charge.note}
-                        </p>
+                        <p className="mt-1 max-w-sm text-xs text-slate-500">{charge.note}</p>
                       ) : null}
                     </div>
                   </TableCell>
@@ -255,9 +259,7 @@ export function GeneralChargeManagement() {
                   <TableCell className="text-slate-650 text-sm">
                     {charge.target.type} · {charge.target.ids.length}
                   </TableCell>
-                  <TableCell className="text-slate-650 text-sm">
-                    {charge.assignedCount}
-                  </TableCell>
+                  <TableCell className="text-slate-650 text-sm">{charge.assignedCount}</TableCell>
                   <TableCell>
                     <div className="space-y-0.5">
                       <Badge variant={charge.status === "ASSIGNED" ? "success" : "secondary"}>
@@ -291,14 +293,17 @@ export function GeneralChargeManagement() {
       >
         <form onSubmit={(e) => void submit(e)} className="space-y-4">
           {error && (
-            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
               {error}
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-                <Label htmlFor="chg-name">Fee description</Label>
+              <Label htmlFor="chg-name">Fee description</Label>
               <Input
                 id="chg-name"
                 required
@@ -332,7 +337,9 @@ export function GeneralChargeManagement() {
                 type="text"
                 inputMode="decimal"
                 value={amount}
-                onChange={(e) => /^\d*(\.\d{0,2})?$/.test(e.target.value) && setAmount(e.target.value)}
+                onChange={(e) =>
+                  /^\d*(\.\d{0,2})?$/.test(e.target.value) && setAmount(e.target.value)
+                }
                 placeholder="0.00"
               />
             </div>
@@ -378,15 +385,16 @@ export function GeneralChargeManagement() {
               placeholder="Add internal context for this fee assignment"
               className="flex w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-accent-600"
             />
-            <p className="text-right text-[10px] text-slate-400">
-              {note.length}/500
-            </p>
+            <p className="text-right text-[10px] text-slate-400">{note.length}/500</p>
           </div>
 
           {/* Targets Selector List */}
           <div className="space-y-2.5 p-3 rounded-lg border border-slate-200 bg-slate-50">
             <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -412,7 +420,9 @@ export function GeneralChargeManagement() {
                     className="h-4 w-4 rounded border-slate-300 text-accent-650 focus:ring-accent-600 shrink-0"
                   />
                   <span className="min-w-0 flex-1">
-                    <strong className="block text-sm text-slate-805 font-bold">{target.label}</strong>
+                    <strong className="block text-sm text-slate-805 font-bold">
+                      {target.label}
+                    </strong>
                     <small className="block text-[10px] text-slate-400">{target.detail}</small>
                   </span>
                 </label>
@@ -426,11 +436,19 @@ export function GeneralChargeManagement() {
 
           <Separator />
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={saving} onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={saving}
+              onClick={() => setOpen(false)}
+            >
               Cancel
             </Button>
             <Button size="sm" disabled={saving || !selectedIds.length}>
-              {saving ? "Assigning..." : `Assign to ${selectedIds.length} target${selectedIds.length === 1 ? "" : "s"}`}
+              {saving
+                ? "Assigning..."
+                : `Assign to ${selectedIds.length} target${selectedIds.length === 1 ? "" : "s"}`}
             </Button>
           </div>
         </form>

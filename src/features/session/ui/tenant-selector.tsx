@@ -19,11 +19,7 @@ export function TenantSelector() {
       await selectSessionTenant({});
       await refreshSession();
     } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Tenant selection failed",
-      );
+      setError(submitError instanceof Error ? submitError.message : "Tenant selection failed");
     } finally {
       setSaving(false);
     }
@@ -36,9 +32,7 @@ export function TenantSelector() {
         <Input
           id="tenant-input"
           value={
-            session?.tenant?.displayName ??
-            session?.tenant?.tenantCode ??
-            "Assigned institution"
+            session?.tenant?.displayName ?? session?.tenant?.tenantCode ?? "Assigned institution"
           }
           readOnly
           className="bg-slate-50"

@@ -5,20 +5,17 @@ import { Button } from "./button";
 
 export function LoadingState({ label = "Loading data" }: { label?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-500" aria-busy="true">
+    <div
+      className="flex flex-col items-center justify-center gap-3 py-16 text-slate-500"
+      aria-busy="true"
+    >
       <Spinner className="h-6 w-6 text-accent-600" />
       <strong className="text-sm font-medium text-slate-600">{label}</strong>
     </div>
   );
 }
 
-export function ErrorState({
-  message,
-  retry,
-}: {
-  message: string;
-  retry?: () => void;
-}) {
+export function ErrorState({ message, retry }: { message: string; retry?: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-500">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">

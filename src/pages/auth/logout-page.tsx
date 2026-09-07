@@ -9,12 +9,16 @@ export function LogoutPage() {
   const navigate = useNavigate();
   useEffect(() => {
     let active = true;
-    void logoutSession().catch(() => ({ success: false })).finally(() => {
-      if (!active) return;
-      clearSession();
-      navigate("/login", { replace: true });
-    });
-    return () => { active = false; };
+    void logoutSession()
+      .catch(() => ({ success: false }))
+      .finally(() => {
+        if (!active) return;
+        clearSession();
+        navigate("/login", { replace: true });
+      });
+    return () => {
+      active = false;
+    };
   }, [clearSession, navigate]);
-  return <LoadingState label="Signing out"/>;
+  return <LoadingState label="Signing out" />;
 }

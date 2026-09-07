@@ -1,6 +1,8 @@
 import { env } from "../config/env";
 import { ApiError } from "./api-error";
 import { apiErrorFromPayload, coordinatedRequest } from "./request-coordinator";
+import { createRequestSignal } from "./request-signal";
+import { expireClientSession, isSessionExpiredError } from "../auth/session-expiry";
 
 export type HttpRequestOptions = {
   method?: string;
@@ -25,62 +27,77 @@ function resolveUrl(url: string): string {
   return new URL(url, origin).toString();
 }
 
-export async function httpClient<T = unknown>(url: string, options: HttpRequestOptions = {}): Promise<T> {
+export async function httpClient<T = unknown>(
+  url: string,
+  options: HttpRequestOptions = {},
+): Promise<T> {
   const resolvedUrl = resolveUrl(url);
   const method = options.method ?? "GET";
-  return coordinatedRequest(async () => {
-  const timeout = new AbortController();
-  const timer = window.setTimeout(() => timeout.abort(), REQUEST_TIMEOUT_MS);
-  const requestInit: RequestInit = {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
+  return coordinatedRequest(
+    async () => {
+      const requestSignal = createRequestSignal(REQUEST_TIMEOUT_MS, options.signal);
+      const requestInit: RequestInit = {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+        signal: requestSignal.signal,
+      };
+
+      if (options.body !== undefined) {
+        requestInit.body = JSON.stringify(options.body);
+      }
+
+      try {
+        const response = await fetch(resolvedUrl, requestInit);
+        const contentType = response.headers.get("content-type") ?? "";
+        const payload = contentType.includes("application/json")
+          ? await response.json().catch(() => null)
+          : await response.text();
+
+        if (!response.ok) {
+          const error = apiErrorFromPayload(
+            payload,
+            new ApiError({
+              code: response.status === 429 ? "SERVICE_BUSY" : "HTTP_ERROR",
+              message:
+                response.status === 429 || response.status === 503
+                  ? "The service is temporarily busy."
+                  : `Request failed with status ${response.status}`,
+              retryable: response.status === 429 || response.status === 503,
+              status: response.status,
+            }),
+          );
+          if (isSessionExpiredError(error)) expireClientSession();
+          throw error;
+        }
+
+        return payload as T;
+      } catch (error) {
+        if (requestSignal.didTimeout()) {
+          throw new ApiError({
+            code: "REQUEST_TIMEOUT",
+            message: `The request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds.`,
+            retryable: true,
+          });
+        }
+        if (error instanceof TypeError) {
+          throw new ApiError({
+            code: "NETWORK_ERROR",
+            message: "The service could not be reached. Check the connection and try again.",
+            retryable: true,
+          });
+        }
+        throw error;
+      } finally {
+        requestSignal.cleanup();
+      }
     },
-    credentials: "include",
-    signal: options.signal ?? timeout.signal,
-  };
-
-  if (options.body !== undefined) {
-    requestInit.body = JSON.stringify(options.body);
-  }
-
-  try {
-    const response = await fetch(resolvedUrl, requestInit);
-    const contentType = response.headers.get("content-type") ?? "";
-    const payload = contentType.includes("application/json") ? await response.json().catch(() => null) : await response.text();
-
-    if (!response.ok) {
-      throw apiErrorFromPayload(
-        payload,
-        new ApiError({
-          code: response.status === 429 ? "SERVICE_BUSY" : "HTTP_ERROR",
-          message:
-            response.status === 429 || response.status === 503
-              ? "The service is temporarily busy."
-              : `Request failed with status ${response.status}`,
-          retryable: response.status === 429 || response.status === 503,
-          status: response.status,
-        }),
-      );
-    }
-
-    return payload as T;
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError" && options.signal === undefined) {
-      throw new ApiError({
-        code: "REQUEST_TIMEOUT",
-        message: `The request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds.`,
-        retryable: true,
-      });
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timer);
-  }
-  }, {
-    key: `http:${method}:${resolvedUrl}:${JSON.stringify(options.body ?? null)}`,
-    cacheTimeMs: method === "GET" ? 1_500 : 0,
-    ...(options.signal ? { signal: options.signal } : {}),
-  });
+    {
+      key: `http:${method}:${resolvedUrl}:${JSON.stringify(options.body ?? null)}`,
+      cacheTimeMs: method === "GET" ? 1_500 : 0,
+      ...(options.signal ? { signal: options.signal } : {}),
+    },
+  );
 }

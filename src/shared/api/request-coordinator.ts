@@ -57,10 +57,7 @@ export function invalidateRequestCache(prefix?: string): void {
   }
 }
 
-export function apiErrorFromPayload(
-  payload: unknown,
-  fallback: ApiError,
-): ApiError {
+export function apiErrorFromPayload(payload: unknown, fallback: ApiError): ApiError {
   if (!payload || typeof payload !== "object") return fallback;
   const root = payload as { error?: unknown };
   if (!root.error || typeof root.error !== "object") return fallback;

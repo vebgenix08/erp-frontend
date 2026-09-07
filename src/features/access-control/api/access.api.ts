@@ -1,18 +1,130 @@
 import { graphqlClient } from "../../../shared/api/graphql-client";
-import type { AccessScope, IdentityAccessSnapshot, IdentityAssignmentPageFilter, IdentityRole, IdentityRolePageFilter, IdentityUser, IdentityUserPageFilter, PageResult, RolePermissionBinding, UserRoleAssignment } from "../model/access.types";
+import type {
+  AccessScope,
+  IdentityAccessSnapshot,
+  IdentityAssignmentPageFilter,
+  IdentityRole,
+  IdentityRolePageFilter,
+  IdentityUser,
+  IdentityUserPageFilter,
+  PageResult,
+  RolePermissionBinding,
+  UserRoleAssignment,
+} from "../model/access.types";
 
 const userFields = "id email name status createdAt updatedAt deactivatedAt";
 const roleFields = "id code name description isSystemRole isActive createdAt updatedAt";
-const assignmentFields = "id userId roleId isActive createdAt updatedAt scope { scopeType campusIds programIds classIds sectionIds }";
+const assignmentFields =
+  "id userId roleId isActive createdAt updatedAt scope { scopeType campusIds programIds classIds sectionIds }";
 
-export async function listIdentityUsers() { return (await graphqlClient<{ identityUsers: IdentityUser[] }>(`query IdentityUsers { identityUsers { ${userFields} } }`)).identityUsers; }
-export async function listIdentityRoles() { return (await graphqlClient<{ identityRoles: IdentityRole[] }>(`query IdentityRoles { identityRoles { ${roleFields} } }`)).identityRoles; }
-export async function listIdentityUserPage(filter: IdentityUserPageFilter) { return (await graphqlClient<{ identityUserPage: PageResult<IdentityUser> }, { filter: IdentityUserPageFilter }>(`query IdentityUserPage($filter: IdentityUserPageFilter) { identityUserPage(filter: $filter) { items { ${userFields} } page pageSize total totalPages } }`, { filter })).identityUserPage; }
-export async function listIdentityRolePage(filter: IdentityRolePageFilter) { return (await graphqlClient<{ identityRolePage: PageResult<IdentityRole> }, { filter: IdentityRolePageFilter }>(`query IdentityRolePage($filter: IdentityRolePageFilter) { identityRolePage(filter: $filter) { items { ${roleFields} } page pageSize total totalPages } }`, { filter })).identityRolePage; }
-export async function listIdentityAssignmentPage(filter: IdentityAssignmentPageFilter) { return (await graphqlClient<{ identityAssignmentPage: PageResult<UserRoleAssignment> }, { filter: IdentityAssignmentPageFilter }>(`query IdentityAssignmentPage($filter: IdentityAssignmentPageFilter) { identityAssignmentPage(filter: $filter) { items { ${assignmentFields} } page pageSize total totalPages } }`, { filter })).identityAssignmentPage; }
-export async function getIdentityAccess() { return (await graphqlClient<{ identityAccess: IdentityAccessSnapshot }>(`query IdentityAccess { identityAccess { permissions { code domain resource action label } assignments { ${assignmentFields} } rolePermissions { id roleId permission } } }`)).identityAccess; }
-export async function createIdentityRole(input: { code: string; name: string; description?: string }) { return (await graphqlClient<{ createIdentityRole: IdentityRole }, { input: typeof input }>(`mutation CreateIdentityRole($input: CreateIdentityRoleInput!) { createIdentityRole(input: $input) { ${roleFields} } }`, { input })).createIdentityRole; }
-export async function updateIdentityRole(id: string, input: { name?: string; description?: string; isActive?: boolean }) { return (await graphqlClient<{ updateIdentityRole: IdentityRole }, { id: string; input: typeof input }>(`mutation UpdateIdentityRole($id: ID!, $input: UpdateIdentityRoleInput!) { updateIdentityRole(id: $id, input: $input) { ${roleFields} } }`, { id, input })).updateIdentityRole; }
-export async function assignIdentityUserRole(input: { userId: string; roleId: string; scope: AccessScope }) { return (await graphqlClient<{ assignIdentityUserRole: UserRoleAssignment }, { input: typeof input }>(`mutation AssignIdentityUserRole($input: AssignIdentityUserRoleInput!) { assignIdentityUserRole(input: $input) { ${assignmentFields} } }`, { input })).assignIdentityUserRole; }
-export async function revokeIdentityUserRole(id: string) { return (await graphqlClient<{ revokeIdentityUserRole: UserRoleAssignment }, { id: string }>(`mutation RevokeIdentityUserRole($id: ID!) { revokeIdentityUserRole(id: $id) { ${assignmentFields} } }`, { id })).revokeIdentityUserRole; }
-export async function saveIdentityRolePermissions(input: { roleId: string; permissions: string[] }) { return (await graphqlClient<{ saveIdentityRolePermissions: RolePermissionBinding[] }, { input: typeof input }>(`mutation SaveIdentityRolePermissions($input: SaveIdentityRolePermissionsInput!) { saveIdentityRolePermissions(input: $input) { id roleId permission } }`, { input })).saveIdentityRolePermissions; }
+export async function listIdentityUsers() {
+  return (
+    await graphqlClient<{ identityUsers: IdentityUser[] }>(
+      `query IdentityUsers { identityUsers { ${userFields} } }`,
+    )
+  ).identityUsers;
+}
+export async function listIdentityRoles() {
+  return (
+    await graphqlClient<{ identityRoles: IdentityRole[] }>(
+      `query IdentityRoles { identityRoles { ${roleFields} } }`,
+    )
+  ).identityRoles;
+}
+export async function listIdentityUserPage(filter: IdentityUserPageFilter) {
+  return (
+    await graphqlClient<
+      { identityUserPage: PageResult<IdentityUser> },
+      { filter: IdentityUserPageFilter }
+    >(
+      `query IdentityUserPage($filter: IdentityUserPageFilter) { identityUserPage(filter: $filter) { items { ${userFields} } page pageSize total totalPages } }`,
+      { filter },
+    )
+  ).identityUserPage;
+}
+export async function listIdentityRolePage(filter: IdentityRolePageFilter) {
+  return (
+    await graphqlClient<
+      { identityRolePage: PageResult<IdentityRole> },
+      { filter: IdentityRolePageFilter }
+    >(
+      `query IdentityRolePage($filter: IdentityRolePageFilter) { identityRolePage(filter: $filter) { items { ${roleFields} } page pageSize total totalPages } }`,
+      { filter },
+    )
+  ).identityRolePage;
+}
+export async function listIdentityAssignmentPage(filter: IdentityAssignmentPageFilter) {
+  return (
+    await graphqlClient<
+      { identityAssignmentPage: PageResult<UserRoleAssignment> },
+      { filter: IdentityAssignmentPageFilter }
+    >(
+      `query IdentityAssignmentPage($filter: IdentityAssignmentPageFilter) { identityAssignmentPage(filter: $filter) { items { ${assignmentFields} } page pageSize total totalPages } }`,
+      { filter },
+    )
+  ).identityAssignmentPage;
+}
+export async function getIdentityAccess() {
+  return (
+    await graphqlClient<{ identityAccess: IdentityAccessSnapshot }>(
+      `query IdentityAccess { identityAccess { permissions { code domain resource action label } assignments { ${assignmentFields} } rolePermissions { id roleId permission } } }`,
+    )
+  ).identityAccess;
+}
+export async function createIdentityRole(input: {
+  code: string;
+  name: string;
+  description?: string;
+}) {
+  return (
+    await graphqlClient<{ createIdentityRole: IdentityRole }, { input: typeof input }>(
+      `mutation CreateIdentityRole($input: CreateIdentityRoleInput!) { createIdentityRole(input: $input) { ${roleFields} } }`,
+      { input },
+    )
+  ).createIdentityRole;
+}
+export async function updateIdentityRole(
+  id: string,
+  input: { name?: string; description?: string; isActive?: boolean },
+) {
+  return (
+    await graphqlClient<{ updateIdentityRole: IdentityRole }, { id: string; input: typeof input }>(
+      `mutation UpdateIdentityRole($id: ID!, $input: UpdateIdentityRoleInput!) { updateIdentityRole(id: $id, input: $input) { ${roleFields} } }`,
+      { id, input },
+    )
+  ).updateIdentityRole;
+}
+export async function assignIdentityUserRole(input: {
+  userId: string;
+  roleId: string;
+  scope: AccessScope;
+}) {
+  return (
+    await graphqlClient<{ assignIdentityUserRole: UserRoleAssignment }, { input: typeof input }>(
+      `mutation AssignIdentityUserRole($input: AssignIdentityUserRoleInput!) { assignIdentityUserRole(input: $input) { ${assignmentFields} } }`,
+      { input },
+    )
+  ).assignIdentityUserRole;
+}
+export async function revokeIdentityUserRole(id: string) {
+  return (
+    await graphqlClient<{ revokeIdentityUserRole: UserRoleAssignment }, { id: string }>(
+      `mutation RevokeIdentityUserRole($id: ID!) { revokeIdentityUserRole(id: $id) { ${assignmentFields} } }`,
+      { id },
+    )
+  ).revokeIdentityUserRole;
+}
+export async function saveIdentityRolePermissions(input: {
+  roleId: string;
+  permissions: string[];
+}) {
+  return (
+    await graphqlClient<
+      { saveIdentityRolePermissions: RolePermissionBinding[] },
+      { input: typeof input }
+    >(
+      `mutation SaveIdentityRolePermissions($input: SaveIdentityRolePermissionsInput!) { saveIdentityRolePermissions(input: $input) { id roleId permission } }`,
+      { input },
+    )
+  ).saveIdentityRolePermissions;
+}

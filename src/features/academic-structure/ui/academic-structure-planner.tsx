@@ -16,7 +16,11 @@ type PlanRow = { id: string; program: string; classes: string };
 
 const SCHOOL_PLAN: PlanRow[] = [
   { id: "pre-primary", program: "Pre-Primary", classes: "Nursery, LKG, UKG" },
-  { id: "primary", program: "Primary School", classes: "Class 1, Class 2, Class 3, Class 4, Class 5" },
+  {
+    id: "primary",
+    program: "Primary School",
+    classes: "Class 1, Class 2, Class 3, Class 4, Class 5",
+  },
   { id: "middle", program: "Middle School", classes: "Class 6, Class 7" },
   { id: "high", program: "High School", classes: "Class 8, Class 9, Class 10" },
 ];
@@ -78,7 +82,11 @@ export function AcademicStructurePlanner({
   function addProgram(name = "") {
     setPlan((current) => [
       ...current,
-      { id: crypto.randomUUID(), program: name, classes: academicUnitType === "DEGREE" ? DEGREE_CLASSES : "" },
+      {
+        id: crypto.randomUUID(),
+        program: name,
+        classes: academicUnitType === "DEGREE" ? DEGREE_CLASSES : "",
+      },
     ]);
   }
 
@@ -114,7 +122,9 @@ export function AcademicStructurePlanner({
     setError(null);
     try {
       for (const row of rows) {
-        let program = programs.find((item) => item.name.toLowerCase() === row.program.toLowerCase());
+        let program = programs.find(
+          (item) => item.name.toLowerCase() === row.program.toLowerCase(),
+        );
         if (!program) {
           program = await createProgram({
             campusId,
@@ -155,35 +165,41 @@ export function AcademicStructurePlanner({
         <div className="space-y-5 text-sm">
           {/* Progress Flow */}
           <div className="flex items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
-            {["Levels / programs", academicUnitType === "SCHOOL" ? "Classes" : "Years / semesters", "Review"].map(
-              (label, index) => {
-                const isActive = step === index + 1;
-                const isComplete = step > index + 1;
-                return (
-                  <div
-                    key={label}
+            {[
+              "Levels / programs",
+              academicUnitType === "SCHOOL" ? "Classes" : "Years / semesters",
+              "Review",
+            ].map((label, index) => {
+              const isActive = step === index + 1;
+              const isComplete = step > index + 1;
+              return (
+                <div
+                  key={label}
+                  className={cn(
+                    "flex items-center gap-2 text-xs font-semibold",
+                    isActive
+                      ? "text-accent-700"
+                      : isComplete
+                        ? "text-emerald-700"
+                        : "text-slate-400",
+                  )}
+                >
+                  <span
                     className={cn(
-                      "flex items-center gap-2 text-xs font-semibold",
-                      isActive ? "text-accent-700" : isComplete ? "text-emerald-700" : "text-slate-400",
+                      "flex h-5 w-5 items-center justify-center rounded-full text-[10px] border",
+                      isActive
+                        ? "border-accent-600 bg-accent-50 text-accent-700"
+                        : isComplete
+                          ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                          : "border-slate-200 bg-slate-50 text-slate-400",
                     )}
                   >
-                    <span
-                      className={cn(
-                        "flex h-5 w-5 items-center justify-center rounded-full text-[10px] border",
-                        isActive
-                          ? "border-accent-600 bg-accent-50 text-accent-700"
-                          : isComplete
-                            ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                            : "border-slate-200 bg-slate-50 text-slate-400",
-                      )}
-                    >
-                      {isComplete ? <Check size={10} /> : index + 1}
-                    </span>
-                    <span className="hidden sm:inline">{label}</span>
-                  </div>
-                );
-              },
-            )}
+                    {isComplete ? <Check size={10} /> : index + 1}
+                  </span>
+                  <span className="hidden sm:inline">{label}</span>
+                </div>
+              );
+            })}
           </div>
 
           {/* Quick Metrics */}
@@ -192,13 +208,17 @@ export function AcademicStructurePlanner({
               <span className="text-[10px] text-slate-450 uppercase tracking-wider font-semibold block">
                 Programs / levels
               </span>
-              <strong className="block text-lg font-bold text-slate-800 mt-0.5">{plan.length}</strong>
+              <strong className="block text-lg font-bold text-slate-800 mt-0.5">
+                {plan.length}
+              </strong>
             </Card>
             <Card className="text-center p-3 bg-slate-50 border-slate-200">
               <span className="text-[10px] text-slate-450 uppercase tracking-wider font-semibold block">
                 Classes / semesters
               </span>
-              <strong className="block text-lg font-bold text-slate-800 mt-0.5">{plannedClasses}</strong>
+              <strong className="block text-lg font-bold text-slate-800 mt-0.5">
+                {plannedClasses}
+              </strong>
             </Card>
           </div>
 
@@ -226,8 +246,13 @@ export function AcademicStructurePlanner({
 
               <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                 {plan.map((row, index) => (
-                  <div key={row.id} className="flex gap-2.5 items-end p-3 bg-slate-50 border border-slate-200 rounded-md">
-                    <span className="text-xs font-semibold text-slate-400 w-5 text-center">{index + 1}</span>
+                  <div
+                    key={row.id}
+                    className="flex gap-2.5 items-end p-3 bg-slate-50 border border-slate-200 rounded-md"
+                  >
+                    <span className="text-xs font-semibold text-slate-400 w-5 text-center">
+                      {index + 1}
+                    </span>
                     <div className="flex-1 space-y-1">
                       <Label className="text-xs">
                         {academicUnitType === "SCHOOL" ? "School level" : "Program"}
@@ -252,7 +277,12 @@ export function AcademicStructurePlanner({
                 ))}
               </div>
 
-              <Button variant="outline" size="sm" onClick={() => addProgram()} className="w-full h-8">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addProgram()}
+                className="w-full h-8"
+              >
                 <Plus size={14} /> Add another {academicUnitType === "SCHOOL" ? "level" : "program"}
               </Button>
             </div>
@@ -262,11 +292,18 @@ export function AcademicStructurePlanner({
           {step === 2 && (
             <div className="space-y-3.5 max-h-72 overflow-y-auto pr-1">
               {plan.map((row) => (
-                <div key={row.id} className="space-y-1.5 p-3.5 border border-slate-200 rounded-lg bg-slate-50/50">
+                <div
+                  key={row.id}
+                  className="space-y-1.5 p-3.5 border border-slate-200 rounded-lg bg-slate-50/50"
+                >
                   <div className="flex items-center justify-between">
                     <strong className="text-sm font-semibold text-slate-800">{row.program}</strong>
                     <Badge variant="secondary">
-                      {academicUnitType === "SCHOOL" ? "Classes" : academicUnitType === "PU" ? "Years" : "Semesters"}
+                      {academicUnitType === "SCHOOL"
+                        ? "Classes"
+                        : academicUnitType === "PU"
+                          ? "Years"
+                          : "Semesters"}
                     </Badge>
                   </div>
                   <textarea
@@ -285,7 +322,10 @@ export function AcademicStructurePlanner({
           {step === 3 && (
             <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
               {plan.map((row) => (
-                <div key={row.id} className="p-3 border border-slate-150 rounded-lg bg-white space-y-1">
+                <div
+                  key={row.id}
+                  className="p-3 border border-slate-150 rounded-lg bg-white space-y-1"
+                >
                   <strong className="block text-sm text-slate-800 font-bold">{row.program}</strong>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {row.classes
@@ -293,7 +333,11 @@ export function AcademicStructurePlanner({
                       .map((val) => val.trim())
                       .filter(Boolean)
                       .map((val) => (
-                        <Badge key={val} variant="secondary" className="font-mono text-[10px] font-normal">
+                        <Badge
+                          key={val}
+                          variant="secondary"
+                          className="font-mono text-[10px] font-normal"
+                        >
                           {val}
                         </Badge>
                       ))}
@@ -304,7 +348,10 @@ export function AcademicStructurePlanner({
           )}
 
           {error && (
-            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700"
+            >
               {error}
             </div>
           )}
@@ -314,7 +361,13 @@ export function AcademicStructurePlanner({
           {/* Actions */}
           <div className="flex justify-end gap-2">
             {step === 1 ? (
-              <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => setOpen(false)}
+              >
                 Cancel
               </Button>
             ) : (
@@ -331,7 +384,11 @@ export function AcademicStructurePlanner({
                 <ArrowLeft size={14} /> Back
               </Button>
             )}
-            <Button disabled={busy} onClick={() => (step === 3 ? void apply() : continueFlow())} size="sm">
+            <Button
+              disabled={busy}
+              onClick={() => (step === 3 ? void apply() : continueFlow())}
+              size="sm"
+            >
               {busy ? "Applying..." : step === 3 ? "Apply structure" : "Continue"}
               {step !== 3 && <ArrowRight size={14} className="ml-1" />}
             </Button>

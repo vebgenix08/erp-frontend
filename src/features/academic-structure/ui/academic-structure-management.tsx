@@ -1,11 +1,4 @@
-import {
-  ArrowRight,
-  FolderTree,
-  GraduationCap,
-  Layers3,
-  Plus,
-  School,
-} from "lucide-react";
+import { ArrowRight, FolderTree, GraduationCap, Layers3, Plus, School } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "../../../shared/ui/badge";
@@ -69,7 +62,7 @@ export function AcademicStructureManagement() {
         const active = records.filter((record) => record.status === "ACTIVE");
         setAcademicUnits(active);
         setAcademicUnitId((current) =>
-          active.some((record) => record.id === current) ? current : active[0]?.id ?? "",
+          active.some((record) => record.id === current) ? current : (active[0]?.id ?? ""),
         );
       })
       .catch((value) =>
@@ -160,7 +153,9 @@ export function AcademicStructureManagement() {
       setCreateTarget(null);
       await load();
     } catch (value) {
-      setError(value instanceof Error ? value.message : `Unable to create ${targetLabel[createTarget]}`);
+      setError(
+        value instanceof Error ? value.message : `Unable to create ${targetLabel[createTarget]}`,
+      );
     } finally {
       setBusy(false);
     }
@@ -169,7 +164,12 @@ export function AcademicStructureManagement() {
   if (campusLoading || loading) return <LoadingState label="Loading academic structure" />;
   if (campusError) return <ErrorState message={campusError} />;
   if (!selectedCampus) {
-    return <EmptyState title="Create a campus first" description="Academic setup belongs to an active campus." />;
+    return (
+      <EmptyState
+        title="Create a campus first"
+        description="Academic setup belongs to an active campus."
+      />
+    );
   }
   if (!academicUnits.length) {
     return (
@@ -196,7 +196,11 @@ export function AcademicStructureManagement() {
             onChange={(event) => setAcademicUnitId(event.target.value)}
             className="h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800"
           >
-            {academicUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+            {academicUnits.map((unit) => (
+              <option key={unit.id} value={unit.id}>
+                {unit.name}
+              </option>
+            ))}
           </select>
           <AcademicStructurePlanner
             campusId={campusId}
@@ -214,7 +218,10 @@ export function AcademicStructureManagement() {
       </header>
 
       {error ? (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
+        <div
+          role="alert"
+          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700"
+        >
           {error}
         </div>
       ) : null}
@@ -252,25 +259,40 @@ export function AcademicStructureManagement() {
                       </span>
                       <div>
                         <p className="text-sm font-bold text-slate-900">{program.name}</p>
-                        <p className="text-[11px] text-slate-500">{programClasses.length} classes, years or semesters</p>
+                        <p className="text-[11px] text-slate-500">
+                          {programClasses.length} classes, years or semesters
+                        </p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => openCreate("class", program.id)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openCreate("class", program.id)}
+                    >
                       <Plus size={13} /> Add class
                     </Button>
                   </div>
 
                   <div className="mt-3 space-y-2 pl-0 sm:pl-10">
                     {programClasses.map((academicClass) => {
-                      const classSections = sections.filter((item) => item.classId === academicClass.id);
+                      const classSections = sections.filter(
+                        (item) => item.classId === academicClass.id,
+                      );
                       return (
-                        <div key={academicClass.id} className="rounded-md border border-slate-200 bg-slate-50/50 p-3">
+                        <div
+                          key={academicClass.id}
+                          className="rounded-md border border-slate-200 bg-slate-50/50 p-3"
+                        >
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
                               <School size={15} className="text-violet-600" />
                               <div>
-                                <p className="text-xs font-bold text-slate-900">{academicClass.name}</p>
-                                <p className="text-[11px] text-slate-500">{classSections.length} sections</p>
+                                <p className="text-xs font-bold text-slate-900">
+                                  {academicClass.name}
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                  {classSections.length} sections
+                                </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -282,22 +304,30 @@ export function AcademicStructureManagement() {
                                 <Plus size={13} /> Add section
                               </Button>
                               <Button asChild size="sm" variant="ghost">
-                                <Link to={`/admin/academics/class-setup?classId=${academicClass.id}`}>
+                                <Link
+                                  to={`/admin/academics/class-setup?classId=${academicClass.id}`}
+                                >
                                   Open Class Setup <ArrowRight size={13} />
                                 </Link>
                               </Button>
                             </div>
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2">
-                            {classSections.length ? classSections.map((section) => (
-                              <Link
-                                key={section.id}
-                                to={`/admin/academics/class-setup?classId=${academicClass.id}&sectionId=${section.id}`}
-                                className="inline-flex items-center gap-1.5 rounded-md border border-violet-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-50"
-                              >
-                                <Layers3 size={13} /> {section.name}
-                              </Link>
-                            )) : <span className="text-[11px] text-slate-400">No sections configured</span>}
+                            {classSections.length ? (
+                              classSections.map((section) => (
+                                <Link
+                                  key={section.id}
+                                  to={`/admin/academics/class-setup?classId=${academicClass.id}&sectionId=${section.id}`}
+                                  className="inline-flex items-center gap-1.5 rounded-md border border-violet-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-50"
+                                >
+                                  <Layers3 size={13} /> {section.name}
+                                </Link>
+                              ))
+                            ) : (
+                              <span className="text-[11px] text-slate-400">
+                                No sections configured
+                              </span>
+                            )}
                           </div>
                         </div>
                       );
@@ -323,7 +353,12 @@ export function AcademicStructureManagement() {
       >
         <form onSubmit={(event) => void submit(event)} className="space-y-4">
           {createTarget === "class" ? (
-            <FieldSelect label="Program or level" value={programId} onChange={setProgramId} options={programs} />
+            <FieldSelect
+              label="Program or level"
+              value={programId}
+              onChange={setProgramId}
+              options={programs}
+            />
           ) : null}
           {createTarget === "section" ? (
             <FieldSelect
@@ -335,7 +370,12 @@ export function AcademicStructureManagement() {
           ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="academic-record-name">Name</Label>
-            <Input id="academic-record-name" required value={name} onChange={(event) => setName(event.target.value)} />
+            <Input
+              id="academic-record-name"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="academic-record-description">Description</Label>
@@ -348,8 +388,17 @@ export function AcademicStructureManagement() {
             />
           </div>
           <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
-            <Button type="button" variant="outline" disabled={busy} onClick={() => setCreateTarget(null)}>Cancel</Button>
-            <Button type="submit" disabled={busy}>{busy ? "Creating..." : "Create"}</Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => setCreateTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? "Creating..." : "Create"}
+            </Button>
           </div>
         </form>
       </Modal>
@@ -357,22 +406,52 @@ export function AcademicStructureManagement() {
   );
 }
 
-function Summary({ label, value, icon: Icon }: { label: string; value: number; icon: typeof School }) {
+function Summary({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  icon: typeof School;
+}) {
   return (
     <div className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-3">
-      <div><p className="text-[11px] font-semibold text-slate-500">{label}</p><p className="text-xl font-bold text-slate-900">{value}</p></div>
+      <div>
+        <p className="text-[11px] font-semibold text-slate-500">{label}</p>
+        <p className="text-xl font-bold text-slate-900">{value}</p>
+      </div>
       <Icon size={18} className="text-blue-600" />
     </div>
   );
 }
 
-function FieldSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<{ id: string; name: string }> }) {
+function FieldSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ id: string; name: string }>;
+}) {
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
-      <select required value={value} onChange={(event) => onChange(event.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-xs">
+      <select
+        required
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-xs"
+      >
         <option value="">Select {label.toLowerCase()}</option>
-        {options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.name}
+          </option>
+        ))}
       </select>
     </div>
   );

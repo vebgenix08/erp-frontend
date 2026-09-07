@@ -13,12 +13,22 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFinanceDashboard, listFinancePayments } from "../api/finance-operations.api";
-import type { FinanceDashboard as Summary, FinancePayment } from "../model/finance-operations.types";
+import type {
+  FinanceDashboard as Summary,
+  FinancePayment,
+} from "../model/finance-operations.types";
 import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
 import { useSelectedAcademicYear } from "../../tenant-settings/model/selected-academic-year-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import { Button } from "../../../shared/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { Badge } from "../../../shared/ui/badge";
 
 const money = (minor: number) =>
@@ -35,11 +45,7 @@ const dateStr = (value?: string) =>
       )
     : "—";
 
-export function FinanceDashboard({
-  basePath = "/admin/finance",
-}: {
-  basePath?: string;
-}) {
+export function FinanceDashboard({ basePath = "/admin/finance" }: { basePath?: string }) {
   const navigate = useNavigate();
   const { selectedCampus } = useSelectedCampus();
   const { selectedAcademicYear } = useSelectedAcademicYear();
@@ -73,11 +79,7 @@ export function FinanceDashboard({
       })
       .catch((value) => {
         if (active)
-          setError(
-            value instanceof Error
-              ? value.message
-              : "Unable to load finance dashboard",
-          );
+          setError(value instanceof Error ? value.message : "Unable to load finance dashboard");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -102,9 +104,10 @@ export function FinanceDashboard({
   const totalOutstandingVal = data.outstandingMinor;
   const todayCollectionVal = data.collectedTodayMinor;
 
-  const collectionPercent = totalFeeOrdersVal > 0
-    ? Math.min(100, Math.round((totalCollectionsVal / totalFeeOrdersVal) * 100))
-    : 0;
+  const collectionPercent =
+    totalFeeOrdersVal > 0
+      ? Math.min(100, Math.round((totalCollectionsVal / totalFeeOrdersVal) * 100))
+      : 0;
 
   return (
     <section className="space-y-6 font-sans text-slate-900 pb-12">
@@ -113,7 +116,8 @@ export function FinanceDashboard({
         <div>
           <h1 className="text-xl font-bold text-slate-900">Finance Dashboard</h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Real-time financial overview of collections, dues, and fee orders for {selectedCampus.name} ({selectedAcademicYear.name})
+            Real-time financial overview of collections, dues, and fee orders for{" "}
+            {selectedCampus.name} ({selectedAcademicYear.name})
           </p>
         </div>
 
@@ -148,7 +152,9 @@ export function FinanceDashboard({
               <Wallet className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 leading-none">{money(totalFeeOrdersVal)}</div>
+          <div className="text-xl font-black text-slate-900 leading-none">
+            {money(totalFeeOrdersVal)}
+          </div>
           <div className="text-[11px] text-slate-500 font-medium leading-none flex items-center justify-between">
             <span>{data.openOrders + data.paidOrders} Orders</span>
             <span className="font-bold text-emerald-600">Assigned</span>
@@ -165,7 +171,9 @@ export function FinanceDashboard({
               <CreditCard className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 leading-none">{money(totalCollectionsVal)}</div>
+          <div className="text-xl font-black text-slate-900 leading-none">
+            {money(totalCollectionsVal)}
+          </div>
           <div className="text-[11px] text-slate-500 font-medium leading-none flex items-center justify-between">
             <span>{data.paymentCount} Payments</span>
             <span className="font-bold text-blue-600">Collected</span>
@@ -182,7 +190,9 @@ export function FinanceDashboard({
               <Hourglass className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 leading-none">{money(totalOutstandingVal)}</div>
+          <div className="text-xl font-black text-slate-900 leading-none">
+            {money(totalOutstandingVal)}
+          </div>
           <div className="text-[11px] text-slate-500 font-medium leading-none flex items-center justify-between">
             <span>{data.openOrders} Open Orders</span>
             <span className="font-bold text-amber-600">Pending</span>
@@ -216,7 +226,9 @@ export function FinanceDashboard({
               <Building2 className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 leading-none">{money(todayCollectionVal)}</div>
+          <div className="text-xl font-black text-slate-900 leading-none">
+            {money(todayCollectionVal)}
+          </div>
           <div className="text-[11px] text-slate-500 font-medium leading-none flex items-center justify-between">
             <span>Today's Receipts</span>
             <span className="font-bold text-sky-600">Collected</span>
@@ -239,7 +251,9 @@ export function FinanceDashboard({
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-semibold text-slate-600">
               <span>Collection Realization Rate</span>
-              <span>{money(totalCollectionsVal)} of {money(totalFeeOrdersVal)}</span>
+              <span>
+                {money(totalCollectionsVal)} of {money(totalFeeOrdersVal)}
+              </span>
             </div>
             <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
               <div
@@ -251,19 +265,37 @@ export function FinanceDashboard({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Fee Assigned</span>
-              <strong className="text-lg font-black text-slate-900 block">{money(totalFeeOrdersVal)}</strong>
-              <span className="text-[11px] text-slate-500 font-medium">{data.openOrders + data.paidOrders} fee orders</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Total Fee Assigned
+              </span>
+              <strong className="text-lg font-black text-slate-900 block">
+                {money(totalFeeOrdersVal)}
+              </strong>
+              <span className="text-[11px] text-slate-500 font-medium">
+                {data.openOrders + data.paidOrders} fee orders
+              </span>
             </div>
             <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-1">
-              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Total Collected</span>
-              <strong className="text-lg font-black text-emerald-800 block">{money(totalCollectionsVal)}</strong>
-              <span className="text-[11px] text-emerald-600 font-medium">{data.paymentCount} payments</span>
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                Total Collected
+              </span>
+              <strong className="text-lg font-black text-emerald-800 block">
+                {money(totalCollectionsVal)}
+              </strong>
+              <span className="text-[11px] text-emerald-600 font-medium">
+                {data.paymentCount} payments
+              </span>
             </div>
             <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/40 space-y-1">
-              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Total Outstanding</span>
-              <strong className="text-lg font-black text-amber-800 block">{money(totalOutstandingVal)}</strong>
-              <span className="text-[11px] text-amber-600 font-medium">{data.openOrders} pending orders</span>
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                Total Outstanding
+              </span>
+              <strong className="text-lg font-black text-amber-800 block">
+                {money(totalOutstandingVal)}
+              </strong>
+              <span className="text-[11px] text-amber-600 font-medium">
+                {data.openOrders} pending orders
+              </span>
             </div>
           </div>
         </div>
@@ -341,8 +373,12 @@ export function FinanceDashboard({
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Recent Collections ({recentPayments.length})</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Latest fee collection receipts recorded in the system</p>
+            <h2 className="text-sm font-bold text-slate-900">
+              Recent Collections ({recentPayments.length})
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Latest fee collection receipts recorded in the system
+            </p>
           </div>
           <Button
             size="sm"
@@ -360,17 +396,24 @@ export function FinanceDashboard({
               <TableRow className="border-b border-slate-200">
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Receipt No.</TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Payment ID</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3">Payment Date</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">
+                  Payment Date
+                </TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Mode</TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Ref No.</TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Amount</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">Status</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">
+                  Status
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100">
               {recentPayments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-xs text-slate-400 font-medium">
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-8 text-xs text-slate-400 font-medium"
+                  >
                     No fee collections recorded yet for this campus.
                   </TableCell>
                 </TableRow>

@@ -1,6 +1,9 @@
 import { Eye, Save, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { getFinanceReceiptTemplate, saveFinanceReceiptTemplate } from "../api/finance-operations.api";
+import {
+  getFinanceReceiptTemplate,
+  saveFinanceReceiptTemplate,
+} from "../api/finance-operations.api";
 import type { FinanceReceiptTemplate } from "../model/finance-operations.types";
 import { getInstitutionProfile } from "../../tenant-settings/api/settings.api";
 import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
@@ -70,11 +73,7 @@ export function ReceiptTemplateManagement() {
       })
       .catch((value) => {
         if (active) {
-          setError(
-            value instanceof Error
-              ? value.message
-              : "Unable to load the receipt template",
-          );
+          setError(value instanceof Error ? value.message : "Unable to load the receipt template");
         }
       })
       .finally(() => {
@@ -86,48 +85,57 @@ export function ReceiptTemplateManagement() {
   }, [selectedCampus?.id, selectedCampus?.name]);
 
   // Sync with live receipt data preview
-  const liveReceiptData: FeeReceiptData = useMemo(() => ({
-    institution: {
-      name: content.institutionName || "Institution",
-      campusName: content.campusName || "Campus",
-      address: content.address,
-      phone: content.phone,
-      email: content.email,
-      website: content.website,
-      affiliation: content.affiliation,
-    },
-    receipt: {
-      titleBanner: content.title || "RECEIPT",
-      number: "RCP/26-27/000123",
-      date: "16 May 2026",
-      mode: "UPI",
-      reference: "UPI/412512345678",
-      collectedBy: "Ramesh Kumar (Cashier)",
-    },
-    student: {
-      name: "Aarav Sharma",
-      admissionNumber: "ADM/26-27/000089",
-      registrationNumber: "REG/66/26-27/000045",
-      className: "Grade 6",
-      sectionName: "A",
-      academicYear: "2026 - 2027",
-      campusName: content.campusName || "Campus",
-    },
-    feeItems: [
-      { slNo: 1, feeHead: "Tuition Fee (Annual)", feeOrderNo: "FO/26-27/000567", totalAmount: 20000, previousPaid: 10000, paidNow: 10000, balance: 0 },
-      { slNo: 2, feeHead: "Development Fee", feeOrderNo: "FO/26-27/000567", totalAmount: 3000, previousPaid: 1500, paidNow: 1500, balance: 0 },
-      { slNo: 3, feeHead: "Activity Fee", feeOrderNo: "FO/26-27/000567", totalAmount: 2000, previousPaid: 0, paidNow: 2000, balance: 0 },
-    ],
-    summary: {
-      totalOrderAmount: 25000,
-      totalPaidBefore: 11500,
-      paidNow: 13500,
-      balanceAmount: 0,
-      amountInWords: "Rupees Twenty Five Thousand Only",
-    },
-    footerNote: content.footerText,
-    signatureLabel: content.signatureLabel,
-  }), [content]);
+  const liveReceiptData: FeeReceiptData = useMemo(
+    () => ({
+      institution: {
+        name: content.institutionName || "{{institution.name}}",
+        campusName: content.campusName || "{{campus.name}}",
+        address: content.address,
+        phone: content.phone,
+        email: content.email,
+        website: content.website,
+        affiliation: content.affiliation,
+      },
+      receipt: {
+        titleBanner: content.title || "RECEIPT",
+        number: "{{receipt.number}}",
+        date: "{{receipt.date}}",
+        mode: "{{payment.method}}",
+        reference: "{{payment.reference}}",
+        collectedBy: "{{payment.collectedBy}}",
+      },
+      student: {
+        name: "{{student.name}}",
+        admissionNumber: "{{student.admissionNumber}}",
+        registrationNumber: "{{student.registrationNumber}}",
+        className: "{{student.className}}",
+        sectionName: "{{student.sectionName}}",
+        academicYear: "{{academicYear.name}}",
+        campusName: content.campusName || "{{campus.name}}",
+      },
+      feeItems: [
+        {
+          slNo: 1,
+          feeHead: "{{feeItem.name}}",
+          feeOrderNo: "{{feeOrder.number}}",
+          totalAmount: 0,
+          previousPaid: 0,
+          paidNow: 0,
+          balance: 0,
+        },
+      ],
+      summary: {
+        totalOrderAmount: 0,
+        totalPaidBefore: 0,
+        paidNow: 0,
+        balanceAmount: 0,
+        amountInWords: "{{payment.amountInWords}}",
+      },
+      footerNote: content.footerText,
+      signatureLabel: content.signatureLabel,
+    }),
+    [content],
+  );
 
   const patch = (key: keyof ExtendedReceiptContent, val: string) => {
     setContent((prev) => ({ ...prev, [key]: val }));
@@ -160,9 +168,7 @@ export function ReceiptTemplateManagement() {
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (value) {
-      setError(
-        value instanceof Error ? value.message : "Unable to save receipt template",
-      );
+      setError(value instanceof Error ? value.message : "Unable to save receipt template");
     } finally {
       setSaving(false);
     }
@@ -179,9 +185,12 @@ export function ReceiptTemplateManagement() {
       {/* Header & Save Action */}
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-slate-900">Fee Receipt Content & Template Setup</h2>
+          <h2 className="text-base font-bold text-slate-900">
+            Fee Receipt Content & Template Setup
+          </h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            Customize header branding, affiliation line, footer terms, and signature label for printable receipts.
+            Customize header branding, affiliation line, footer terms, and signature label for
+            printable receipts.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -190,7 +199,13 @@ export function ReceiptTemplateManagement() {
               ✓ Receipt Template Saved!
             </Badge>
           )}
-          <Button onClick={handleSave} disabled={saving} size="sm" variant="brand" className="h-8 text-xs font-bold shadow-xs">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            size="sm"
+            variant="brand"
+            className="h-8 text-xs font-bold shadow-xs"
+          >
             <Save size={14} />
             {saving ? "Saving..." : "Save Receipt Template"}
           </Button>
@@ -208,13 +223,16 @@ export function ReceiptTemplateManagement() {
                   <Sparkles size={15} className="text-brand-600" /> Institution Header & Branding
                 </CardTitle>
                 <p className="mt-1 text-[11px] text-slate-500">
-                  Institution and campus details come from Organisation Profile and the active campus.
+                  Institution and campus details come from Organisation Profile and the active
+                  campus.
                 </p>
               </div>
             </CardHeader>
             <CardContent className="p-4 space-y-3.5">
               <div className="space-y-1">
-                <Label htmlFor="inst-name" className="text-xs font-bold text-slate-700">Institution Name</Label>
+                <Label htmlFor="inst-name" className="text-xs font-bold text-slate-700">
+                  Institution Name
+                </Label>
                 <Input
                   id="inst-name"
                   value={content.institutionName}
@@ -224,7 +242,9 @@ export function ReceiptTemplateManagement() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="campus-name" className="text-xs font-bold text-slate-700">Campus Name</Label>
+                <Label htmlFor="campus-name" className="text-xs font-bold text-slate-700">
+                  Campus Name
+                </Label>
                 <Input
                   id="campus-name"
                   value={content.campusName}
@@ -234,7 +254,9 @@ export function ReceiptTemplateManagement() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="address" className="text-xs font-bold text-slate-700">Address Line</Label>
+                <Label htmlFor="address" className="text-xs font-bold text-slate-700">
+                  Address Line
+                </Label>
                 <Input
                   id="address"
                   value={content.address}
@@ -245,7 +267,9 @@ export function ReceiptTemplateManagement() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="phone" className="text-xs font-bold text-slate-700">Contact Phone</Label>
+                  <Label htmlFor="phone" className="text-xs font-bold text-slate-700">
+                    Contact Phone
+                  </Label>
                   <Input
                     id="phone"
                     value={content.phone}
@@ -254,7 +278,9 @@ export function ReceiptTemplateManagement() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="email" className="text-xs font-bold text-slate-700">Email Address</Label>
+                  <Label htmlFor="email" className="text-xs font-bold text-slate-700">
+                    Email Address
+                  </Label>
                   <Input
                     id="email"
                     value={content.email}
@@ -265,7 +291,9 @@ export function ReceiptTemplateManagement() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="website" className="text-xs font-bold text-slate-700">Website URL</Label>
+                <Label htmlFor="website" className="text-xs font-bold text-slate-700">
+                  Website URL
+                </Label>
                 <Input
                   id="website"
                   value={content.website}
@@ -276,7 +304,9 @@ export function ReceiptTemplateManagement() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="affiliation" className="text-xs font-bold text-slate-700">Affiliation & Code Line</Label>
+                <Label htmlFor="affiliation" className="text-xs font-bold text-slate-700">
+                  Affiliation & Code Line
+                </Label>
                 <Input
                   id="affiliation"
                   value={content.affiliation}
@@ -290,11 +320,15 @@ export function ReceiptTemplateManagement() {
 
           <Card className="p-0 overflow-hidden">
             <CardHeader className="p-4 pb-3 border-b border-slate-100 bg-slate-50/50">
-              <CardTitle className="text-xs font-bold text-slate-900">Receipt Header & Footer Content</CardTitle>
+              <CardTitle className="text-xs font-bold text-slate-900">
+                Receipt Header & Footer Content
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-3.5">
               <div className="space-y-1">
-                <Label htmlFor="receipt-title" className="text-xs font-bold text-slate-700">Receipt Banner Title</Label>
+                <Label htmlFor="receipt-title" className="text-xs font-bold text-slate-700">
+                  Receipt Banner Title
+                </Label>
                 <Input
                   id="receipt-title"
                   value={content.title}
@@ -305,7 +339,9 @@ export function ReceiptTemplateManagement() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="footer-note" className="text-xs font-bold text-slate-700">Footer Terms / Notice</Label>
+                <Label htmlFor="footer-note" className="text-xs font-bold text-slate-700">
+                  Footer Terms / Notice
+                </Label>
                 <textarea
                   id="footer-note"
                   rows={2}
@@ -317,7 +353,9 @@ export function ReceiptTemplateManagement() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="sig-label" className="text-xs font-bold text-slate-700">Signature Label</Label>
+                <Label htmlFor="sig-label" className="text-xs font-bold text-slate-700">
+                  Signature Label
+                </Label>
                 <Input
                   id="sig-label"
                   value={content.signatureLabel}

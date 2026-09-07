@@ -25,7 +25,10 @@ export function PlatformFeatureFlagsTable({
   return (
     <div className="space-y-0 divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white overflow-hidden">
       {flags.map((flag) => (
-        <article key={flag.id} className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-slate-50">
+        <article
+          key={flag.id}
+          className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-slate-50"
+        >
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
             <Flag size={17} />
           </span>

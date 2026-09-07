@@ -32,15 +32,14 @@ const loginSchema = z.object({
 });
 type LoginForm = z.infer<typeof loginSchema>;
 
-const newPasswordSchema = z
-  .object({
-    newPassword: z
-      .string()
-      .min(12, "Password must be at least 12 characters")
-      .regex(/[A-Z]/, "Must include at least one uppercase letter")
-      .regex(/[a-z]/, "Must include at least one lowercase letter")
-      .regex(/[0-9]/, "Must include at least one number"),
-  });
+const newPasswordSchema = z.object({
+  newPassword: z
+    .string()
+    .min(12, "Password must be at least 12 characters")
+    .regex(/[A-Z]/, "Must include at least one uppercase letter")
+    .regex(/[a-z]/, "Must include at least one lowercase letter")
+    .regex(/[0-9]/, "Must include at least one number"),
+});
 type NewPasswordForm = z.infer<typeof newPasswordSchema>;
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -131,7 +130,9 @@ export function LoginPage() {
             </span>
             <div>
               <strong className="block text-xl">Vebgenix ERP</strong>
-              <span className="text-sm font-medium text-slate-300">Education operations platform</span>
+              <span className="text-sm font-medium text-slate-300">
+                Education operations platform
+              </span>
             </div>
           </div>
 
@@ -143,11 +144,16 @@ export function LoginPage() {
               Run every campus with clarity and control.
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200">
-              Secure access to admissions, academics, students, finance, staff, and institutional administration.
+              Secure access to admissions, academics, students, finance, staff, and institutional
+              administration.
             </p>
             <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/25 pt-6 text-sm font-semibold text-slate-100">
-              <span className="flex items-center gap-2"><Building2 size={18} /> Multi-campus operations</span>
-              <span className="flex items-center gap-2"><ShieldCheck size={18} /> Role and scope protection</span>
+              <span className="flex items-center gap-2">
+                <Building2 size={18} /> Multi-campus operations
+              </span>
+              <span className="flex items-center gap-2">
+                <ShieldCheck size={18} /> Role and scope protection
+              </span>
             </div>
           </div>
         </div>
@@ -167,7 +173,9 @@ export function LoginPage() {
 
           <div className="border-t-4 border-accent-600 bg-white pt-8">
             <header className="mb-8">
-              <p className="mb-2 text-sm font-bold uppercase tracking-widest text-accent-700">Secure sign in</p>
+              <p className="mb-2 text-sm font-bold uppercase tracking-widest text-accent-700">
+                Secure sign in
+              </p>
               <h2 className="text-3xl font-extrabold text-slate-900">
                 {challenge ? "Secure your account" : "Welcome back"}
               </h2>
@@ -235,7 +243,10 @@ export function LoginPage() {
                   />
 
                   <div className="flex justify-end">
-                    <Link className="text-sm font-semibold text-brand-700 hover:text-brand-800" to="/forgot-password">
+                    <Link
+                      className="text-sm font-semibold text-brand-700 hover:text-brand-800"
+                      to="/forgot-password"
+                    >
                       Forgot password?
                     </Link>
                   </div>
@@ -249,11 +260,7 @@ export function LoginPage() {
                     </div>
                   )}
 
-                  <Button
-                    type="submit"
-                    className="h-11 w-full text-base"
-                    disabled={submitting}
-                  >
+                  <Button type="submit" className="h-11 w-full text-base" disabled={submitting}>
                     {submitting ? (
                       <>
                         <Loader2 size={16} className="animate-spin" />
@@ -279,11 +286,7 @@ export function LoginPage() {
                       <FormItem>
                         <FormLabel>New password</FormLabel>
                         <FormControl>
-                          <Input
-                            type="password"
-                            autoComplete="new-password"
-                            {...field}
-                          />
+                          <Input type="password" autoComplete="new-password" {...field} />
                         </FormControl>
                         <p className="text-xs text-slate-500 mt-1">
                           12+ characters with uppercase, lowercase, and a number.
@@ -311,9 +314,7 @@ export function LoginPage() {
                           key={label}
                           className={cn(
                             "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
-                            ok
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-slate-100 text-slate-500",
+                            ok ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500",
                           )}
                         >
                           <span>{ok ? "✓" : "○"}</span>

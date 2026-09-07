@@ -1,18 +1,13 @@
 import {
   Banknote,
+  Columns3,
   FileText,
   FileSpreadsheet,
   RotateCcw,
   Search,
   WalletCards,
 } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type FormEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { listClasses } from "../../academic-structure/api/academic-structure.api";
 import type { AcademicClass } from "../../academic-structure/model/academic-structure.types";
@@ -21,6 +16,7 @@ import {
   exportRowsToPdf,
   type ExportColumn,
 } from "../../../shared/lib/tabular-export";
+import { loadColumnPreference, saveColumnPreference } from "../../../shared/lib/column-preferences";
 import { useSelectedAcademicYear } from "../../tenant-settings/model/selected-academic-year-provider";
 import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
 import {
@@ -38,26 +34,60 @@ import type {
   PaymentMethod,
 } from "../model/finance-operations.types";
 import { downloadReceiptPdf, printReceiptPdf, type ReceiptCopyMode } from "../lib/receipt-document";
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from "../../../shared/ui/page-state";
+import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import { Modal } from "../../../shared/ui/modal";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
 import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
 import { ServerPagination } from "../../../shared/ui/server-pagination";
 
 type Mode = "collections" | "outstanding" | "receipts";
+type OrderColumnId =
+  | "student"
+  | "class"
+  | "order"
+  | "structure"
+  | "policy"
+  | "total"
+  | "paid"
+  | "balance"
+  | "status";
+type ReceiptColumnId = "receipt" | "student" | "paid" | "reversed" | "method" | "status" | "date";
+type FinanceColumnId = OrderColumnId | ReceiptColumnId;
+
+const orderColumns: Array<{ id: OrderColumnId; label: string }> = [
+  { id: "student", label: "Student" },
+  { id: "class", label: "Class" },
+  { id: "order", label: "Fee order" },
+  { id: "structure", label: "Structure" },
+  { id: "policy", label: "Collection policy" },
+  { id: "total", label: "Total" },
+  { id: "paid", label: "Paid" },
+  { id: "balance", label: "Balance" },
+  { id: "status", label: "Status" },
+];
+const receiptColumns: Array<{ id: ReceiptColumnId; label: string }> = [
+  { id: "receipt", label: "Receipt" },
+  { id: "student", label: "Student" },
+  { id: "paid", label: "Paid" },
+  { id: "reversed", label: "Reversed" },
+  { id: "method", label: "Method" },
+  { id: "status", label: "Status" },
+  { id: "date", label: "Date" },
+];
 
 const money = (minor: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
-    minor / 100,
-  );
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(minor / 100);
 
 const date = (value: string) =>
   new Intl.DateTimeFormat("en-IN", {
@@ -66,6 +96,10 @@ const date = (value: string) =>
   }).format(new Date(value));
 
 export function FinanceOperations({ mode }: { mode: Mode }) {
+  return <FinanceOperationsContent key={mode} mode={mode} />;
+}
+
+function FinanceOperationsContent({ mode }: { mode: Mode }) {
   const { selectedCampus } = useSelectedCampus();
   const { selectedAcademicYear } = useSelectedAcademicYear();
   const [orders, setOrders] = useState<FeeOrder[]>([]);
@@ -90,6 +124,18 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
   const [selectedOrders, setSelectedOrders] = useState<Map<string, FeeOrder>>(new Map());
   const [exportScope, setExportScope] = useState<"FILTERED" | "SELECTED">("FILTERED");
   const [exporting, setExporting] = useState(false);
+  const financeColumns = mode === "receipts" ? receiptColumns : orderColumns;
+  const financeColumnPreferenceKey = `vebgenix.finance.${mode}.columns.v2`;
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [selectedColumnIds, setSelectedColumnIds] = useState<FinanceColumnId[]>(() =>
+    loadColumnPreference(
+      financeColumnPreferenceKey,
+      financeColumns.map((column) => column.id),
+      financeColumns.map((column) => column.id),
+      mode === "receipts" ? ["receipt", "student"] : ["student", "class"],
+    ),
+  );
+  const visibleColumnIds = useMemo(() => new Set(selectedColumnIds), [selectedColumnIds]);
 
   const [selected, setSelected] = useState<FeeOrder | null>(null);
   const [amount, setAmount] = useState("");
@@ -97,9 +143,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
   const [reference, setReference] = useState("");
   const [paymentNote, setPaymentNote] = useState("");
   const [adjustAllocation, setAdjustAllocation] = useState(false);
-  const [manualAllocation, setManualAllocation] = useState<
-    Record<string, string>
-  >({});
+  const [manualAllocation, setManualAllocation] = useState<Record<string, string>>({});
   const [collectionRequestId, setCollectionRequestId] = useState("");
 
   const [receipt, setReceipt] = useState<FinanceReceipt | null>(null);
@@ -145,13 +189,24 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
         setTotal(result.total);
       }
     } catch (value) {
-      setError(
-        value instanceof Error ? value.message : "Unable to load financial records",
-      );
+      setError(value instanceof Error ? value.message : "Unable to load financial records");
     } finally {
       setLoading(false);
     }
-  }, [classId, mode, orderStatus, page, pageSize, paidFrom, paidTo, receiptMethod, receiptStatus, search, selectedAcademicYear, selectedCampus]);
+  }, [
+    classId,
+    mode,
+    orderStatus,
+    page,
+    pageSize,
+    paidFrom,
+    paidTo,
+    receiptMethod,
+    receiptStatus,
+    search,
+    selectedAcademicYear,
+    selectedCampus,
+  ]);
 
   useEffect(() => {
     void load();
@@ -170,7 +225,22 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
   useEffect(() => {
     setSelectedOrders(new Map());
     setPage(1);
-  }, [classId, mode, orderStatus, paidFrom, paidTo, receiptMethod, receiptStatus, search, selectedAcademicYear?.id, selectedCampus?.id]);
+  }, [
+    classId,
+    mode,
+    orderStatus,
+    paidFrom,
+    paidTo,
+    receiptMethod,
+    receiptStatus,
+    search,
+    selectedAcademicYear?.id,
+    selectedCampus?.id,
+  ]);
+
+  useEffect(() => {
+    saveColumnPreference(financeColumnPreferenceKey, selectedColumnIds);
+  }, [financeColumnPreferenceKey, selectedColumnIds]);
 
   const classNameById = useMemo(
     () => new Map(classes.map((item) => [item.id, item.name])),
@@ -178,7 +248,10 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
   );
 
   const outstandingOrders = useMemo(
-    () => orders.filter((item) => item.balanceMinor > 0 && item.status !== "CANCELLED" && item.status !== "CLOSED"),
+    () =>
+      orders.filter(
+        (item) => item.balanceMinor > 0 && item.status !== "CANCELLED" && item.status !== "CLOSED",
+      ),
     [orders],
   );
 
@@ -197,7 +270,12 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
         limit: 100,
         offset,
       });
-      all.push(...batch.items.filter((item) => item.balanceMinor > 0 && item.status !== "CANCELLED" && item.status !== "CLOSED"));
+      all.push(
+        ...batch.items.filter(
+          (item) =>
+            item.balanceMinor > 0 && item.status !== "CANCELLED" && item.status !== "CLOSED",
+        ),
+      );
       if (batch.items.length < 100) return all;
     }
   }
@@ -207,20 +285,56 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
     setError(null);
     try {
       const rows =
-        exportScope === "SELECTED"
-          ? [...selectedOrders.values()]
-          : await getFilteredFeeOrders();
+        exportScope === "SELECTED" ? [...selectedOrders.values()] : await getFilteredFeeOrders();
       if (!rows.length) throw new Error("No fee records are available to export");
-      const columns: ExportColumn<FeeOrder>[] = [
-        { header: "Student", value: (row) => row.studentName, width: 24 },
-        { header: "Class", value: (row) => classNameById.get(row.classId) ?? "—", width: 15 },
-        { header: "Fee Order", value: (row) => row.orderNumber, width: 20 },
-        { header: "Structure", value: (row) => row.structureName, width: 26 },
-        { header: "Total", value: (row) => row.totalMinor / 100, width: 14 },
-        { header: "Paid", value: (row) => row.paidMinor / 100, width: 14 },
-        { header: "Balance", value: (row) => row.balanceMinor / 100, width: 14 },
-        { header: "Status", value: (row) => row.status, width: 16 },
-      ];
+      const columns = (
+        [
+          {
+            id: "student",
+            header: "Student",
+            value: (row: FeeOrder) => row.studentName,
+            width: 24,
+          },
+          {
+            id: "class",
+            header: "Class",
+            value: (row: FeeOrder) => classNameById.get(row.classId) ?? "—",
+            width: 15,
+          },
+          {
+            id: "order",
+            header: "Fee Order",
+            value: (row: FeeOrder) => row.orderNumber,
+            width: 20,
+          },
+          {
+            id: "structure",
+            header: "Structure",
+            value: (row: FeeOrder) => row.structureName,
+            width: 26,
+          },
+          {
+            id: "policy",
+            header: "Collection Policy",
+            value: (row: FeeOrder) => row.collectionPolicy.replaceAll("_", " "),
+            width: 18,
+          },
+          {
+            id: "total",
+            header: "Total",
+            value: (row: FeeOrder) => row.totalMinor / 100,
+            width: 14,
+          },
+          { id: "paid", header: "Paid", value: (row: FeeOrder) => row.paidMinor / 100, width: 14 },
+          {
+            id: "balance",
+            header: "Balance",
+            value: (row: FeeOrder) => row.balanceMinor / 100,
+            width: 14,
+          },
+          { id: "status", header: "Status", value: (row: FeeOrder) => row.status, width: 16 },
+        ] satisfies Array<ExportColumn<FeeOrder> & { id: OrderColumnId }>
+      ).filter((column) => visibleColumnIds.has(column.id));
       const suffix = exportScope === "SELECTED" ? "selected" : "filtered";
       if (format === "XLSX")
         await exportRowsToExcel(`fee-records-${suffix}`, "Fee Records", columns, rows);
@@ -256,11 +370,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
     event.preventDefault();
     if (!selected) return;
     const minor = Math.round(Number(amount) * 100);
-    if (
-      !Number.isSafeInteger(minor) ||
-      minor <= 0 ||
-      minor > selected.balanceMinor
-    ) {
+    if (!Number.isSafeInteger(minor) || minor <= 0 || minor > selected.balanceMinor) {
       setError(`Enter an amount between ${money(1)} and ${money(selected.balanceMinor)}`);
       return;
     }
@@ -268,27 +378,20 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
       ? selected.charges
           .map((charge) => ({
             chargeId: charge.id,
-            amountMinor: Math.round(
-              Number(manualAllocation[charge.id] ?? "0") * 100,
-            ),
+            amountMinor: Math.round(Number(manualAllocation[charge.id] ?? "0") * 100),
           }))
           .filter((allocation) => allocation.amountMinor > 0)
       : undefined;
     if (
       chargeAllocations &&
-      chargeAllocations.reduce(
-        (sum, allocation) => sum + allocation.amountMinor,
-        0,
-      ) !== minor
+      chargeAllocations.reduce((sum, allocation) => sum + allocation.amountMinor, 0) !== minor
     ) {
       setError("Adjusted allocation must equal the amount received");
       return;
     }
     if (
       chargeAllocations?.some((allocation) => {
-        const charge = selected.charges.find(
-          (item) => item.id === allocation.chargeId,
-        );
+        const charge = selected.charges.find((item) => item.id === allocation.chargeId);
         return !charge || allocation.amountMinor > charge.balanceMinor;
       })
     ) {
@@ -317,7 +420,9 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
       await load();
       setReceipt(await getFinanceReceipt(payload.id));
     } catch (value) {
-      setError(value instanceof Error ? value.message : "Payment collection could not be completed");
+      setError(
+        value instanceof Error ? value.message : "Payment collection could not be completed",
+      );
     } finally {
       setBusy(false);
     }
@@ -335,9 +440,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
   function beginReview(payment: FinancePayment) {
     setReviewPayment(payment);
     setAdjustmentType("VOID");
-    setAdjustmentAmount(
-      ((payment.amountMinor - payment.reversedMinor) / 100).toFixed(2),
-    );
+    setAdjustmentAmount(((payment.amountMinor - payment.reversedMinor) / 100).toFixed(2));
     setAdjustmentReason("");
     setError(null);
   }
@@ -379,9 +482,8 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
   }
 
   const reviewLedgerReady =
-    reviewPayment?.allocations.every(
-      (allocation) => allocation.chargeAllocations.length > 0,
-    ) ?? false;
+    reviewPayment?.allocations.every((allocation) => allocation.chargeAllocations.length > 0) ??
+    false;
 
   const parsedCollectionMinor = Math.round(Number(amount || "0") * 100);
   const automaticAllocationPreview = useMemo(() => {
@@ -402,9 +504,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
             .sort((a, b) => a.sequence - b.sequence)
             .map((charge) => ({
               ...charge,
-              paidNowMinor: Math.round(
-                Number(manualAllocation[charge.id] ?? "0") * 100,
-              ),
+              paidNowMinor: Math.round(Number(manualAllocation[charge.id] ?? "0") * 100),
             }))
         : automaticAllocationPreview,
     [adjustAllocation, automaticAllocationPreview, manualAllocation, selected],
@@ -463,22 +563,40 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
             >
               <option value="">All methods</option>
               {["CASH", "CARD", "UPI", "BANK_TRANSFER", "CHEQUE", "ONLINE"].map((value) => (
-                <option key={value} value={value}>{value.replaceAll("_", " ")}</option>
+                <option key={value} value={value}>
+                  {value.replaceAll("_", " ")}
+                </option>
               ))}
             </select>
             <select
               aria-label="Filter receipt status"
               value={receiptStatus}
-              onChange={(event) => setReceiptStatus(event.target.value as FinancePayment["status"] | "")}
+              onChange={(event) =>
+                setReceiptStatus(event.target.value as FinancePayment["status"] | "")
+              }
               className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700"
             >
               <option value="">All statuses</option>
               {["SUCCESS", "PARTIALLY_REFUNDED", "VOIDED", "REFUNDED"].map((value) => (
-                <option key={value} value={value}>{value.replaceAll("_", " ")}</option>
+                <option key={value} value={value}>
+                  {value.replaceAll("_", " ")}
+                </option>
               ))}
             </select>
-            <Input aria-label="Paid from" type="date" value={paidFrom} onChange={(event) => setPaidFrom(event.target.value)} className="w-auto" />
-            <Input aria-label="Paid to" type="date" value={paidTo} onChange={(event) => setPaidTo(event.target.value)} className="w-auto" />
+            <Input
+              aria-label="Paid from"
+              type="date"
+              value={paidFrom}
+              onChange={(event) => setPaidFrom(event.target.value)}
+              className="w-auto"
+            />
+            <Input
+              aria-label="Paid to"
+              type="date"
+              value={paidTo}
+              onChange={(event) => setPaidTo(event.target.value)}
+              className="w-auto"
+            />
           </>
         )}
       </header>
@@ -486,7 +604,10 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+          />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -561,7 +682,61 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
             </Button>
           </>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          aria-expanded={columnsOpen}
+          onClick={() => setColumnsOpen((current) => !current)}
+        >
+          <Columns3 size={15} /> Columns ({selectedColumnIds.length})
+        </Button>
       </div>
+
+      {columnsOpen && (
+        <div
+          className="border-y border-slate-200 bg-white px-4 py-3"
+          aria-label="Finance table columns"
+        >
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold text-slate-800">Visible finance columns</p>
+              <p className="text-[11px] text-slate-500">
+                Selections are retained for this finance page after refresh.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedColumnIds(financeColumns.map((column) => column.id))}
+            >
+              Select all
+            </Button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {financeColumns.map((column) => (
+              <label
+                key={column.id}
+                className="flex cursor-pointer items-center gap-2 rounded border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={visibleColumnIds.has(column.id)}
+                  onChange={() =>
+                    setSelectedColumnIds((current) => {
+                      if (current.includes(column.id) && current.length === 1) return current;
+                      return current.includes(column.id)
+                        ? current.filter((item) => item !== column.id)
+                        : [...current, column.id];
+                    })
+                  }
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                {column.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error ? (
         <ErrorState message={error} retry={() => void load()} />
@@ -572,6 +747,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
       ) : mode === "receipts" ? (
         <ReceiptTable
           payments={payments}
+          visibleColumns={visibleColumnIds}
           openReceipt={openReceipt}
           reviewPayment={beginReview}
         />
@@ -582,6 +758,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
           selected={selectedOrders}
           toggleOrder={toggleOrder}
           setSelected={setSelectedOrders}
+          visibleColumns={visibleColumnIds}
           {...(mode === "collections" ? { collect: beginCollection } : {})}
         />
       )}
@@ -591,7 +768,10 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
           pageSize={pageSize}
           total={total}
           onPageChange={setPage}
-          onPageSizeChange={(value) => { setPageSize(value); setPage(1); }}
+          onPageSizeChange={(value) => {
+            setPageSize(value);
+            setPage(1);
+          }}
         />
       ) : null}
 
@@ -615,21 +795,15 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
           <div className="grid grid-cols-3 gap-3 border-y border-slate-200 py-4 text-sm">
             <div>
               <span className="block text-xs text-slate-500">Order total</span>
-              <strong className="text-slate-900">
-                {money(selected?.totalMinor ?? 0)}
-              </strong>
+              <strong className="text-slate-900">{money(selected?.totalMinor ?? 0)}</strong>
             </div>
             <div>
               <span className="block text-xs text-slate-500">Total paid</span>
-              <strong className="text-slate-900">
-                {money(selected?.paidMinor ?? 0)}
-              </strong>
+              <strong className="text-slate-900">{money(selected?.paidMinor ?? 0)}</strong>
             </div>
             <div>
               <span className="block text-xs text-slate-500">Balance</span>
-              <strong className="text-slate-900">
-                {money(selected?.balanceMinor ?? 0)}
-              </strong>
+              <strong className="text-slate-900">{money(selected?.balanceMinor ?? 0)}</strong>
             </div>
             <p className="col-span-3 text-xs text-slate-500">
               {selected?.orderNumber} · {selected?.structureName} ·{" "}
@@ -695,9 +869,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
             <div className="space-y-1.5 sm:col-span-2">
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="col-note">Note (optional)</Label>
-                <span className="text-xs text-slate-400">
-                  {paymentNote.length}/500
-                </span>
+                <span className="text-xs text-slate-400">{paymentNote.length}/500</span>
               </div>
               <textarea
                 id="col-note"
@@ -714,12 +886,9 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
           <div className="space-y-3 border-t border-slate-200 pt-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <strong className="block text-sm text-slate-900">
-                  Allocation preview
-                </strong>
+                <strong className="block text-sm text-slate-900">Allocation preview</strong>
                 <span className="text-xs text-slate-500">
-                  Automatic allocation follows the priority saved in the fee
-                  structure.
+                  Automatic allocation follows the priority saved in the fee structure.
                 </span>
               </div>
               <Button
@@ -732,9 +901,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
                     Object.fromEntries(
                       automaticAllocationPreview.map((charge) => [
                         charge.id,
-                        charge.paidNowMinor
-                          ? (charge.paidNowMinor / 100).toFixed(2)
-                          : "",
+                        charge.paidNowMinor ? (charge.paidNowMinor / 100).toFixed(2) : "",
                       ]),
                     ),
                   );
@@ -757,9 +924,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
                 <TableBody>
                   {allocationPreview.map((charge) => (
                     <TableRow key={charge.id}>
-                      <TableCell className="font-semibold">
-                        {charge.label}
-                      </TableCell>
+                      <TableCell className="font-semibold">{charge.label}</TableCell>
                       <TableCell>{money(charge.amountMinor)}</TableCell>
                       <TableCell>{money(charge.paidMinor)}</TableCell>
                       <TableCell>{money(charge.balanceMinor)}</TableCell>
@@ -800,12 +965,7 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
               </span>
               <strong className="text-slate-900">
                 Balance after payment:{" "}
-                {money(
-                  Math.max(
-                    0,
-                    (selected?.balanceMinor ?? 0) - parsedCollectionMinor,
-                  ),
-                )}
+                {money(Math.max(0, (selected?.balanceMinor ?? 0) - parsedCollectionMinor))}
               </strong>
             </div>
           </div>
@@ -837,40 +997,51 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
             <ReceiptDocument receipt={receipt} />
             <Separator />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1" aria-label="Receipt copies">
-                <button type="button" onClick={() => setReceiptCopies("student")} className={`rounded px-3 py-1.5 text-xs font-semibold ${receiptCopies === "student" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}>Student copy</button>
-                <button type="button" onClick={() => setReceiptCopies("both")} className={`rounded px-3 py-1.5 text-xs font-semibold ${receiptCopies === "both" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}>Student + office</button>
+              <div
+                className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1"
+                aria-label="Receipt copies"
+              >
+                <button
+                  type="button"
+                  onClick={() => setReceiptCopies("student")}
+                  className={`rounded px-3 py-1.5 text-xs font-semibold ${receiptCopies === "student" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+                >
+                  Student copy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReceiptCopies("both")}
+                  className={`rounded px-3 py-1.5 text-xs font-semibold ${receiptCopies === "both" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+                >
+                  Student + office
+                </button>
               </div>
               <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  void printReceipt(receipt, receiptCopies).catch((cause) =>
-                    setError(
-                      cause instanceof Error
-                        ? cause.message
-                        : "Receipt could not be printed",
-                    ),
-                  )
-                }
-              >
-                Print
-              </Button>
-              <Button
-                size="sm"
-                onClick={() =>
-                  void downloadReceipt(receipt, receiptCopies).catch((cause) =>
-                    setError(
-                      cause instanceof Error
-                        ? cause.message
-                        : "Receipt could not be downloaded",
-                    ),
-                  )
-                }
-              >
-                Download
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    void printReceipt(receipt, receiptCopies).catch((cause) =>
+                      setError(
+                        cause instanceof Error ? cause.message : "Receipt could not be printed",
+                      ),
+                    )
+                  }
+                >
+                  Print
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    void downloadReceipt(receipt, receiptCopies).catch((cause) =>
+                      setError(
+                        cause instanceof Error ? cause.message : "Receipt could not be downloaded",
+                      ),
+                    )
+                  }
+                >
+                  Download
+                </Button>
               </div>
             </div>
           </div>
@@ -891,7 +1062,9 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
         <form onSubmit={(event) => void submitAdjustment(event)} className="space-y-4">
           <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm space-y-1">
             <span className="block text-slate-400 font-medium">Original payment</span>
-            <strong className="block text-xl text-slate-900">{money(reviewPayment?.amountMinor ?? 0)}</strong>
+            <strong className="block text-xl text-slate-900">
+              {money(reviewPayment?.amountMinor ?? 0)}
+            </strong>
             <span className="block text-xs text-slate-500">
               {money(reviewPayment?.reversedMinor ?? 0)} reversed ·{" "}
               {money((reviewPayment?.amountMinor ?? 0) - (reviewPayment?.reversedMinor ?? 0))}{" "}
@@ -900,8 +1073,12 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
           </div>
 
           {!reviewLedgerReady && (
-            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-705">
-              This payment predates charge-level allocation tracking. Automated correction is blocked.
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-705"
+            >
+              This payment predates charge-level allocation tracking. Automated correction is
+              blocked.
             </div>
           )}
 
@@ -944,7 +1121,8 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
             </div>
           ) : (
             <p className="text-xs text-slate-500 leading-normal bg-slate-50 border border-slate-200 rounded-md p-3">
-              Voiding restores the entire remaining payment to the original fee order. It does not delete the payment or receipt.
+              Voiding restores the entire remaining payment to the original fee order. It does not
+              delete the payment or receipt.
             </p>
           )}
 
@@ -968,7 +1146,11 @@ export function FinanceOperations({ mode }: { mode: Mode }) {
               variant="destructive"
               disabled={busy || !reviewLedgerReady || adjustmentReason.trim().length < 10}
             >
-              {busy ? "Processing..." : adjustmentType === "VOID" ? "Confirm void" : "Confirm refund"}
+              {busy
+                ? "Processing..."
+                : adjustmentType === "VOID"
+                  ? "Confirm void"
+                  : "Confirm refund"}
             </Button>
           </div>
         </form>
@@ -983,6 +1165,7 @@ function OrderTable({
   selected,
   toggleOrder,
   setSelected,
+  visibleColumns,
   collect,
 }: {
   orders: FeeOrder[];
@@ -990,6 +1173,7 @@ function OrderTable({
   selected: Map<string, FeeOrder>;
   toggleOrder: (order: FeeOrder) => void;
   setSelected: (orders: Map<string, FeeOrder>) => void;
+  visibleColumns: ReadonlySet<FinanceColumnId>;
   collect?: (order: FeeOrder) => void;
 }) {
   if (!orders.length)
@@ -1020,15 +1204,15 @@ function OrderTable({
                 className="h-4 w-4 rounded border-slate-300"
               />
             </TableHead>
-            <TableHead>Student</TableHead>
-            <TableHead>Class</TableHead>
-            <TableHead>Fee order</TableHead>
-            <TableHead>Structure</TableHead>
-            <TableHead>Collection policy</TableHead>
-            <TableHead>Total</TableHead>
-            <TableHead>Paid</TableHead>
-            <TableHead>Balance</TableHead>
-            <TableHead>Status</TableHead>
+            {visibleColumns.has("student") && <TableHead>Student</TableHead>}
+            {visibleColumns.has("class") && <TableHead>Class</TableHead>}
+            {visibleColumns.has("order") && <TableHead>Fee order</TableHead>}
+            {visibleColumns.has("structure") && <TableHead>Structure</TableHead>}
+            {visibleColumns.has("policy") && <TableHead>Collection policy</TableHead>}
+            {visibleColumns.has("total") && <TableHead>Total</TableHead>}
+            {visibleColumns.has("paid") && <TableHead>Paid</TableHead>}
+            {visibleColumns.has("balance") && <TableHead>Balance</TableHead>}
+            {visibleColumns.has("status") && <TableHead>Status</TableHead>}
             {collect ? <TableHead>Action</TableHead> : null}
           </TableRow>
         </TableHeader>
@@ -1049,40 +1233,68 @@ function OrderTable({
                     className="h-4 w-4 rounded border-slate-300"
                   />
                 </TableCell>
-                <TableCell>
-                  <Link
-                    className="font-semibold text-slate-900 hover:text-accent-600 transition-colors"
-                    to={`/admin/students/${order.studentId}`}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    {order.studentName}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-slate-650 text-sm">
-                  {classes.get(order.classId) ?? "—"}
-                </TableCell>
-                <TableCell className="text-slate-500 font-mono text-xs">{order.orderNumber}</TableCell>
-                <TableCell>
-                  <span className="block text-sm text-slate-800">{order.structureName}</span>
-                  <span className="block text-[11px] text-slate-400">{order.scheduleName}</span>
-                </TableCell>
-                <TableCell>
-                  <span className="block text-sm text-slate-800">
-                    {order.collectionPolicy === "FULL_ONLY"
-                      ? "Full balance"
-                      : "Partial allowed"}
-                  </span>
-                </TableCell>
-                <TableCell className="text-slate-650 text-sm">{money(order.totalMinor)}</TableCell>
-                <TableCell className="text-slate-650 text-sm">{money(order.paidMinor)}</TableCell>
-                <TableCell>
-                  <strong className="text-slate-900">{money(order.balanceMinor)}</strong>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={order.status === "PAID" ? "success" : order.status === "PARTIALLY_PAID" ? "brand" : "warning"}>
-                    {order.status.replaceAll("_", " ")}
-                  </Badge>
-                </TableCell>
+                {visibleColumns.has("student") && (
+                  <TableCell>
+                    <Link
+                      className="font-semibold text-slate-900 hover:text-accent-600 transition-colors"
+                      to={`/admin/students/${order.studentId}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {order.studentName}
+                    </Link>
+                  </TableCell>
+                )}
+                {visibleColumns.has("class") && (
+                  <TableCell className="text-slate-650 text-sm">
+                    {classes.get(order.classId) ?? "—"}
+                  </TableCell>
+                )}
+                {visibleColumns.has("order") && (
+                  <TableCell className="text-slate-500 font-mono text-xs">
+                    {order.orderNumber}
+                  </TableCell>
+                )}
+                {visibleColumns.has("structure") && (
+                  <TableCell>
+                    <span className="block text-sm text-slate-800">{order.structureName}</span>
+                    <span className="block text-[11px] text-slate-400">{order.scheduleName}</span>
+                  </TableCell>
+                )}
+                {visibleColumns.has("policy") && (
+                  <TableCell>
+                    <span className="block text-sm text-slate-800">
+                      {order.collectionPolicy === "FULL_ONLY" ? "Full balance" : "Partial allowed"}
+                    </span>
+                  </TableCell>
+                )}
+                {visibleColumns.has("total") && (
+                  <TableCell className="text-slate-650 text-sm">
+                    {money(order.totalMinor)}
+                  </TableCell>
+                )}
+                {visibleColumns.has("paid") && (
+                  <TableCell className="text-slate-650 text-sm">{money(order.paidMinor)}</TableCell>
+                )}
+                {visibleColumns.has("balance") && (
+                  <TableCell>
+                    <strong className="text-slate-900">{money(order.balanceMinor)}</strong>
+                  </TableCell>
+                )}
+                {visibleColumns.has("status") && (
+                  <TableCell>
+                    <Badge
+                      variant={
+                        order.status === "PAID"
+                          ? "success"
+                          : order.status === "PARTIALLY_PAID"
+                            ? "brand"
+                            : "warning"
+                      }
+                    >
+                      {order.status.replaceAll("_", " ")}
+                    </Badge>
+                  </TableCell>
+                )}
                 {collect ? (
                   <TableCell onClick={(event) => event.stopPropagation()}>
                     <Button
@@ -1109,10 +1321,12 @@ function ReceiptTable({
   payments,
   openReceipt,
   reviewPayment,
+  visibleColumns,
 }: {
   payments: FinancePayment[];
   openReceipt: (id: string) => void;
   reviewPayment: (payment: FinancePayment) => void;
+  visibleColumns: ReadonlySet<FinanceColumnId>;
 }) {
   if (!payments.length)
     return (
@@ -1127,32 +1341,52 @@ function ReceiptTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Receipt</TableHead>
-            <TableHead>Student</TableHead>
-            <TableHead>Paid</TableHead>
-            <TableHead>Reversed</TableHead>
-            <TableHead>Method</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Date</TableHead>
+            {visibleColumns.has("receipt") && <TableHead>Receipt</TableHead>}
+            {visibleColumns.has("student") && <TableHead>Student</TableHead>}
+            {visibleColumns.has("paid") && <TableHead>Paid</TableHead>}
+            {visibleColumns.has("reversed") && <TableHead>Reversed</TableHead>}
+            {visibleColumns.has("method") && <TableHead>Method</TableHead>}
+            {visibleColumns.has("status") && <TableHead>Status</TableHead>}
+            {visibleColumns.has("date") && <TableHead>Date</TableHead>}
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {payments.map((payment) => (
             <TableRow key={payment.id}>
-              <TableCell className="font-semibold text-slate-900">{payment.receiptNumber}</TableCell>
-              <TableCell className="text-slate-750">{payment.studentName}</TableCell>
-              <TableCell className="text-slate-650 text-sm">{money(payment.amountMinor)}</TableCell>
-              <TableCell className="text-slate-650 text-sm">{money(payment.reversedMinor)}</TableCell>
-              <TableCell className="text-slate-650 text-sm">
-                {payment.method.replaceAll("_", " ")}
-              </TableCell>
-              <TableCell>
-                <Badge variant={payment.status === "SUCCESS" ? "success" : "secondary"}>
-                  {payment.status.replaceAll("_", " ")}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-slate-500 text-xs">{date(payment.paidAt)}</TableCell>
+              {visibleColumns.has("receipt") && (
+                <TableCell className="font-semibold text-slate-900">
+                  {payment.receiptNumber}
+                </TableCell>
+              )}
+              {visibleColumns.has("student") && (
+                <TableCell className="text-slate-750">{payment.studentName}</TableCell>
+              )}
+              {visibleColumns.has("paid") && (
+                <TableCell className="text-slate-650 text-sm">
+                  {money(payment.amountMinor)}
+                </TableCell>
+              )}
+              {visibleColumns.has("reversed") && (
+                <TableCell className="text-slate-650 text-sm">
+                  {money(payment.reversedMinor)}
+                </TableCell>
+              )}
+              {visibleColumns.has("method") && (
+                <TableCell className="text-slate-650 text-sm">
+                  {payment.method.replaceAll("_", " ")}
+                </TableCell>
+              )}
+              {visibleColumns.has("status") && (
+                <TableCell>
+                  <Badge variant={payment.status === "SUCCESS" ? "success" : "secondary"}>
+                    {payment.status.replaceAll("_", " ")}
+                  </Badge>
+                </TableCell>
+              )}
+              {visibleColumns.has("date") && (
+                <TableCell className="text-slate-500 text-xs">{date(payment.paidAt)}</TableCell>
+              )}
               <TableCell>
                 <div className="flex items-center gap-1.5">
                   <Button
@@ -1231,9 +1465,7 @@ function ReceiptDocument({ receipt }: { receipt: FinanceReceipt }) {
           <div key={item.feeOrderId} className="py-1 text-xs">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-slate-650">{item.label}</span>
-              <strong className="text-slate-900">
-                {money(item.amountMinor)}
-              </strong>
+              <strong className="text-slate-900">{money(item.amountMinor)}</strong>
             </div>
             {item.chargeAllocations.map((charge) => (
               <div
@@ -1251,16 +1483,15 @@ function ReceiptDocument({ receipt }: { receipt: FinanceReceipt }) {
         <>
           <Separator />
           <div>
-            <span className="block text-xs font-medium text-slate-400">
-              Note
-            </span>
+            <span className="block text-xs font-medium text-slate-400">Note</span>
             <p className="mt-1 text-xs text-slate-650">{receipt.note}</p>
           </div>
         </>
       ) : null}
       <Separator />
       <footer className="text-[10px] text-slate-400 text-center leading-normal">
-        Issued {date(receipt.issuedAt)} · This receipt is generated from the authoritative payment record.
+        Issued {date(receipt.issuedAt)} · This receipt is generated from the authoritative payment
+        record.
       </footer>
     </article>
   );

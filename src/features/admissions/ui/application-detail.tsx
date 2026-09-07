@@ -26,7 +26,7 @@ import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
 const displayDate = (value?: string) =>
   value
     ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(
-        new Date(value)
+        new Date(value),
       )
     : "Not recorded";
 
@@ -104,11 +104,23 @@ export function ApplicationDetail() {
       case "DRAFT":
         return <Badge variant="secondary">Draft</Badge>;
       case "SUBMITTED":
-        return <Badge variant="default" className="bg-blue-600">Submitted</Badge>;
+        return (
+          <Badge variant="default" className="bg-blue-600">
+            Submitted
+          </Badge>
+        );
       case "APPROVED":
-        return <Badge variant="brand" className="bg-purple-600">Approved</Badge>;
+        return (
+          <Badge variant="brand" className="bg-purple-600">
+            Approved
+          </Badge>
+        );
       case "CONFIRMED":
-        return <Badge variant="success" className="bg-emerald-600">Admission Confirmed</Badge>;
+        return (
+          <Badge variant="success" className="bg-emerald-600">
+            Admission Confirmed
+          </Badge>
+        );
       case "REJECTED":
       case "CANCELLED":
         return <Badge variant="destructive">Rejected</Badge>;
@@ -129,7 +141,9 @@ export function ApplicationDetail() {
           </Button>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold text-slate-900 truncate">{record.studentName}</h1>
+              <h1 className="text-xl font-extrabold text-slate-900 truncate">
+                {record.studentName}
+              </h1>
               {getStatusBadge(record.status)}
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5 font-mono">
@@ -197,38 +211,52 @@ export function ApplicationDetail() {
 
             <dl className="grid gap-4 sm:grid-cols-2 text-xs">
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Student Full Name</dt>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Student Full Name
+                </dt>
                 <dd className="mt-1 font-extrabold text-slate-900 text-sm">{record.studentName}</dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target Academic Class</dt>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Target Academic Class
+                </dt>
                 <dd className="mt-1 font-extrabold text-blue-700 text-sm">
                   {record.academicTargetId ? label(record.academicTargetId) : "Class 10"}
                 </dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Allocated Section</dt>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Allocated Section
+                </dt>
                 <dd className="mt-1 font-bold text-slate-800">
                   {record.sectionId ? label(record.sectionId) : "Section A (Default)"}
                 </dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gender</dt>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Gender
+                </dt>
                 <dd className="mt-1 font-bold text-slate-800">{record.gender ?? "MALE"}</dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date of Birth</dt>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Date of Birth
+                </dt>
                 <dd className="mt-1 font-bold text-slate-800">
-                  {record.dateOfBirth ? new Date(record.dateOfBirth).toLocaleDateString("en-IN") : "Not recorded"}
+                  {record.dateOfBirth
+                    ? new Date(record.dateOfBirth).toLocaleDateString("en-IN")
+                    : "Not recorded"}
                 </dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Application Date</dt>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Application Date
+                </dt>
                 <dd className="mt-1 font-bold text-slate-800">{displayDate(record.createdAt)}</dd>
               </div>
             </dl>
@@ -243,28 +271,42 @@ export function ApplicationDetail() {
 
             <dl className="grid gap-4 sm:grid-cols-2 text-xs">
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Parent / Guardian Name</dt>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Parent / Guardian Name
+                </dt>
                 <dd className="mt-1 font-extrabold text-slate-900">{record.parentName}</dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Primary Contact Phone</dt>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Primary Contact Phone
+                </dt>
                 <dd className="mt-1 font-extrabold text-emerald-700">{record.phone}</dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email Address</dt>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Email Address
+                </dt>
                 <dd className="mt-1 font-bold text-slate-800">{record.email || "Not provided"}</dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Parent Relationship</dt>
-                <dd className="mt-1 font-bold text-slate-800">{record.parentRelation || "Father"}</dd>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Parent Relationship
+                </dt>
+                <dd className="mt-1 font-bold text-slate-800">
+                  {record.parentRelation || "Father"}
+                </dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100 sm:col-span-2">
-                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Residential Address</dt>
-                <dd className="mt-1 font-semibold text-slate-800">{record.address || "Main City Address"}</dd>
+                <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Residential Address
+                </dt>
+                <dd className="mt-1 font-semibold text-slate-800">
+                  {record.address || "Main City Address"}
+                </dd>
               </div>
             </dl>
           </div>
@@ -280,7 +322,9 @@ export function ApplicationDetail() {
               <dl className="grid gap-4 sm:grid-cols-2 text-xs">
                 {Object.entries(record.customFields).map(([key, value]) => (
                   <div key={key} className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                    <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label(key)}</dt>
+                    <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      {label(key)}
+                    </dt>
                     <dd className="mt-1 font-bold text-slate-900">
                       {typeof value === "boolean" ? (value ? "Yes" : "No") : String(value ?? "—")}
                     </dd>
@@ -297,7 +341,9 @@ export function ApplicationDetail() {
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
             <h3 className="text-xs font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center justify-between">
               <span>Attached Documents</span>
-              <Badge variant="secondary" className="text-[10px]">{record.documents.length}</Badge>
+              <Badge variant="secondary" className="text-[10px]">
+                {record.documents.length}
+              </Badge>
             </h3>
 
             {record.documents.length ? (
@@ -311,17 +357,25 @@ export function ApplicationDetail() {
                       <FileText className="h-4 w-4 text-slate-400 shrink-0" />
                       <div className="min-w-0">
                         <p className="font-bold text-slate-900 truncate">{doc.fileName}</p>
-                        <p className="text-[10px] text-slate-400 capitalize">{label(doc.documentType)}</p>
+                        <p className="text-[10px] text-slate-400 capitalize">
+                          {label(doc.documentType)}
+                        </p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-[11px] font-semibold text-blue-600 border-blue-200">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-[11px] font-semibold text-blue-600 border-blue-200"
+                    >
                       <Download className="h-3 w-3" />
                     </Button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-500 py-4 text-center">No documents uploaded with application.</p>
+              <p className="text-xs text-slate-500 py-4 text-center">
+                No documents uploaded with application.
+              </p>
             )}
           </div>
 
@@ -333,12 +387,21 @@ export function ApplicationDetail() {
 
             <ol className="space-y-3">
               {record.stageHistory.map((entry, index) => (
-                <li key={`${entry.status}-${entry.at}-${index}`} className="border-l-2 border-blue-200 pl-3 space-y-1">
+                <li
+                  key={`${entry.status}-${entry.at}-${index}`}
+                  className="border-l-2 border-blue-200 pl-3 space-y-1"
+                >
                   <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-xs text-slate-900">{label(entry.status)}</span>
-                    <span className="text-[10px] text-slate-400 font-medium">{displayDate(entry.at)}</span>
+                    <span className="font-extrabold text-xs text-slate-900">
+                      {label(entry.status)}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {displayDate(entry.at)}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-tight">{entry.remarks ?? "Workflow transition logged"}</p>
+                  <p className="text-[11px] text-slate-600 leading-tight">
+                    {entry.remarks ?? "Workflow transition logged"}
+                  </p>
                 </li>
               ))}
             </ol>

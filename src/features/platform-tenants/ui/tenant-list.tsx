@@ -4,15 +4,27 @@ import type { TenantRecord } from "../model/tenant.types";
 import { EmptyState } from "../../../shared/ui/page-state";
 import { Badge } from "../../../shared/ui/badge";
 import { Button } from "../../../shared/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 
 const tenantStatusVariant = (status: string) => {
   switch (status.toUpperCase()) {
-    case "ACTIVE": return "success";
-    case "SUSPENDED": return "destructive";
-    case "ONBOARDING": return "warning";
-    case "PENDING_DELETION": return "destructive";
-    default: return "secondary";
+    case "ACTIVE":
+      return "success";
+    case "SUSPENDED":
+      return "destructive";
+    case "ONBOARDING":
+      return "warning";
+    case "PENDING_DELETION":
+      return "destructive";
+    default:
+      return "secondary";
   }
 };
 

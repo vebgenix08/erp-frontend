@@ -96,7 +96,9 @@ const getSubjectStyle = (subj: string) => {
 export function ClassSetupPage() {
   const setup = useClassSetup();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") === "subjects" ? "Subjects & Teachers" : "Overview");
+  const [activeTab, setActiveTab] = useState(() =>
+    searchParams.get("tab") === "subjects" ? "Subjects & Teachers" : "Overview",
+  );
   const [timetableView, setTimetableView] = useState<"TABLE" | "LIST">("TABLE");
   const [studentSearch, setStudentSearch] = useState("");
   const [confirmRollRegeneration, setConfirmRollRegeneration] = useState(false);
@@ -122,7 +124,10 @@ export function ClassSetupPage() {
 
   if (setup.loading) {
     return (
-      <div role="status" className="rounded-xl border border-slate-200 bg-white p-8 text-center text-xs font-semibold text-slate-500">
+      <div
+        role="status"
+        className="rounded-xl border border-slate-200 bg-white p-8 text-center text-xs font-semibold text-slate-500"
+      >
         Loading Class Setup data...
       </div>
     );
@@ -133,7 +138,10 @@ export function ClassSetupPage() {
       <div className="space-y-4">
         <h1 className="text-xl font-bold text-slate-900">Class Setup</h1>
         {setup.error && (
-          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700">
+          <div
+            role="alert"
+            className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700"
+          >
             {setup.error}
           </div>
         )}
@@ -146,35 +154,51 @@ export function ClassSetupPage() {
 
   const { workspace } = setup;
   const selectedSection = workspace.sections.find((item) => item.id === setup.sectionId);
-  const sectionStudents = setup.students.filter((item) => item.enrollment.sectionId === setup.sectionId);
+  const sectionStudents = setup.students.filter(
+    (item) => item.enrollment.sectionId === setup.sectionId,
+  );
   const maleStudents = sectionStudents.filter((item) => item.gender === "MALE").length;
   const femaleStudents = sectionStudents.filter((item) => item.gender === "FEMALE").length;
   const totalStudentCount = sectionStudents.length;
 
   const classTeacher = setup.responsibilities.find(
-    (item) => item.sectionId === setup.sectionId && item.responsibilityType === "CLASS_TEACHER" && item.status === "ACTIVE"
+    (item) =>
+      item.sectionId === setup.sectionId &&
+      item.responsibilityType === "CLASS_TEACHER" &&
+      item.status === "ACTIVE",
   );
   const sectionIncharge = setup.responsibilities.find(
-    (item) => item.sectionId === setup.sectionId && item.responsibilityType === "SECTION_INCHARGE" && item.status === "ACTIVE"
+    (item) =>
+      item.sectionId === setup.sectionId &&
+      item.responsibilityType === "SECTION_INCHARGE" &&
+      item.status === "ACTIVE",
   );
 
   const classTeacherEmployee = setup.employees.find((item) => item.id === classTeacher?.employeeId);
   const classTeacherName = classTeacherEmployee?.fullName ?? "Not assigned";
   const classTeacherEmail = classTeacherEmployee?.email ?? "No email available";
 
-  const sectionInchargeEmployee = setup.employees.find((item) => item.id === sectionIncharge?.employeeId);
+  const sectionInchargeEmployee = setup.employees.find(
+    (item) => item.id === sectionIncharge?.employeeId,
+  );
   const sectionInchargeName = sectionInchargeEmployee?.fullName ?? "Not assigned";
   const sectionInchargeEmail = sectionInchargeEmployee?.email ?? "No email available";
 
   const totalSubjectCount = workspace.subjects.length;
-  const optionalSubjectCount = workspace.subjects.filter((item) => ["OPTIONAL", "ELECTIVE"].includes(item.subjectCategory)).length;
+  const optionalSubjectCount = workspace.subjects.filter((item) =>
+    ["OPTIONAL", "ELECTIVE"].includes(item.subjectCategory),
+  ).length;
   const mainSubjectCount = totalSubjectCount - optionalSubjectCount;
-  const currentPeriodSet = workspace.periodSets.find((item) => item.id === workspace.currentVersion?.periodSetId) ?? workspace.periodSets[0];
+  const currentPeriodSet =
+    workspace.periodSets.find((item) => item.id === workspace.currentVersion?.periodSetId) ??
+    workspace.periodSets[0];
   const activeDays = weekDays.filter((day) => currentPeriodSet?.applicableDays.includes(day.value));
   const sortedSlots = [...workspace.slots]
     .filter((slot) => !currentPeriodSet || slot.periodSetId === currentPeriodSet.id)
     .sort(comparePeriodSlots);
-  const sectionOfferings = workspace.offerings.filter((item) => item.sectionId === setup.sectionId && item.status === "ACTIVE");
+  const sectionOfferings = workspace.offerings.filter(
+    (item) => item.sectionId === setup.sectionId && item.status === "ACTIVE",
+  );
   const offeringMap = new Map(sectionOfferings.map((item) => [item.id, item]));
   const assignmentMap = new Map(
     workspace.assignments
@@ -205,13 +229,17 @@ export function ClassSetupPage() {
     const schedule: Partial<Record<DayKey, ScheduleCell>> = {};
     for (const day of activeDays) {
       const entry = workspace.entries.find(
-        (item) => item.sectionId === setup.sectionId && item.dayOfWeek === day.value && item.periodSlotIds.includes(slot.id),
+        (item) =>
+          item.sectionId === setup.sectionId &&
+          item.dayOfWeek === day.value &&
+          item.periodSlotIds.includes(slot.id),
       );
       if (!entry) continue;
       const offering = offeringMap.get(entry.subjectOfferingId);
-      const assignment = entry.teachingAssignmentIds
-        .map((id) => workspace.assignments.find((item) => item.id === id))
-        .find(Boolean) ?? assignmentMap.get(entry.subjectOfferingId);
+      const assignment =
+        entry.teachingAssignmentIds
+          .map((id) => workspace.assignments.find((item) => item.id === id))
+          .find(Boolean) ?? assignmentMap.get(entry.subjectOfferingId);
       const employee = setup.employees.find((item) => item.id === assignment?.employeeId);
       const subject = offering?.subjectName ?? "Subject";
       schedule[day.key] = {
@@ -232,19 +260,18 @@ export function ClassSetupPage() {
   });
   const teachingPeriodCount = sortedSlots.filter((item) => item.slotType === "TEACHING").length;
   const assignedSubjectCount = subjectRows.filter((item) => item.teacherId).length;
-  const studentsWithRollNumber = sectionStudents.filter((item) => item.enrollment.rollNumber).length;
+  const studentsWithRollNumber = sectionStudents.filter(
+    (item) => item.enrollment.rollNumber,
+  ).length;
 
   const filteredStudentsList = sectionStudents.filter(
     (item) =>
       item.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
       (item.enrollment.rollNumber ?? "").includes(studentSearch) ||
-      item.guardian.name.toLowerCase().includes(studentSearch.toLowerCase())
+      item.guardian.name.toLowerCase().includes(studentSearch.toLowerCase()),
   );
 
-  const handleOpenEditCell = (
-    dayKey: DayKey,
-    periodRow: PeriodRow
-  ) => {
+  const handleOpenEditCell = (dayKey: DayKey, periodRow: PeriodRow) => {
     const existing = periodRow.schedule?.[dayKey];
     const day = weekDays.find((item) => item.key === dayKey);
     const defaultOffering = sectionOfferings[0];
@@ -255,7 +282,12 @@ export function ClassSetupPage() {
       timeLabel: `${periodRow.label} (${periodRow.time})`,
       dayLabel: day?.fullLabel ?? dayKey,
       offeringId: existing?.offeringId ?? defaultOffering?.id ?? "",
-      teacher: existing?.teacher ?? (defaultOffering ? setup.employeeNames.get(assignmentMap.get(defaultOffering.id)?.employeeId ?? "") ?? "Teacher not assigned" : "Teacher not assigned"),
+      teacher:
+        existing?.teacher ??
+        (defaultOffering
+          ? (setup.employeeNames.get(assignmentMap.get(defaultOffering.id)?.employeeId ?? "") ??
+            "Teacher not assigned")
+          : "Teacher not assigned"),
     });
   };
 
@@ -290,9 +322,16 @@ export function ClassSetupPage() {
       <table className="w-full min-w-[580px] text-xs text-left border-collapse">
         <thead>
           <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-            <th className="p-2.5 border-r border-slate-200 w-28 text-center whitespace-nowrap">Time / Day</th>
+            <th className="p-2.5 border-r border-slate-200 w-28 text-center whitespace-nowrap">
+              Time / Day
+            </th>
             {activeDays.map((day) => (
-              <th key={day.value} className="p-2.5 border-r border-slate-200 text-center whitespace-nowrap">{day.label}</th>
+              <th
+                key={day.value}
+                className="p-2.5 border-r border-slate-200 text-center whitespace-nowrap"
+              >
+                {day.label}
+              </th>
             ))}
           </tr>
         </thead>
@@ -302,8 +341,12 @@ export function ClassSetupPage() {
               return (
                 <tr key={row.slotId} className="bg-slate-100/80 border-b border-slate-200">
                   <td className="p-2.5 font-bold text-slate-600 border-r border-slate-200 text-center bg-slate-100">
-                    <div className="text-xs font-bold leading-tight whitespace-nowrap">{row.time}</div>
-                    <div className="text-[10px] text-slate-500 font-medium leading-tight mt-0.5">{row.label}</div>
+                    <div className="text-xs font-bold leading-tight whitespace-nowrap">
+                      {row.time}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium leading-tight mt-0.5">
+                      {row.label}
+                    </div>
                   </td>
                   <td
                     colSpan={activeDays.length}
@@ -318,8 +361,12 @@ export function ClassSetupPage() {
             return (
               <tr key={row.slotId} className="hover:bg-slate-50/50">
                 <td className="p-2.5 align-middle font-semibold text-slate-700 border-r border-b border-slate-200 bg-slate-50/30 text-center">
-                  <div className="text-xs font-bold leading-tight whitespace-nowrap">{row.time}</div>
-                  <div className="text-[10px] text-slate-400 font-normal leading-tight mt-0.5">{row.label}</div>
+                  <div className="text-xs font-bold leading-tight whitespace-nowrap">
+                    {row.time}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-normal leading-tight mt-0.5">
+                    {row.label}
+                  </div>
                 </td>
 
                 {activeDays.map((day) => {
@@ -356,10 +403,14 @@ export function ClassSetupPage() {
                         aria-label={`Edit ${cell.subject} lesson`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-extrabold text-xs leading-tight">{cell.subject}</span>
+                          <span className="font-extrabold text-xs leading-tight">
+                            {cell.subject}
+                          </span>
                           <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <div className="text-[11px] font-semibold opacity-85 leading-tight">{cell.teacher}</div>
+                        <div className="text-[11px] font-semibold opacity-85 leading-tight">
+                          {cell.teacher}
+                        </div>
                       </button>
                     </td>
                   );
@@ -431,13 +482,19 @@ export function ClassSetupPage() {
   };
 
   const renderTimetableViewToggle = () => (
-    <div className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="group" aria-label="Timetable view">
+    <div
+      className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5"
+      role="group"
+      aria-label="Timetable view"
+    >
       <button
         type="button"
         aria-pressed={timetableView === "TABLE"}
         onClick={() => setTimetableView("TABLE")}
         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors ${
-          timetableView === "TABLE" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+          timetableView === "TABLE"
+            ? "bg-white text-blue-700 shadow-sm"
+            : "text-slate-500 hover:text-slate-800"
         }`}
       >
         <Table2 className="h-3.5 w-3.5" /> Table View
@@ -447,7 +504,9 @@ export function ClassSetupPage() {
         aria-pressed={timetableView === "LIST"}
         onClick={() => setTimetableView("LIST")}
         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors ${
-          timetableView === "LIST" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+          timetableView === "LIST"
+            ? "bg-white text-blue-700 shadow-sm"
+            : "text-slate-500 hover:text-slate-800"
         }`}
       >
         <List className="h-3.5 w-3.5" /> List View
@@ -515,7 +574,9 @@ export function ClassSetupPage() {
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Class Status</span>
+            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">
+              Class Status
+            </span>
             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200 whitespace-nowrap">
               {setup.selectedClass.status}
             </span>
@@ -525,13 +586,17 @@ export function ClassSetupPage() {
             onClick={() => void setup.refresh().catch(() => undefined)}
             className="h-9 px-4 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-xs whitespace-nowrap"
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${setup.busy ? "animate-spin" : ""}`} /> Refresh data
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${setup.busy ? "animate-spin" : ""}`} />{" "}
+            Refresh data
           </Button>
         </div>
       </div>
 
       {setup.error && (
-        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs">
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs"
+        >
           {setup.error}
         </div>
       )}
@@ -568,8 +633,12 @@ export function ClassSetupPage() {
             </div>
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-extrabold text-slate-900 truncate leading-tight">{classTeacherName}</div>
-            <div className="text-[10px] text-slate-500 font-medium truncate leading-tight mt-0.5">{classTeacherEmail}</div>
+            <div className="text-sm font-extrabold text-slate-900 truncate leading-tight">
+              {classTeacherName}
+            </div>
+            <div className="text-[10px] text-slate-500 font-medium truncate leading-tight mt-0.5">
+              {classTeacherEmail}
+            </div>
           </div>
         </div>
 
@@ -583,8 +652,12 @@ export function ClassSetupPage() {
             </div>
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-extrabold text-slate-900 truncate leading-tight">{sectionInchargeName}</div>
-            <div className="text-[10px] text-slate-500 font-medium truncate leading-tight mt-0.5">{sectionInchargeEmail}</div>
+            <div className="text-sm font-extrabold text-slate-900 truncate leading-tight">
+              {sectionInchargeName}
+            </div>
+            <div className="text-[10px] text-slate-500 font-medium truncate leading-tight mt-0.5">
+              {sectionInchargeEmail}
+            </div>
           </div>
         </div>
 
@@ -612,8 +685,12 @@ export function ClassSetupPage() {
               <Clock3 className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 leading-none">{teachingPeriodCount * activeDays.length}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">{teachingPeriodCount} periods × {activeDays.length} days</div>
+          <div className="text-2xl font-black text-slate-900 leading-none">
+            {teachingPeriodCount * activeDays.length}
+          </div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            {teachingPeriodCount} periods × {activeDays.length} days
+          </div>
         </div>
       </div>
 
@@ -734,7 +811,10 @@ export function ClassSetupPage() {
               </div>
 
               <div className="text-xs font-semibold text-slate-500 pt-1">
-                Total Periods: <span className="font-bold text-slate-900">{subjectRows.reduce((sum, item) => sum + item.weeklyPeriods, 0)}</span>
+                Total Periods:{" "}
+                <span className="font-bold text-slate-900">
+                  {subjectRows.reduce((sum, item) => sum + item.weeklyPeriods, 0)}
+                </span>
               </div>
             </div>
 
@@ -757,37 +837,43 @@ export function ClassSetupPage() {
                   <div className="h-7 flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">
                     Enrolled
                   </div>
-                  <div className="text-2xl font-black text-emerald-600 leading-none pb-0.5">{totalStudentCount}</div>
+                  <div className="text-2xl font-black text-emerald-600 leading-none pb-0.5">
+                    {totalStudentCount}
+                  </div>
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 flex flex-col justify-between items-center text-center h-[88px]">
                   <div className="h-7 flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">
                     Boys
                   </div>
-                  <div className="text-2xl font-black text-blue-600 leading-none pb-0.5">{maleStudents}</div>
+                  <div className="text-2xl font-black text-blue-600 leading-none pb-0.5">
+                    {maleStudents}
+                  </div>
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 flex flex-col justify-between items-center text-center h-[88px]">
                   <div className="h-7 flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">
                     Girls
                   </div>
-                  <div className="text-2xl font-black text-violet-600 leading-none pb-0.5">{femaleStudents}</div>
+                  <div className="text-2xl font-black text-violet-600 leading-none pb-0.5">
+                    {femaleStudents}
+                  </div>
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 flex flex-col justify-between items-center text-center h-[88px]">
                   <div className="h-7 flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">
                     Roll Numbers
                   </div>
-                  <div className="text-2xl font-black text-slate-800 leading-none pb-0.5">{studentsWithRollNumber}/{totalStudentCount}</div>
+                  <div className="text-2xl font-black text-slate-800 leading-none pb-0.5">
+                    {studentsWithRollNumber}/{totalStudentCount}
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <h2 className="text-xs font-bold text-slate-900 leading-tight">
-                  Section Status
-                </h2>
+                <h2 className="text-xs font-bold text-slate-900 leading-tight">Section Status</h2>
                 <span className="text-[11px] font-semibold text-slate-500">Current section</span>
               </div>
 
@@ -812,10 +898,16 @@ export function ClassSetupPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-bold text-slate-900 text-[11px] leading-tight">
-                      {workspace.currentVersion ? `${workspace.currentVersion.name} is ${workspace.currentVersion.status.toLowerCase()}` : "No timetable version generated"}
+                      {workspace.currentVersion
+                        ? `${workspace.currentVersion.name} is ${workspace.currentVersion.status.toLowerCase()}`
+                        : "No timetable version generated"}
                     </div>
                     <div className="text-[10px] text-slate-400 font-medium mt-0.5 leading-tight">
-                      {workspace.entries.filter((item) => item.sectionId === setup.sectionId).length} lessons stored for {selectedSection?.name ?? "the selected section"}
+                      {
+                        workspace.entries.filter((item) => item.sectionId === setup.sectionId)
+                          .length
+                      }{" "}
+                      lessons stored for {selectedSection?.name ?? "the selected section"}
                     </div>
                   </div>
                 </div>
@@ -852,15 +944,27 @@ export function ClassSetupPage() {
                     onClick={() => void setup.generateDraft().catch(() => undefined)}
                     className="h-8 px-3 text-xs font-semibold border-blue-200 text-blue-700 bg-blue-50/60 hover:bg-blue-100 whitespace-nowrap"
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 mr-1 ${setup.busy ? "animate-spin" : ""}`} /> Generate
+                    <RefreshCw className={`h-3.5 w-3.5 mr-1 ${setup.busy ? "animate-spin" : ""}`} />{" "}
+                    Generate
                   </Button>
                   {workspace.currentVersion?.status === "DRAFT" && (
-                    <Button size="sm" disabled={setup.busy} onClick={() => void setup.publish().catch(() => undefined)} className="h-8 px-3 text-xs">
+                    <Button
+                      size="sm"
+                      disabled={setup.busy}
+                      onClick={() => void setup.publish().catch(() => undefined)}
+                      className="h-8 px-3 text-xs"
+                    >
                       <Save className="h-3.5 w-3.5" /> Publish
                     </Button>
                   )}
                   {workspace.currentVersion?.status === "PUBLISHED" && (
-                    <Button size="sm" variant="outline" disabled={setup.busy} onClick={() => void setup.revise().catch(() => undefined)} className="h-8 px-3 text-xs">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={setup.busy}
+                      onClick={() => void setup.revise().catch(() => undefined)}
+                      className="h-8 px-3 text-xs"
+                    >
                       <Pencil className="h-3.5 w-3.5" /> Create revision
                     </Button>
                   )}
@@ -878,7 +982,9 @@ export function ClassSetupPage() {
               {timetableView === "TABLE" ? renderTimetableGridTable() : renderTimetableList()}
               {setup.generationIssues.length > 0 && (
                 <ul className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
-                  {setup.generationIssues.map((issue) => <li key={issue}>{issue}</li>)}
+                  {setup.generationIssues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
                 </ul>
               )}
 
@@ -887,15 +993,21 @@ export function ClassSetupPage() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
                     <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="font-semibold text-slate-600 whitespace-nowrap">Main Subjects</span>
+                    <span className="font-semibold text-slate-600 whitespace-nowrap">
+                      Main Subjects
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
-                    <span className="font-semibold text-slate-600 whitespace-nowrap">Optional Subjects</span>
+                    <span className="font-semibold text-slate-600 whitespace-nowrap">
+                      Optional Subjects
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="h-2.5 w-2.5 rounded-full bg-slate-400 shrink-0" />
-                    <span className="font-semibold text-slate-600 whitespace-nowrap">Break / Lunch</span>
+                    <span className="font-semibold text-slate-600 whitespace-nowrap">
+                      Break / Lunch
+                    </span>
                   </div>
                 </div>
 
@@ -920,7 +1032,8 @@ export function ClassSetupPage() {
                 Timetable ({selectedSection?.name ?? "Section"})
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Edit the subject assigned to each period for {setup.selectedClass.name} - {selectedSection?.name ?? "Section"}
+                Edit the subject assigned to each period for {setup.selectedClass.name} -{" "}
+                {selectedSection?.name ?? "Section"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -931,15 +1044,27 @@ export function ClassSetupPage() {
                 onClick={() => void setup.generateDraft().catch(() => undefined)}
                 className="h-8 px-3 text-xs font-semibold border-blue-200 text-blue-700 bg-blue-50/60 hover:bg-blue-100 whitespace-nowrap"
               >
-                <RefreshCw className={`h-3.5 w-3.5 mr-1 ${setup.busy ? "animate-spin" : ""}`} /> Generate
+                <RefreshCw className={`h-3.5 w-3.5 mr-1 ${setup.busy ? "animate-spin" : ""}`} />{" "}
+                Generate
               </Button>
               {workspace.currentVersion?.status === "DRAFT" && (
-                <Button size="sm" disabled={setup.busy} onClick={() => void setup.publish().catch(() => undefined)} className="h-8 px-3 text-xs">
+                <Button
+                  size="sm"
+                  disabled={setup.busy}
+                  onClick={() => void setup.publish().catch(() => undefined)}
+                  className="h-8 px-3 text-xs"
+                >
                   <Save className="h-3.5 w-3.5" /> Publish
                 </Button>
               )}
               {workspace.currentVersion?.status === "PUBLISHED" && (
-                <Button size="sm" variant="outline" disabled={setup.busy} onClick={() => void setup.revise().catch(() => undefined)} className="h-8 px-3 text-xs">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={setup.busy}
+                  onClick={() => void setup.revise().catch(() => undefined)}
+                  className="h-8 px-3 text-xs"
+                >
                   <Pencil className="h-3.5 w-3.5" /> Create revision
                 </Button>
               )}
@@ -957,7 +1082,9 @@ export function ClassSetupPage() {
           {timetableView === "TABLE" ? renderTimetableGridTable() : renderTimetableList()}
           {setup.generationIssues.length > 0 && (
             <ul className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
-              {setup.generationIssues.map((issue) => <li key={issue}>{issue}</li>)}
+              {setup.generationIssues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
             </ul>
           )}
 
@@ -965,15 +1092,21 @@ export function ClassSetupPage() {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
-                <span className="font-semibold text-slate-600 whitespace-nowrap">Main Subjects</span>
+                <span className="font-semibold text-slate-600 whitespace-nowrap">
+                  Main Subjects
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
-                <span className="font-semibold text-slate-600 whitespace-nowrap">Optional Subjects</span>
+                <span className="font-semibold text-slate-600 whitespace-nowrap">
+                  Optional Subjects
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-slate-400 shrink-0" />
-                <span className="font-semibold text-slate-600 whitespace-nowrap">Break / Lunch</span>
+                <span className="font-semibold text-slate-600 whitespace-nowrap">
+                  Break / Lunch
+                </span>
               </div>
             </div>
           </div>
@@ -1012,10 +1145,12 @@ export function ClassSetupPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div>
               <h2 className="text-sm font-bold text-slate-900 leading-tight">
-                Enrolled Students - {setup.selectedClass.name} ({selectedSection?.name ?? "Section"})
+                Enrolled Students - {setup.selectedClass.name} ({selectedSection?.name ?? "Section"}
+                )
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Roster of active students enrolled in {selectedSection?.name ?? "Section"} ({totalStudentCount} total)
+                Roster of active students enrolled in {selectedSection?.name ?? "Section"} (
+                {totalStudentCount} total)
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1072,7 +1207,7 @@ export function ClassSetupPage() {
                   <th className="px-3 py-3 whitespace-nowrap">Roll No.</th>
                   <th className="px-4 py-3 whitespace-nowrap">Student Name</th>
                   <th className="px-3 py-3 whitespace-nowrap">Gender</th>
-                  <th className="px-3 py-3 whitespace-nowrap">Admission No.</th>
+                  <th className="px-3 py-3 whitespace-nowrap">Registration No.</th>
                   <th className="px-3 py-3 text-center whitespace-nowrap">Status</th>
                   <th className="px-4 py-3 whitespace-nowrap">Guardian Contact</th>
                   <th className="px-3 py-3 text-right whitespace-nowrap">Actions</th>
@@ -1081,7 +1216,9 @@ export function ClassSetupPage() {
               <tbody className="divide-y divide-slate-100">
                 {filteredStudentsList.map((st) => (
                   <tr key={st.id} className="hover:bg-slate-50/60 transition-all">
-                    <td className="px-3 py-3 font-mono font-bold text-slate-700 whitespace-nowrap">{st.enrollment.rollNumber ?? "Not assigned"}</td>
+                    <td className="px-3 py-3 font-mono font-bold text-slate-700 whitespace-nowrap">
+                      {st.enrollment.rollNumber ?? "Not assigned"}
+                    </td>
                     <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">
                       <div className="flex items-center gap-2.5">
                         <div className="h-7 w-7 rounded-full bg-blue-100 text-blue-700 font-extrabold flex items-center justify-center text-xs shrink-0">
@@ -1090,8 +1227,12 @@ export function ClassSetupPage() {
                         <span>{st.name}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-3 font-medium text-slate-600 whitespace-nowrap">{st.gender}</td>
-                    <td className="px-3 py-3 font-mono font-semibold text-slate-700 whitespace-nowrap">{st.admissionNumber}</td>
+                    <td className="px-3 py-3 font-medium text-slate-600 whitespace-nowrap">
+                      {st.gender}
+                    </td>
+                    <td className="px-3 py-3 font-mono font-semibold text-slate-700 whitespace-nowrap">
+                      {st.registrationNumber || "Not assigned"}
+                    </td>
                     <td className="px-3 py-3 text-center whitespace-nowrap">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold border ${
@@ -1105,7 +1246,9 @@ export function ClassSetupPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-semibold text-slate-800 text-xs">{st.guardian.name}</div>
-                      <div className="text-[10px] text-slate-400 font-medium">{st.guardian.phone ?? st.phone}</div>
+                      <div className="text-[10px] text-slate-400 font-medium">
+                        {st.guardian.phone ?? st.phone}
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-right whitespace-nowrap">
                       <Link
@@ -1143,30 +1286,41 @@ export function ClassSetupPage() {
             sections={selectedSection ? [selectedSection] : []}
             employees={setup.teachingEmployees}
             responsibilities={setup.responsibilities}
-            studentCounts={new Map(selectedSection ? [[selectedSection.id, totalStudentCount]] : [])}
+            studentCounts={
+              new Map(selectedSection ? [[selectedSection.id, totalStudentCount]] : [])
+            }
             busy={setup.busy}
             onAssign={setup.assignSectionResponsibility}
           />
         </div>
       )}
 
-      <Dialog
-        open={confirmRollRegeneration}
-        onOpenChange={setConfirmRollRegeneration}
-      >
+      <Dialog open={confirmRollRegeneration} onOpenChange={setConfirmRollRegeneration}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Regenerate section roll numbers</DialogTitle>
             <DialogDescription>
-              This replaces every roll number in {selectedSection?.name ?? "the selected section"}. Existing references remain in audit history.
+              This replaces every roll number in {selectedSection?.name ?? "the selected section"}.
+              Existing references remain in audit history.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setConfirmRollRegeneration(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmRollRegeneration(false)}
+            >
+              Cancel
+            </Button>
             <Button
               type="button"
               disabled={setup.busy}
-              onClick={() => void setup.generateRollNumbers(true).then(() => setConfirmRollRegeneration(false)).catch(() => undefined)}
+              onClick={() =>
+                void setup
+                  .generateRollNumbers(true)
+                  .then(() => setConfirmRollRegeneration(false))
+                  .catch(() => undefined)
+              }
             >
               Regenerate roll numbers
             </Button>
@@ -1200,26 +1354,37 @@ export function ClassSetupPage() {
                 onChange={(e) => {
                   const offeringId = e.target.value;
                   const assignment = assignmentMap.get(offeringId);
-                  setEditingCell((prev) => prev ? {
-                    ...prev,
-                    offeringId,
-                    teacher: setup.employeeNames.get(assignment?.employeeId ?? "") ?? "Teacher not assigned",
-                  } : null);
+                  setEditingCell((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          offeringId,
+                          teacher:
+                            setup.employeeNames.get(assignment?.employeeId ?? "") ??
+                            "Teacher not assigned",
+                        }
+                      : null,
+                  );
                 }}
               >
                 <option value="">Select subject</option>
                 {sectionOfferings.map((offering) => (
-                  <option key={offering.id} value={offering.id}>{offering.subjectName}</option>
+                  <option key={offering.id} value={offering.id}>
+                    {offering.subjectName}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700 block">Assigned Teacher</label>
-              <div className={`${selectClass} flex items-center bg-slate-50 text-slate-600`}>{editingCell?.teacher ?? "Teacher not assigned"}</div>
-              <p className="text-[10px] text-slate-500">Teacher ownership is changed in Subjects &amp; Teachers, not per timetable cell.</p>
+              <div className={`${selectClass} flex items-center bg-slate-50 text-slate-600`}>
+                {editingCell?.teacher ?? "Teacher not assigned"}
+              </div>
+              <p className="text-[10px] text-slate-500">
+                Teacher ownership is changed in Subjects &amp; Teachers, not per timetable cell.
+              </p>
             </div>
-
           </DialogBody>
 
           <DialogFooter className="flex items-center justify-between sm:justify-between pt-3 border-t border-slate-100">

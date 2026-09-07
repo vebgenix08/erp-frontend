@@ -34,9 +34,7 @@ export async function exportRowsToExcel<Row>(
   }));
   rows.forEach((row) => {
     worksheet.addRow(
-      Object.fromEntries(
-        columns.map((column) => [column.header, column.value(row)]),
-      ),
+      Object.fromEntries(columns.map((column) => [column.header, column.value(row)])),
     );
   });
   worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };

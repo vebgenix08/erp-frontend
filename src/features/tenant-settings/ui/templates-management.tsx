@@ -79,18 +79,51 @@ const MEDIUM_OPTIONS = ["English", "Kannada", "Hindi"];
 const ACADEMIC_YEAR_OPTIONS = ["2026 - 2027", "2027 - 2028"];
 const LANGUAGE_OPTIONS = ["Kannada", "Hindi", "Sanskrit", "French"];
 const YES_NO_OPTIONS = ["Yes", "No"];
-const SOURCE_OPTIONS = ["Walk-in", "Newspaper Ad", "Social Media", "Friend / Relative", "Google Search", "School Banner"];
+const SOURCE_OPTIONS = [
+  "Walk-in",
+  "Newspaper Ad",
+  "Social Media",
+  "Friend / Relative",
+  "Google Search",
+  "School Banner",
+];
 const MARITAL_OPTIONS = ["Single", "Married"];
-const STAFF_CATEGORY_OPTIONS = ["Teaching Staff", "Non-Teaching Staff", "Administrative", "Support Staff"];
-const STAFF_TYPE_OPTIONS = ["Permanent", "Probationary", "Contractual", "Visiting Faculty"];
+const STAFF_CATEGORY_OPTIONS = [
+  "Teaching Staff",
+  "Non-Teaching Staff",
+  "Administrative",
+  "Support Staff",
+];
+const EMPLOYMENT_TYPE_OPTIONS = ["Full time", "Part time", "Contract", "Visiting"];
+const TEACHING_PROFILE_OPTIONS = [
+  "Principal",
+  "Vice Principal",
+  "Dean",
+  "Head of Department",
+  "Academic Coordinator",
+  "Teacher",
+  "Lecturer",
+  "Lab Faculty",
+  "Administrative Staff",
+  "Support Staff",
+  "Other",
+];
 const DESIGNATION_OPTIONS = [
+  "Principal",
+  "Vice Principal",
+  "Dean",
   "Senior Teacher",
   "Assistant Teacher",
   "PRT Teacher",
+  "Lecturer",
+  "Professor",
   "Head of Department",
+  "Academic Coordinator",
+  "Exam Coordinator",
   "Accountant",
   "Administrator",
   "Librarian",
+  "Lab Faculty",
   "Lab Assistant",
 ];
 const DEPARTMENT_OPTIONS = [
@@ -104,8 +137,13 @@ const DEPARTMENT_OPTIONS = [
   "Finance & Accounts",
   "Human Resources",
 ];
-const SYSTEM_ROLE_OPTIONS = ["Campus Admin", "Teacher", "Accountant", "Librarian", "Front Desk / Admissions Officer"];
-const CAMPUS_OPTIONS = ["Talabalalu Main Campus", "City Extension Campus"];
+const SYSTEM_ROLE_OPTIONS = [
+  "Campus Admin",
+  "Teacher",
+  "Accountant",
+  "Librarian",
+  "Front Desk / Admissions Officer",
+];
 
 const INITIAL_ENQUIRY_SECTIONS: FormSectionItem[] = [
   {
@@ -113,14 +151,69 @@ const INITIAL_ENQUIRY_SECTIONS: FormSectionItem[] = [
     title: "Student Details Section",
     open: true,
     fields: [
-      { id: "f1", label: "Full Name of Student", type: "Text", required: true, visible: true, order: 1, system: true },
+      {
+        id: "f1",
+        label: "Full Name of Student",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 1,
+        system: true,
+      },
       { id: "f2", label: "Date of Birth", type: "Date", required: true, visible: true, order: 2 },
-      { id: "f3", label: "Gender", type: "Dropdown", required: true, visible: true, order: 3, options: GENDER_OPTIONS },
-      { id: "f4", label: "Nationality", type: "Dropdown", required: true, visible: true, order: 4, options: NATIONALITY_OPTIONS, defaultValue: "Indian" },
-      { id: "f5", label: "Aadhar Number (Optional)", type: "Text", required: false, visible: true, order: 5 },
-      { id: "f6", label: "Current Class / Grade", type: "Dropdown", required: true, visible: true, order: 6, options: CLASS_OPTIONS },
-      { id: "f7", label: "Medium", type: "Dropdown", required: true, visible: true, order: 7, options: MEDIUM_OPTIONS },
-      { id: "f8", label: "School Currently Studying", type: "Text", required: false, visible: true, order: 8 },
+      {
+        id: "f3",
+        label: "Gender",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 3,
+        options: GENDER_OPTIONS,
+      },
+      {
+        id: "f4",
+        label: "Nationality",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 4,
+        options: NATIONALITY_OPTIONS,
+        defaultValue: "Indian",
+      },
+      {
+        id: "f5",
+        label: "Aadhar Number (Optional)",
+        type: "Text",
+        required: false,
+        visible: true,
+        order: 5,
+      },
+      {
+        id: "f6",
+        label: "Current Class / Grade",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 6,
+        options: CLASS_OPTIONS,
+      },
+      {
+        id: "f7",
+        label: "Medium",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 7,
+        options: MEDIUM_OPTIONS,
+      },
+      {
+        id: "f8",
+        label: "School Currently Studying",
+        type: "Text",
+        required: false,
+        visible: true,
+        order: 8,
+      },
     ],
   },
   {
@@ -128,10 +221,32 @@ const INITIAL_ENQUIRY_SECTIONS: FormSectionItem[] = [
     title: "Parent / Guardian Details Section",
     open: false,
     fields: [
-      { id: "f9", label: "Father / Guardian Name", type: "Text", required: true, visible: true, order: 1 },
+      {
+        id: "f9",
+        label: "Father / Guardian Name",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 1,
+      },
       { id: "f10", label: "Mother Name", type: "Text", required: false, visible: true, order: 2 },
-      { id: "f11", label: "Primary Phone Number", type: "Text", required: true, visible: true, order: 3, system: true },
-      { id: "f12", label: "Email Address", type: "Email", required: false, visible: true, order: 4 },
+      {
+        id: "f11",
+        label: "Primary Phone Number",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 3,
+        system: true,
+      },
+      {
+        id: "f12",
+        label: "Email Address",
+        type: "Email",
+        required: false,
+        visible: true,
+        order: 4,
+      },
     ],
   },
   {
@@ -139,9 +254,33 @@ const INITIAL_ENQUIRY_SECTIONS: FormSectionItem[] = [
     title: "Academic Interest Section",
     open: false,
     fields: [
-      { id: "f13", label: "Target Class / Grade", type: "Dropdown", required: true, visible: true, order: 1, options: CLASS_OPTIONS },
-      { id: "f14", label: "Second Language Option", type: "Dropdown", required: false, visible: true, order: 2, options: LANGUAGE_OPTIONS },
-      { id: "f15", label: "Transport Required", type: "Dropdown", required: false, visible: true, order: 3, options: YES_NO_OPTIONS },
+      {
+        id: "f13",
+        label: "Target Class / Grade",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 1,
+        options: CLASS_OPTIONS,
+      },
+      {
+        id: "f14",
+        label: "Second Language Option",
+        type: "Dropdown",
+        required: false,
+        visible: true,
+        order: 2,
+        options: LANGUAGE_OPTIONS,
+      },
+      {
+        id: "f15",
+        label: "Transport Required",
+        type: "Dropdown",
+        required: false,
+        visible: true,
+        order: 3,
+        options: YES_NO_OPTIONS,
+      },
     ],
   },
   {
@@ -149,8 +288,23 @@ const INITIAL_ENQUIRY_SECTIONS: FormSectionItem[] = [
     title: "Additional Info Section",
     open: false,
     fields: [
-      { id: "f16", label: "How did you hear about us?", type: "Dropdown", required: false, visible: true, order: 1, options: SOURCE_OPTIONS },
-      { id: "f17", label: "Remarks / Questions", type: "Textarea", required: false, visible: true, order: 2 },
+      {
+        id: "f16",
+        label: "How did you hear about us?",
+        type: "Dropdown",
+        required: false,
+        visible: true,
+        order: 1,
+        options: SOURCE_OPTIONS,
+      },
+      {
+        id: "f17",
+        label: "Remarks / Questions",
+        type: "Textarea",
+        required: false,
+        visible: true,
+        order: 2,
+      },
     ],
   },
   {
@@ -158,7 +312,15 @@ const INITIAL_ENQUIRY_SECTIONS: FormSectionItem[] = [
     title: "Review & Submit Section",
     open: false,
     fields: [
-      { id: "f18", label: "Declaration Acceptance", type: "Checkbox", required: true, visible: true, order: 1, system: true },
+      {
+        id: "f18",
+        label: "Declaration Acceptance",
+        type: "Checkbox",
+        required: true,
+        visible: true,
+        order: 1,
+        system: true,
+      },
     ],
   },
 ];
@@ -169,14 +331,69 @@ const INITIAL_APPLICATION_SECTIONS: FormSectionItem[] = [
     title: "Student Information Section",
     open: true,
     fields: [
-      { id: "af1", label: "Full Name of Student", type: "Text", required: true, visible: true, order: 1, system: true },
+      {
+        id: "af1",
+        label: "Full Name of Student",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 1,
+        system: true,
+      },
       { id: "af2", label: "Date of Birth", type: "Date", required: true, visible: true, order: 2 },
-      { id: "af3", label: "Gender", type: "Dropdown", required: true, visible: true, order: 3, options: GENDER_OPTIONS },
-      { id: "af4", label: "Nationality", type: "Dropdown", required: true, visible: true, order: 4, options: NATIONALITY_OPTIONS, defaultValue: "Indian" },
-      { id: "af7", label: "Aadhar Number (Optional)", type: "Text", required: false, visible: true, order: 5 },
-      { id: "af8", label: "Student Photo", type: "File Upload", required: true, visible: true, order: 6 },
-      { id: "af9_cls", label: "Applying For Class / Grade", type: "Dropdown", required: true, visible: true, order: 7, options: CLASS_OPTIONS },
-      { id: "af10_ay", label: "Academic Year", type: "Dropdown", required: true, visible: true, order: 8, options: ACADEMIC_YEAR_OPTIONS },
+      {
+        id: "af3",
+        label: "Gender",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 3,
+        options: GENDER_OPTIONS,
+      },
+      {
+        id: "af4",
+        label: "Nationality",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 4,
+        options: NATIONALITY_OPTIONS,
+        defaultValue: "Indian",
+      },
+      {
+        id: "af7",
+        label: "Aadhar Number (Optional)",
+        type: "Text",
+        required: false,
+        visible: true,
+        order: 5,
+      },
+      {
+        id: "af8",
+        label: "Student Photo",
+        type: "File Upload",
+        required: true,
+        visible: true,
+        order: 6,
+      },
+      {
+        id: "af9_cls",
+        label: "Applying For Class / Grade",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 7,
+        options: CLASS_OPTIONS,
+      },
+      {
+        id: "af10_ay",
+        label: "Academic Year",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 8,
+        options: ACADEMIC_YEAR_OPTIONS,
+      },
     ],
   },
   {
@@ -185,9 +402,24 @@ const INITIAL_APPLICATION_SECTIONS: FormSectionItem[] = [
     open: false,
     fields: [
       { id: "af9", label: "Father Name", type: "Text", required: true, visible: true, order: 1 },
-      { id: "af10", label: "Father Occupation", type: "Text", required: false, visible: true, order: 2 },
+      {
+        id: "af10",
+        label: "Father Occupation",
+        type: "Text",
+        required: false,
+        visible: true,
+        order: 2,
+      },
       { id: "af11", label: "Mother Name", type: "Text", required: true, visible: true, order: 3 },
-      { id: "af12", label: "Primary Contact Number", type: "Text", required: true, visible: true, order: 4, system: true },
+      {
+        id: "af12",
+        label: "Primary Contact Number",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 4,
+        system: true,
+      },
     ],
   },
   {
@@ -195,8 +427,23 @@ const INITIAL_APPLICATION_SECTIONS: FormSectionItem[] = [
     title: "Previous School Details Section",
     open: false,
     fields: [
-      { id: "af13", label: "Previous School Name", type: "Text", required: false, visible: true, order: 1 },
-      { id: "af14", label: "Last Grade Attended", type: "Dropdown", required: false, visible: true, order: 2, options: CLASS_OPTIONS },
+      {
+        id: "af13",
+        label: "Previous School Name",
+        type: "Text",
+        required: false,
+        visible: true,
+        order: 1,
+      },
+      {
+        id: "af14",
+        label: "Last Grade Attended",
+        type: "Dropdown",
+        required: false,
+        visible: true,
+        order: 2,
+        options: CLASS_OPTIONS,
+      },
       { id: "af15", label: "TC Number", type: "Text", required: false, visible: true, order: 3 },
     ],
   },
@@ -205,9 +452,30 @@ const INITIAL_APPLICATION_SECTIONS: FormSectionItem[] = [
     title: "Address & Documents Section",
     open: false,
     fields: [
-      { id: "af16", label: "Residential Address", type: "Textarea", required: true, visible: true, order: 1 },
-      { id: "af17", label: "Birth Certificate Copy", type: "File Upload", required: true, visible: true, order: 2 },
-      { id: "af18", label: "Transfer Certificate (TC)", type: "File Upload", required: false, visible: true, order: 3 },
+      {
+        id: "af16",
+        label: "Residential Address",
+        type: "Textarea",
+        required: true,
+        visible: true,
+        order: 1,
+      },
+      {
+        id: "af17",
+        label: "Birth Certificate Copy",
+        type: "File Upload",
+        required: true,
+        visible: true,
+        order: 2,
+      },
+      {
+        id: "af18",
+        label: "Transfer Certificate (TC)",
+        type: "File Upload",
+        required: false,
+        visible: true,
+        order: 3,
+      },
     ],
   },
   {
@@ -215,7 +483,15 @@ const INITIAL_APPLICATION_SECTIONS: FormSectionItem[] = [
     title: "Review & Submit Section",
     open: false,
     fields: [
-      { id: "af19", label: "Terms Agreement", type: "Checkbox", required: true, visible: true, order: 1, system: true },
+      {
+        id: "af19",
+        label: "Terms Agreement",
+        type: "Checkbox",
+        required: true,
+        visible: true,
+        order: 1,
+        system: true,
+      },
     ],
   },
 ];
@@ -226,16 +502,86 @@ const INITIAL_STAFF_SECTIONS: FormSectionItem[] = [
     title: "Personal Information Section",
     open: true,
     fields: [
-      { id: "sf1", label: "Full Name", type: "Text", required: true, visible: true, order: 1, system: true },
-      { id: "sf2", label: "Email Address", type: "Email", required: true, visible: true, order: 2, system: true },
-      { id: "sf3", label: "Mobile Number", type: "Text", required: true, visible: true, order: 3, system: true },
+      {
+        id: "sf1",
+        label: "Full Name",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 1,
+        system: true,
+      },
+      {
+        id: "sf2",
+        label: "Email Address",
+        type: "Email",
+        required: true,
+        visible: true,
+        order: 2,
+        system: true,
+      },
+      {
+        id: "sf3",
+        label: "Mobile Number",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 3,
+        system: true,
+      },
       { id: "sf4", label: "Date of Birth", type: "Date", required: true, visible: true, order: 4 },
-      { id: "sf5", label: "Gender", type: "Dropdown", required: true, visible: true, order: 5, options: GENDER_OPTIONS },
-      { id: "sf5_nat", label: "Nationality", type: "Dropdown", required: true, visible: true, order: 6, options: NATIONALITY_OPTIONS, defaultValue: "Indian" },
-      { id: "sf6", label: "Marital Status", type: "Dropdown", required: false, visible: true, order: 7, options: MARITAL_OPTIONS },
-      { id: "sf7", label: "Profile Photo", type: "File Upload", required: false, visible: true, order: 8 },
-      { id: "sf8", label: "Father / Husband Name", type: "Text", required: true, visible: true, order: 9 },
-      { id: "sf9", label: "Emergency Contact No.", type: "Text", required: true, visible: true, order: 10 },
+      {
+        id: "sf5",
+        label: "Gender",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 5,
+        options: GENDER_OPTIONS,
+      },
+      {
+        id: "sf5_nat",
+        label: "Nationality",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 6,
+        options: NATIONALITY_OPTIONS,
+        defaultValue: "Indian",
+      },
+      {
+        id: "sf6",
+        label: "Marital Status",
+        type: "Dropdown",
+        required: false,
+        visible: true,
+        order: 7,
+        options: MARITAL_OPTIONS,
+      },
+      {
+        id: "sf7",
+        label: "Profile Photo",
+        type: "File Upload",
+        required: false,
+        visible: true,
+        order: 8,
+      },
+      {
+        id: "sf8",
+        label: "Father / Husband Name",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 9,
+      },
+      {
+        id: "sf9",
+        label: "Emergency Contact No.",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 10,
+      },
     ],
   },
   {
@@ -243,11 +589,59 @@ const INITIAL_STAFF_SECTIONS: FormSectionItem[] = [
     title: "Employment Details Section",
     open: false,
     fields: [
-      { id: "sf10", label: "Staff Category", type: "Dropdown", required: true, visible: true, order: 1, options: STAFF_CATEGORY_OPTIONS },
-      { id: "sf11", label: "Designation", type: "Dropdown", required: true, visible: true, order: 2, options: DESIGNATION_OPTIONS },
-      { id: "sf12", label: "Department", type: "Dropdown", required: true, visible: true, order: 3, options: DEPARTMENT_OPTIONS },
-      { id: "sf13", label: "Staff Type", type: "Dropdown", required: true, visible: true, order: 4, options: STAFF_TYPE_OPTIONS },
-      { id: "sf14_dt", label: "Joining Date", type: "Date", required: true, visible: true, order: 5 },
+      {
+        id: "sf10",
+        label: "Staff Category",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 1,
+        options: STAFF_CATEGORY_OPTIONS,
+      },
+      {
+        id: "sf10_profile",
+        label: "Teaching Profile",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 2,
+        options: TEACHING_PROFILE_OPTIONS,
+      },
+      {
+        id: "sf11",
+        label: "Designation",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 3,
+        options: DESIGNATION_OPTIONS,
+      },
+      {
+        id: "sf12",
+        label: "Department",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 4,
+        options: DEPARTMENT_OPTIONS,
+      },
+      {
+        id: "sf13",
+        label: "Employment Type",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 5,
+        options: EMPLOYMENT_TYPE_OPTIONS,
+      },
+      {
+        id: "sf14_dt",
+        label: "Joining Date",
+        type: "Date",
+        required: true,
+        visible: true,
+        order: 6,
+      },
     ],
   },
   {
@@ -255,8 +649,23 @@ const INITIAL_STAFF_SECTIONS: FormSectionItem[] = [
     title: "Role & Access Section",
     open: false,
     fields: [
-      { id: "sf14", label: "System Role", type: "Dropdown", required: true, visible: true, order: 1, options: SYSTEM_ROLE_OPTIONS },
-      { id: "sf15", label: "Primary Campus Access", type: "Dropdown", required: true, visible: true, order: 2, options: CAMPUS_OPTIONS },
+      {
+        id: "sf14",
+        label: "System Role",
+        type: "Dropdown",
+        required: true,
+        visible: true,
+        order: 1,
+        options: SYSTEM_ROLE_OPTIONS,
+      },
+      {
+        id: "sf15",
+        label: "Primary Campus Access",
+        type: "Text",
+        required: true,
+        visible: true,
+        order: 2,
+      },
     ],
   },
   {
@@ -264,9 +673,30 @@ const INITIAL_STAFF_SECTIONS: FormSectionItem[] = [
     title: "Documents Section",
     open: false,
     fields: [
-      { id: "sf16", label: "ID Proof (Aadhar/PAN)", type: "File Upload", required: true, visible: true, order: 1 },
-      { id: "sf17", label: "Degree Certificate", type: "File Upload", required: true, visible: true, order: 2 },
-      { id: "sf18", label: "Experience Letter", type: "File Upload", required: false, visible: true, order: 3 },
+      {
+        id: "sf16",
+        label: "ID Proof (Aadhar/PAN)",
+        type: "File Upload",
+        required: true,
+        visible: true,
+        order: 1,
+      },
+      {
+        id: "sf17",
+        label: "Degree Certificate",
+        type: "File Upload",
+        required: true,
+        visible: true,
+        order: 2,
+      },
+      {
+        id: "sf18",
+        label: "Experience Letter",
+        type: "File Upload",
+        required: false,
+        visible: true,
+        order: 3,
+      },
     ],
   },
   {
@@ -274,7 +704,15 @@ const INITIAL_STAFF_SECTIONS: FormSectionItem[] = [
     title: "Review & Invite Section",
     open: false,
     fields: [
-      { id: "sf19", label: "Send Portal Activation Invite", type: "Checkbox", required: true, visible: true, order: 1, system: true },
+      {
+        id: "sf19",
+        label: "Send Portal Activation Invite",
+        type: "Checkbox",
+        required: true,
+        visible: true,
+        order: 1,
+        system: true,
+      },
     ],
   },
 ];
@@ -288,9 +726,12 @@ export function TemplatesManagement() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<TenantTemplate[]>([]);
-  const [editingField, setEditingField] = useState<{ secId: string; field: FormFieldItem } | null>(null);
+  const [editingField, setEditingField] = useState<{ secId: string; field: FormFieldItem } | null>(
+    null,
+  );
 
-  const [enquirySections, setEnquirySections] = useState<FormSectionItem[]>(INITIAL_ENQUIRY_SECTIONS);
+  const [enquirySections, setEnquirySections] =
+    useState<FormSectionItem[]>(INITIAL_ENQUIRY_SECTIONS);
   const [appSections, setAppSections] = useState<FormSectionItem[]>(INITIAL_APPLICATION_SECTIONS);
   const [staffSections, setStaffSections] = useState<FormSectionItem[]>(INITIAL_STAFF_SECTIONS);
 
@@ -298,15 +739,15 @@ export function TemplatesManagement() {
     templateType === "ENQUIRY"
       ? enquirySections
       : templateType === "APPLICATION"
-      ? appSections
-      : staffSections;
+        ? appSections
+        : staffSections;
 
   const setSections =
     templateType === "ENQUIRY"
       ? setEnquirySections
       : templateType === "APPLICATION"
-      ? setAppSections
-      : setStaffSections;
+        ? setAppSections
+        : setStaffSections;
 
   const config = {
     ENQUIRY: {
@@ -317,7 +758,13 @@ export function TemplatesManagement() {
       bannerText: "Student Enquiry Form",
       bannerSub: "Please fill the form below. Our team will contact you soon.",
       badge: "STUDENT ENQUIRY",
-      steps: ["Student Details", "Parent / Guardian Details", "Academic Interest", "Additional Info", "Review & Submit"],
+      steps: [
+        "Student Details",
+        "Parent / Guardian Details",
+        "Academic Interest",
+        "Additional Info",
+        "Review & Submit",
+      ],
     },
     APPLICATION: {
       title: "Application Form Template",
@@ -327,7 +774,13 @@ export function TemplatesManagement() {
       bannerText: "Student Application Form",
       bannerSub: "Please fill the application form carefully.",
       badge: "STUDENT APPLICATION",
-      steps: ["Student Information", "Parent / Guardian", "Previous School Details", "Address & Documents", "Review & Submit"],
+      steps: [
+        "Student Information",
+        "Parent / Guardian",
+        "Previous School Details",
+        "Address & Documents",
+        "Review & Submit",
+      ],
     },
     STAFF_ONBOARDING: {
       title: "Staff Onboarding Form Template",
@@ -337,39 +790,121 @@ export function TemplatesManagement() {
       bannerText: "Staff Onboarding Form",
       bannerSub: "Please fill the details to onboard a new staff member.",
       badge: "STAFF ONBOARDING",
-      steps: ["Personal Information", "Employment Details", "Role & Access", "Documents", "Review & Invite"],
+      steps: [
+        "Personal Information",
+        "Employment Details",
+        "Role & Access",
+        "Documents",
+        "Review & Invite",
+      ],
     },
   }[templateType];
 
-  const layout = templateType === "ENQUIRY"
-    ? "ENQUIRY_FORM"
-    : templateType === "APPLICATION"
-      ? "APPLICATION_FORM"
-      : "STAFF_ONBOARDING";
-  const templateName = templateType === "ENQUIRY"
-    ? "Enquiry Form"
-    : templateType === "APPLICATION"
-      ? "Admission Application Form"
-      : "Staff Onboarding Form";
+  const layout =
+    templateType === "ENQUIRY"
+      ? "ENQUIRY_FORM"
+      : templateType === "APPLICATION"
+        ? "APPLICATION_FORM"
+        : "STAFF_ONBOARDING";
+  const templateName =
+    templateType === "ENQUIRY"
+      ? "Enquiry Form"
+      : templateType === "APPLICATION"
+        ? "Admission Application Form"
+        : "Staff Onboarding Form";
 
   useEffect(() => {
     void listTenantTemplates()
       .then(setTemplates)
-      .catch((value) => setError(value instanceof Error ? value.message : "Unable to load templates"));
+      .catch((value) =>
+        setError(value instanceof Error ? value.message : "Unable to load templates"),
+      );
   }, []);
 
   useEffect(() => {
     const current = templates.find((item) => item.layout === layout && item.name === templateName);
     if (!current) return;
-    const typeName: Record<TenantTemplateFieldType,string> = { text:"Text",textarea:"Textarea",number:"Number",email:"Email",phone:"Text",date:"Date",select:"Dropdown",checkbox:"Checkbox",radio:"Dropdown",document:"File Upload" };
-    const fieldsBySection = new Map<string,FormFieldItem[]>();
-    for (const field of current.fields) {
-      const sectionKey=field.section||"additional";
-      const fields=fieldsBySection.get(sectionKey)??[];
-      fields.push({id:field.key,label:field.label,type:typeName[field.type],required:field.required,visible:field.visible,order:field.order,system:current.requiredSystemKeys.includes(field.key)||!["enquiry.","application.","staff_onboarding."].some(prefix=>field.key.startsWith(prefix)),...(field.options?.length?{options:field.options}:{})});
-      fieldsBySection.set(sectionKey,fields);
+    const typeName: Record<TenantTemplateFieldType, string> = {
+      text: "Text",
+      textarea: "Textarea",
+      number: "Number",
+      email: "Email",
+      phone: "Text",
+      date: "Date",
+      select: "Dropdown",
+      checkbox: "Checkbox",
+      radio: "Dropdown",
+      document: "File Upload",
+    };
+    const fieldsBySection = new Map<string, FormFieldItem[]>();
+    const normalizedFields = current.fields.map((field) => {
+      if (layout !== "STAFF_ONBOARDING") return field;
+      if (field.key === "employmentType") {
+        return { ...field, label: "Employment Type", options: EMPLOYMENT_TYPE_OPTIONS };
+      }
+      if (field.key === "designation") {
+        return { ...field, options: DESIGNATION_OPTIONS };
+      }
+      if (field.key === "department") {
+        return { ...field, options: DEPARTMENT_OPTIONS };
+      }
+      return field;
+    });
+    if (
+      layout === "STAFF_ONBOARDING" &&
+      !normalizedFields.some((field) => field.key === "staffType")
+    ) {
+      normalizedFields.push({
+        key: "staffType",
+        label: "Teaching Profile",
+        type: "select",
+        order: 2,
+        required: true,
+        visible: true,
+        section:
+          normalizedFields.find((field) => field.key === "employmentType")?.section ??
+          "sec_stf_employment",
+        scope: "BOTH",
+        options: TEACHING_PROFILE_OPTIONS,
+      });
     }
-    const storedSections=(current.sections.length?current.sections:[...fieldsBySection.keys()].map((key,index)=>({key,label:key.replaceAll("_"," "),order:index+1}))).sort((left,right)=>left.order-right.order).map(section=>({id:section.key,title:section.label,open:section.order===1,fields:(fieldsBySection.get(section.key)??[]).sort((left,right)=>left.order-right.order)}));
+    for (const field of normalizedFields) {
+      const sectionKey = field.section || "additional";
+      const fields = fieldsBySection.get(sectionKey) ?? [];
+      fields.push({
+        id: field.key,
+        label: field.label,
+        type: typeName[field.type],
+        required: field.required,
+        visible: field.visible,
+        order: field.order,
+        system:
+          current.requiredSystemKeys.includes(field.key) ||
+          !["enquiry.", "application.", "staff_onboarding."].some((prefix) =>
+            field.key.startsWith(prefix),
+          ),
+        ...(field.options?.length ? { options: field.options } : {}),
+      });
+      fieldsBySection.set(sectionKey, fields);
+    }
+    const storedSections = (
+      current.sections.length
+        ? current.sections
+        : [...fieldsBySection.keys()].map((key, index) => ({
+            key,
+            label: key.replaceAll("_", " "),
+            order: index + 1,
+          }))
+    )
+      .sort((left, right) => left.order - right.order)
+      .map((section) => ({
+        id: section.key,
+        title: section.label,
+        open: section.order === 1,
+        fields: (fieldsBySection.get(section.key) ?? []).sort(
+          (left, right) => left.order - right.order,
+        ),
+      }));
     setSections(storedSections);
   }, [layout, setSections, templateName, templates]);
 
@@ -400,7 +935,9 @@ export function TemplatesManagement() {
         if (sec.id !== sectionId) return sec;
         return {
           ...sec,
-          fields: sec.fields.filter((f) => f.id !== fieldId).map((f, idx) => ({ ...f, order: idx + 1 })),
+          fields: sec.fields
+            .filter((f) => f.id !== fieldId)
+            .map((f, idx) => ({ ...f, order: idx + 1 })),
         };
       }),
     );
@@ -421,9 +958,40 @@ export function TemplatesManagement() {
   const addFieldToSection = (sectionId: string) => {
     const label = prompt("Enter field label:", "New Field");
     if (!label) return;
-    const normalized=label.trim().toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
-    const aliases=["name","student name","full name","full name of student","grade","class","target class","applying for class","phone","mobile","email"];
-    if(aliases.includes(normalized)&&sections.some(section=>section.fields.some(field=>field.label.trim().toLowerCase().replace(/[^a-z0-9]+/g," ").trim()===normalized))){setError(`${label.trim()} already exists in this template.`);return}
+    const normalized = label
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+    const aliases = [
+      "name",
+      "student name",
+      "full name",
+      "full name of student",
+      "grade",
+      "class",
+      "target class",
+      "applying for class",
+      "phone",
+      "mobile",
+      "email",
+    ];
+    if (
+      aliases.includes(normalized) &&
+      sections.some((section) =>
+        section.fields.some(
+          (field) =>
+            field.label
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, " ")
+              .trim() === normalized,
+        ),
+      )
+    ) {
+      setError(`${label.trim()} already exists in this template.`);
+      return;
+    }
     const newF: FormFieldItem = {
       id: `f_${Date.now()}`,
       label,
@@ -444,7 +1012,10 @@ export function TemplatesManagement() {
   };
 
   const updateOptions = (sectionId: string, fieldId: string, optsStr: string) => {
-    const options = optsStr.split("\n").map((o) => o.trim()).filter(Boolean);
+    const options = optsStr
+      .split("\n")
+      .map((o) => o.trim())
+      .filter(Boolean);
     setSections((prev) =>
       prev.map((sec) => {
         if (sec.id !== sectionId) return sec;
@@ -469,25 +1040,52 @@ export function TemplatesManagement() {
     setSaving(true);
     setError(null);
     try {
-      const fieldType = (value: string): TenantTemplateFieldType => ({
-        Text: "text",
-        Textarea: "textarea",
-        Number: "number",
-        Email: "email",
-        Date: "date",
-        Dropdown: "select",
-        Checkbox: "checkbox",
-        "File Upload": "document",
-      }[value] ?? "text") as TenantTemplateFieldType;
+      const fieldType = (value: string): TenantTemplateFieldType =>
+        (({
+          Text: "text",
+          Textarea: "textarea",
+          Number: "number",
+          Email: "email",
+          Date: "date",
+          Dropdown: "select",
+          Checkbox: "checkbox",
+          "File Upload": "document",
+        })[value] ?? "text") as TenantTemplateFieldType;
       const systemKey = (field: FormFieldItem) => {
         const normalized = field.label.toLowerCase();
         const mappings: Record<TemplateType, Array<[string, string]>> = {
-          ENQUIRY: [["full name", "studentName"], ["guardian name", "parentName"], ["primary phone", "phone"], ["email", "email"], ["target class", "academicTargetId"]],
-          APPLICATION: [["full name", "studentName"], ["primary contact", "phone"], ["father name", "parentName"], ["applying for class", "academicTargetId"]],
-          STAFF_ONBOARDING: [["full name", "fullName"], ["email", "email"], ["mobile", "phone"], ["staff category", "staffCategory"], ["staff type", "employmentType"], ["designation", "designation"], ["department", "department"], ["joining date", "joiningDate"], ["primary campus", "primaryCampusId"], ["system role", "roleIds"]],
+          ENQUIRY: [
+            ["full name", "studentName"],
+            ["guardian name", "parentName"],
+            ["primary phone", "phone"],
+            ["email", "email"],
+            ["target class", "academicTargetId"],
+          ],
+          APPLICATION: [
+            ["full name", "studentName"],
+            ["primary contact", "phone"],
+            ["father name", "parentName"],
+            ["applying for class", "academicTargetId"],
+          ],
+          STAFF_ONBOARDING: [
+            ["full name", "fullName"],
+            ["email", "email"],
+            ["mobile", "phone"],
+            ["staff category", "staffCategory"],
+            ["teaching profile", "staffType"],
+            ["employment type", "employmentType"],
+            ["staff type", "employmentType"],
+            ["designation", "designation"],
+            ["department", "department"],
+            ["joining date", "joiningDate"],
+            ["primary campus", "primaryCampusId"],
+            ["system role", "roleIds"],
+          ],
         };
-        return mappings[templateType].find(([label]) => normalized.includes(label))?.[1]
-          ?? `${templateType.toLowerCase()}.${field.id}`;
+        return (
+          mappings[templateType].find(([label]) => normalized.includes(label))?.[1] ??
+          `${templateType.toLowerCase()}.${field.id}`
+        );
       };
       const fields: TenantTemplateField[] = sections.flatMap((section) =>
         section.fields.map((field) => ({
@@ -507,17 +1105,23 @@ export function TemplatesManagement() {
         templateType: "FORM" as const,
         layout,
         description: config.sub,
-        sections: sections.map((section, index) => ({ key: section.id, label: section.title, order: index + 1 })),
+        sections: sections.map((section, index) => ({
+          key: section.id,
+          label: section.title,
+          order: index + 1,
+        })),
         fields,
         requiredSystemKeys: fields
           .filter((field) => field.required && !field.key.includes("."))
           .map((field) => field.key),
       };
-      const existing = templates.find((item) => item.layout === layout && (
-        templateType === "STAFF_ONBOARDING"
-          ? item.name === templateName
-          : item.name === templateName
-      ));
+      const existing = templates.find(
+        (item) =>
+          item.layout === layout &&
+          (templateType === "STAFF_ONBOARDING"
+            ? item.name === templateName
+            : item.name === templateName),
+      );
       const draft = existing
         ? await updateTenantTemplate(existing.id, input)
         : await createTenantTemplate(input);
@@ -574,7 +1178,14 @@ export function TemplatesManagement() {
 
       {/* Template Design Canvas Container (Admin View) */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-6">
-        {error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+        {error ? (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            {error}
+          </div>
+        ) : null}
         {/* Template Design Header Bar */}
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
@@ -645,14 +1256,21 @@ export function TemplatesManagement() {
         {tabMode === "SECTIONS" && (
           <div className="space-y-4">
             {sections.map((sec) => (
-              <div key={sec.id} className="rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+              <div
+                key={sec.id}
+                className="rounded-xl border border-slate-200 overflow-hidden shadow-2xs"
+              >
                 {/* Accordion Header */}
                 <div
                   onClick={() => toggleSection(sec.id)}
                   className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/80 transition-colors cursor-pointer border-b border-slate-200"
                 >
                   <div className="flex items-center gap-2">
-                    {sec.open ? <ChevronDown size={16} className="text-slate-600" /> : <ChevronRight size={16} className="text-slate-600" />}
+                    {sec.open ? (
+                      <ChevronDown size={16} className="text-slate-600" />
+                    ) : (
+                      <ChevronRight size={16} className="text-slate-600" />
+                    )}
                     <span className="text-xs font-bold text-slate-900">{sec.title}</span>
                     <Badge variant="secondary" className="text-[10px] font-semibold">
                       {sec.fields.length} fields
@@ -675,7 +1293,9 @@ export function TemplatesManagement() {
                 {sec.open && (
                   <div className="p-0 overflow-x-auto">
                     {sec.fields.length === 0 ? (
-                      <p className="p-4 text-center text-xs text-slate-400 font-medium">No fields added to this section yet.</p>
+                      <p className="p-4 text-center text-xs text-slate-400 font-medium">
+                        No fields added to this section yet.
+                      </p>
                     ) : (
                       <table className="w-full text-xs text-left border-collapse">
                         <thead>
@@ -705,14 +1325,17 @@ export function TemplatesManagement() {
                               </td>
 
                               {/* Field Type */}
-                              <td className="py-2.5 px-4 text-slate-600 font-semibold">{field.type}</td>
+                              <td className="py-2.5 px-4 text-slate-600 font-semibold">
+                                {field.type}
+                              </td>
 
                               {/* Options Summary or Editor */}
                               <td className="py-2.5 px-4 max-w-[220px]">
                                 {field.type === "Dropdown" ? (
                                   <div className="space-y-1">
                                     <span className="text-[10px] text-slate-500 font-bold block">
-                                      {(field.options ?? []).length} values: {(field.options ?? []).slice(0, 3).join(", ")}...
+                                      {(field.options ?? []).length} values:{" "}
+                                      {(field.options ?? []).slice(0, 3).join(", ")}...
                                     </span>
                                     <button
                                       type="button"
@@ -779,10 +1402,20 @@ export function TemplatesManagement() {
 
             {/* Bottom Actions Bar */}
             <div className="flex items-center justify-between pt-2">
-              <Button onClick={addSection} size="sm" variant="brand" className="h-8 text-xs font-bold">
+              <Button
+                onClick={addSection}
+                size="sm"
+                variant="brand"
+                className="h-8 text-xs font-bold"
+              >
                 <Plus size={14} /> Add Section
               </Button>
-              <Button onClick={resetOrder} size="sm" variant="outline" className="h-8 text-xs font-bold text-slate-600">
+              <Button
+                onClick={resetOrder}
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs font-bold text-slate-600"
+              >
                 <RotateCcw size={13} /> Reset Order
               </Button>
             </div>
@@ -796,13 +1429,27 @@ export function TemplatesManagement() {
               { label: "Full Name", type: "Text", req: true },
               { label: "Date of Birth", type: "Date", req: true },
               { label: "Gender", type: "Dropdown", req: true, options: GENDER_OPTIONS },
-              { label: "Nationality", type: "Dropdown", req: true, options: NATIONALITY_OPTIONS, defaultValue: "Indian" },
-              { label: "Blood Group", type: "Dropdown", req: false, options: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+              {
+                label: "Nationality",
+                type: "Dropdown",
+                req: true,
+                options: NATIONALITY_OPTIONS,
+                defaultValue: "Indian",
+              },
+              {
+                label: "Blood Group",
+                type: "Dropdown",
+                req: false,
+                options: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+              },
               { label: "ID Proof Upload", type: "File Upload", req: false },
               { label: "Residential Address", type: "Textarea", req: true },
               { label: "Emergency Contact Phone", type: "Text", req: true },
             ].map((item) => (
-              <div key={item.label} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex justify-between items-center text-xs">
+              <div
+                key={item.label}
+                className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex justify-between items-center text-xs"
+              >
                 <div>
                   <strong className="block text-slate-900 font-bold">{item.label}</strong>
                   <span className="text-[11px] text-slate-500">Type: {item.type}</span>
@@ -836,7 +1483,9 @@ export function TemplatesManagement() {
             </div>
             <div className="flex items-center gap-2 pt-2">
               <input type="checkbox" defaultChecked className="h-4 w-4 rounded text-brand-600" />
-              <span className="font-bold text-slate-800">Allow parent/applicant to save draft form</span>
+              <span className="font-bold text-slate-800">
+                Allow parent/applicant to save draft form
+              </span>
             </div>
           </div>
         )}
@@ -861,18 +1510,27 @@ export function TemplatesManagement() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 block">Options List (one per line):</label>
+              <label className="text-xs font-bold text-slate-700 block">
+                Options List (one per line):
+              </label>
               <textarea
                 rows={8}
                 defaultValue={(editingField.field.options ?? []).join("\n")}
-                onChange={(e) => updateOptions(editingField.secId, editingField.field.id, e.target.value)}
+                onChange={(e) =>
+                  updateOptions(editingField.secId, editingField.field.id, e.target.value)
+                }
                 placeholder="Enter options (e.g. Option 1&#10;Option 2&#10;Option 3)"
                 className="flex w-full rounded-lg border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-600 resize-none font-sans"
               />
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button size="sm" variant="brand" onClick={() => setEditingField(null)} className="h-8 text-xs font-bold px-5">
+              <Button
+                size="sm"
+                variant="brand"
+                onClick={() => setEditingField(null)}
+                className="h-8 text-xs font-bold px-5"
+              >
                 Done & Close
               </Button>
             </div>
@@ -903,19 +1561,17 @@ export function TemplatesManagement() {
 
             {/* Form Page Header */}
             <header className="p-6 text-center border-b border-slate-200 bg-white space-y-1">
-              <div className="flex justify-center mb-2">
-                <div className="h-14 w-14 rounded-full border-2 border-amber-500 bg-slate-900 flex items-center justify-center text-amber-400 font-extrabold text-xs shadow-2xs">
-                  🎓
-                </div>
-              </div>
-              <h1 className="text-lg font-black text-slate-900 tracking-tight uppercase">WISDOM ERA PUBLIC SCHOOL</h1>
-              <p className="text-xs font-bold text-slate-800">Talabalalu Main Campus</p>
-              <p className="text-[11px] text-amber-800 font-semibold italic">Nurturing Wisdom, Shaping Future</p>
+              <h1 className="text-lg font-black text-slate-900 tracking-tight uppercase">
+                {"{{institution.name}}"}
+              </h1>
+              <p className="text-xs font-bold text-slate-800">{"{{campus.name}}"}</p>
             </header>
 
             {/* Dark Color Form Title Banner */}
             <div className={cn("p-4 text-center text-white space-y-0.5", config.color)}>
-              <h3 className="text-sm font-extrabold tracking-wide uppercase">{config.bannerText}</h3>
+              <h3 className="text-sm font-extrabold tracking-wide uppercase">
+                {config.bannerText}
+              </h3>
               <p className="text-[11px] opacity-80">{config.bannerSub}</p>
             </div>
 
@@ -938,8 +1594,8 @@ export function TemplatesManagement() {
                           isActive
                             ? "bg-brand-600 text-white shadow-xs ring-2 ring-brand-600 ring-offset-1"
                             : isCompleted
-                            ? "bg-emerald-600 text-white"
-                            : "bg-slate-200 text-slate-600 group-hover:bg-slate-300",
+                              ? "bg-emerald-600 text-white"
+                              : "bg-slate-200 text-slate-600 group-hover:bg-slate-300",
                         )}
                       >
                         {isCompleted ? "✓" : i + 1}
@@ -947,7 +1603,11 @@ export function TemplatesManagement() {
                       <span
                         className={cn(
                           "text-[10px] font-bold leading-tight max-w-[90px] transition-colors",
-                          isActive ? "text-brand-900 font-extrabold" : isCompleted ? "text-emerald-800 font-bold" : "text-slate-500",
+                          isActive
+                            ? "text-brand-900 font-extrabold"
+                            : isCompleted
+                              ? "text-emerald-800 font-bold"
+                              : "text-slate-500",
                         )}
                       >
                         {stepName}
@@ -962,24 +1622,48 @@ export function TemplatesManagement() {
             <div className="p-6 space-y-4 text-xs">
               <h4 className="text-sm font-extrabold text-slate-900 border-b border-slate-200 pb-2 flex items-center justify-between">
                 <span>{sections[previewStep]?.title ?? `Step ${previewStep + 1} Information`}</span>
-                <span className="text-[11px] text-slate-400 font-medium">Section {previewStep + 1} of {sections.length}</span>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  Section {previewStep + 1} of {sections.length}
+                </span>
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(sections[previewStep]?.fields ?? []).map((f) => {
-                  const optionsList = f.options && f.options.length ? f.options : ["Option 1", "Option 2", "Option 3"];
+                  const optionsList =
+                    f.options && f.options.length
+                      ? f.options
+                      : ["Option 1", "Option 2", "Option 3"];
                   const isNationality = f.label.toLowerCase().includes("nationality");
                   const defaultVal = f.defaultValue ?? (isNationality ? "Indian" : "");
 
                   return (
-                    <div key={f.id} className={cn("space-y-1", f.type === "Textarea" || f.type === "Checkbox" ? "sm:col-span-2" : "")}>
+                    <div
+                      key={f.id}
+                      className={cn(
+                        "space-y-1",
+                        f.type === "Textarea" || f.type === "Checkbox" ? "sm:col-span-2" : "",
+                      )}
+                    >
                       <label className="font-bold text-slate-800 block">
                         {f.label} {f.required && <span className="text-rose-600">*</span>}
                       </label>
 
-                      {f.type === "Text" && <Input placeholder={`Enter ${f.label.toLowerCase()}`} className="h-8.5 text-xs font-medium" />}
-                      {f.type === "Date" && <Input type="date" className="h-8.5 text-xs font-medium" />}
-                      {f.type === "Email" && <Input type="email" placeholder={`Enter ${f.label.toLowerCase()}`} className="h-8.5 text-xs font-medium" />}
+                      {f.type === "Text" && (
+                        <Input
+                          placeholder={`Enter ${f.label.toLowerCase()}`}
+                          className="h-8.5 text-xs font-medium"
+                        />
+                      )}
+                      {f.type === "Date" && (
+                        <Input type="date" className="h-8.5 text-xs font-medium" />
+                      )}
+                      {f.type === "Email" && (
+                        <Input
+                          type="email"
+                          placeholder={`Enter ${f.label.toLowerCase()}`}
+                          className="h-8.5 text-xs font-medium"
+                        />
+                      )}
                       {f.type === "Dropdown" && (
                         <select
                           defaultValue={defaultVal}
@@ -994,16 +1678,29 @@ export function TemplatesManagement() {
                         </select>
                       )}
                       {f.type === "File Upload" && (
-                        <Input type="file" className="h-8.5 text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700" />
+                        <Input
+                          type="file"
+                          className="h-8.5 text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700"
+                        />
                       )}
                       {f.type === "Checkbox" && (
                         <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-slate-200 bg-slate-50/50">
-                          <input type="checkbox" defaultChecked={f.required} className="h-4 w-4 rounded border-slate-300 text-brand-600" />
-                          <span className="font-semibold text-slate-800">I accept all details provided above are true and accurate.</span>
+                          <input
+                            type="checkbox"
+                            defaultChecked={f.required}
+                            className="h-4 w-4 rounded border-slate-300 text-brand-600"
+                          />
+                          <span className="font-semibold text-slate-800">
+                            I accept all details provided above are true and accurate.
+                          </span>
                         </label>
                       )}
                       {f.type === "Textarea" && (
-                        <textarea rows={2} placeholder={`Enter ${f.label.toLowerCase()}`} className="flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-600 resize-none font-sans" />
+                        <textarea
+                          rows={2}
+                          placeholder={`Enter ${f.label.toLowerCase()}`}
+                          className="flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-600 resize-none font-sans"
+                        />
                       )}
                     </div>
                   );

@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useSession } from "../../session/model/session-provider";
 import { listCampuses } from "../api/settings.api";
 import type { Campus } from "./settings.types";
@@ -30,10 +38,12 @@ export function SelectedCampusProvider({ children }: { children: ReactNode }) {
       const activeCampuses = (await listCampuses()).filter((campus) => campus.status === "ACTIVE");
       const storedCampusId = window.localStorage.getItem(storageKey);
       const nextCampusId = activeCampuses.some((campus) => campus.id === storedCampusId)
-        ? storedCampusId ?? ""
-        : activeCampuses[0]?.id ?? "";
+        ? (storedCampusId ?? "")
+        : (activeCampuses[0]?.id ?? "");
       setCampuses(activeCampuses);
-      setSelectedCampusId((current) => activeCampuses.some((campus) => campus.id === current) ? current : nextCampusId);
+      setSelectedCampusId((current) =>
+        activeCampuses.some((campus) => campus.id === current) ? current : nextCampusId,
+      );
       if (nextCampusId) window.localStorage.setItem(storageKey, nextCampusId);
       else window.localStorage.removeItem(storageKey);
     } catch (value) {
@@ -49,11 +59,14 @@ export function SelectedCampusProvider({ children }: { children: ReactNode }) {
     void refreshCampuses();
   }, [refreshCampuses, tenantId]);
 
-  const selectCampus = useCallback((campusId: string) => {
-    if (!campuses.some((campus) => campus.id === campusId)) return;
-    setSelectedCampusId(campusId);
-    window.localStorage.setItem(storageKey, campusId);
-  }, [campuses, storageKey]);
+  const selectCampus = useCallback(
+    (campusId: string) => {
+      if (!campuses.some((campus) => campus.id === campusId)) return;
+      setSelectedCampusId(campusId);
+      window.localStorage.setItem(storageKey, campusId);
+    },
+    [campuses, storageKey],
+  );
 
   const selectedCampus = campuses.find((campus) => campus.id === selectedCampusId) ?? null;
   const value = useMemo(

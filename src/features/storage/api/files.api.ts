@@ -30,9 +30,13 @@ async function storageRequest<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   });
-  const payload = response.status === 204 ? undefined : await response.json().catch(() => undefined);
+  const payload =
+    response.status === 204 ? undefined : await response.json().catch(() => undefined);
   if (!response.ok) {
-    throw new Error((payload as { message?: string } | undefined)?.message ?? `File request failed with status ${response.status}`);
+    throw new Error(
+      (payload as { message?: string } | undefined)?.message ??
+        `File request failed with status ${response.status}`,
+    );
   }
   return payload as T;
 }
@@ -64,13 +68,20 @@ export async function uploadFile(input: {
 }
 
 export async function getFileDownloadUrl(fileId: string): Promise<string> {
-  const result = await storageRequest<{ downloadUrl: string }>(`/files/${encodeURIComponent(fileId)}/download-url`, {
-    method: "POST",
-    body: JSON.stringify({ expiresInSeconds: 3600 }),
-  });
+  const result = await storageRequest<{ downloadUrl: string }>(
+    `/files/${encodeURIComponent(fileId)}/download-url`,
+    {
+      method: "POST",
+      body: JSON.stringify({ expiresInSeconds: 3600 }),
+    },
+  );
   return result.downloadUrl;
 }
-export async function listFiles(filter: { scopeType?: StoredFile["scopeType"]; scopeId?: string; status?: StoredFile["status"] }): Promise<StoredFile[]> {
+export async function listFiles(filter: {
+  scopeType?: StoredFile["scopeType"];
+  scopeId?: string;
+  status?: StoredFile["status"];
+}): Promise<StoredFile[]> {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(filter)) if (value) query.set(key, value);
   return storageRequest<StoredFile[]>(`/files?${query.toString()}`);

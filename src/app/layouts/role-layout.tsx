@@ -54,34 +54,6 @@ const portalDefinitions = {
       ["/admissions/applications", "Applications", ClipboardCheck],
     ],
   },
-  principal: {
-    label: "Principal",
-    color: "bg-emerald-600",
-    accentOpen: "bg-emerald-50 text-emerald-700",
-    accentFallback: "bg-emerald-100 text-emerald-700",
-    links: [["/principal/dashboard", "Dashboard", LayoutDashboard]],
-  },
-  hod: {
-    label: "HOD",
-    color: "bg-indigo-600",
-    accentOpen: "bg-indigo-50 text-indigo-700",
-    accentFallback: "bg-indigo-100 text-indigo-700",
-    links: [["/hod/dashboard", "Dashboard", LayoutDashboard]],
-  },
-  teacher: {
-    label: "Teacher",
-    color: "bg-cyan-600",
-    accentOpen: "bg-cyan-50 text-cyan-700",
-    accentFallback: "bg-cyan-100 text-cyan-700",
-    links: [["/teacher/dashboard", "Dashboard", LayoutDashboard]],
-  },
-  "class-teacher": {
-    label: "Class Teacher",
-    color: "bg-teal-600",
-    accentOpen: "bg-teal-50 text-teal-700",
-    accentFallback: "bg-teal-100 text-teal-700",
-    links: [["/class-teacher/dashboard", "Dashboard", LayoutDashboard]],
-  },
   student: {
     label: "Student",
     color: "bg-blue-600",
@@ -151,12 +123,17 @@ function RoleWorkspace() {
   useEffect(() => setMobileOpen(false), [location.pathname]);
 
   const prefix = location.pathname.split("/")[1] as keyof typeof portalDefinitions;
-  const portal = portalDefinitions[prefix] ?? portalDefinitions.principal;
+  const portal = portalDefinitions[prefix] ?? portalDefinitions.accountant;
   const requiredRole: Partial<Record<keyof typeof portalDefinitions, string>> = {
-    accountant: "ACCOUNTANT", admissions: "ADMISSION_OFFICER", principal: "PRINCIPAL", hod: "HOD",
-    teacher: "TEACHER", "class-teacher": "CLASS_TEACHER", student: "STUDENT", parent: "PARENT",
-    library: "LIBRARIAN", transport: "TRANSPORT_MANAGER", hostel: "HOSTEL_WARDEN",
-    exams: "EXAM_COORDINATOR", hr: "HR_MANAGER",
+    accountant: "ACCOUNTANT",
+    admissions: "ADMISSION_OFFICER",
+    student: "STUDENT",
+    parent: "PARENT",
+    library: "LIBRARIAN",
+    transport: "TRANSPORT_MANAGER",
+    hostel: "HOSTEL_WARDEN",
+    exams: "EXAM_COORDINATOR",
+    hr: "HR_MANAGER",
   };
   if (session?.user.role?.trim().toUpperCase() !== requiredRole[prefix]) {
     return <Navigate to={getSessionDashboardPath(session)} replace />;

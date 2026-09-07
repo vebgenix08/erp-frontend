@@ -4,10 +4,7 @@ import type { FinanceReceipt } from "../model/finance-operations.types";
 
 export type ReceiptCopyMode = "student" | "both";
 
-async function receiptBlob(
-  paymentId: string,
-  copies: ReceiptCopyMode,
-): Promise<Blob> {
+async function receiptBlob(paymentId: string, copies: ReceiptCopyMode): Promise<Blob> {
   const token = await getCognitoIdToken();
   if (!token) throw new Error("Your session has expired. Sign in again.");
 
@@ -19,9 +16,7 @@ async function receiptBlob(
     const error = (await response.json().catch(() => null)) as {
       message?: string;
     } | null;
-    throw new Error(
-      error?.message ?? "Receipt document could not be generated",
-    );
+    throw new Error(error?.message ?? "Receipt document could not be generated");
   }
   return response.blob();
 }
@@ -42,9 +37,7 @@ export async function printReceiptPdf(
   receipt: FinanceReceipt,
   copies: ReceiptCopyMode = "student",
 ) {
-  const url = URL.createObjectURL(
-    await receiptBlob(receipt.paymentId, copies),
-  );
+  const url = URL.createObjectURL(await receiptBlob(receipt.paymentId, copies));
   const frame = document.createElement("iframe");
   frame.title = `Print receipt ${receipt.receiptNumber}`;
   frame.setAttribute("aria-hidden", "true");

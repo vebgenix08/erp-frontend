@@ -25,9 +25,7 @@ export function PlatformOperationsPage() {
         setSummary(dashboard.platformDashboardSummary);
         setApi(health.apiHealth.ok);
       })
-      .catch((e) =>
-        setError(e instanceof Error ? e.message : "Unable to load platform health"),
-      );
+      .catch((e) => setError(e instanceof Error ? e.message : "Unable to load platform health"));
   };
 
   useEffect(load, []);
@@ -70,16 +68,24 @@ export function PlatformOperationsPage() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Operational health</h2>
-          <p className="mt-1 text-sm text-slate-500">Live control-plane checks and platform workload signals.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Live control-plane checks and platform workload signals.
+          </p>
         </div>
-        <Badge variant={allHealthy ? "success" : "destructive"} className="h-7 px-3 flex items-center gap-1">
+        <Badge
+          variant={allHealthy ? "success" : "destructive"}
+          className="h-7 px-3 flex items-center gap-1"
+        >
           <Activity size={13} />
           {allHealthy ? "Operational" : "Degraded"}
         </Badge>
       </header>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {error}
         </div>
       )}
@@ -90,10 +96,12 @@ export function PlatformOperationsPage() {
           <Card key={label}>
             <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                <span className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                  ok ? "bg-slate-100 text-slate-500" : "bg-red-50 text-red-650"
-                )}>
+                <span
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                    ok ? "bg-slate-100 text-slate-500" : "bg-red-50 text-red-650",
+                  )}
+                >
                   <Icon size={17} />
                 </span>
                 <div className="min-w-0">
@@ -101,9 +109,7 @@ export function PlatformOperationsPage() {
                   <p className="text-xs text-slate-505 mt-0.5 leading-normal">{detail}</p>
                 </div>
               </div>
-              <Badge variant={ok ? "success" : "destructive"}>
-                {ok ? "HEALTHY" : "DEGRADED"}
-              </Badge>
+              <Badge variant={ok ? "success" : "destructive"}>{ok ? "HEALTHY" : "DEGRADED"}</Badge>
             </CardContent>
           </Card>
         ))}

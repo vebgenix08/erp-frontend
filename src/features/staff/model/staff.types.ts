@@ -1,5 +1,16 @@
 export type StaffCategory = "TEACHING" | "NON_TEACHING";
-export type StaffType = "PRINCIPAL" | "VICE_PRINCIPAL" | "DEAN" | "HOD" | "TEACHER" | "LECTURER" | "LAB_FACULTY" | "ADMIN_STAFF" | "SUPPORT_STAFF" | "OTHER";
+export type StaffType =
+  | "PRINCIPAL"
+  | "VICE_PRINCIPAL"
+  | "DEAN"
+  | "HOD"
+  | "ACADEMIC_COORDINATOR"
+  | "TEACHER"
+  | "LECTURER"
+  | "LAB_FACULTY"
+  | "ADMIN_STAFF"
+  | "SUPPORT_STAFF"
+  | "OTHER";
 export type EmploymentType = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "VISITING";
 export type EmployeeStatus = "ACTIVE" | "INACTIVE" | "ENDED";
 export type EmployeeLoginStatus = "NONE" | "INVITED" | "ACTIVE" | "DISABLED" | "FAILED";
@@ -70,6 +81,44 @@ export interface UpdateEmployeeInput {
   profilePhotoFileId?: string;
   customFields?: Record<string, unknown>;
 }
-export interface EmployeeInviteAttempt { id:string; employeeId:string; email:string; attemptNumber:number; status:"SENT"|"FAILED"; provider:string; error?:string; createdAt:string; }
-export interface EmployeeInviteDeliveryEvent { id:string;messageId:string;eventType:"SEND"|"DELIVERY"|"DELIVERY_DELAY"|"BOUNCE"|"COMPLAINT"|"REJECT"|"RENDERING_FAILURE";occurredAt:string;recipients:string[] }
-export interface EmployeePage { items:Employee[];page:number;pageSize:number;total:number;totalPages:number;sortBy:"fullName"|"employeeCode"|"joiningDate"|"createdAt";sortDirection:"ASC"|"DESC";summary:{total:number;active:number;teaching:number;nonTeaching:number;loginReady:number;inviteIssues:number}; }
+export interface EmployeeInviteAttempt {
+  id: string;
+  employeeId: string;
+  email: string;
+  attemptNumber: number;
+  status: "SENT" | "FAILED";
+  provider: string;
+  error?: string;
+  createdAt: string;
+}
+export interface EmployeeInviteDeliveryEvent {
+  id: string;
+  messageId: string;
+  eventType:
+    | "SEND"
+    | "DELIVERY"
+    | "DELIVERY_DELAY"
+    | "BOUNCE"
+    | "COMPLAINT"
+    | "REJECT"
+    | "RENDERING_FAILURE";
+  occurredAt: string;
+  recipients: string[];
+}
+export interface EmployeePage {
+  items: Employee[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  sortBy: "fullName" | "employeeCode" | "joiningDate" | "createdAt";
+  sortDirection: "ASC" | "DESC";
+  summary: {
+    total: number;
+    active: number;
+    teaching: number;
+    nonTeaching: number;
+    loginReady: number;
+    inviteIssues: number;
+  };
+}

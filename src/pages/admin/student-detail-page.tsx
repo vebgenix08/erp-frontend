@@ -1,2 +1,4 @@
 import { StudentProfile } from "../../features/students/ui/student-profile";
-export function AdminStudentDetailPage() { return <StudentProfile/>; }
+export function AdminStudentDetailPage() {
+  return <StudentProfile />;
+}

@@ -96,7 +96,10 @@ export function TenantOnboarding({ tenant }: TenantOnboardingProps) {
       </header>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {error}
         </div>
       )}
@@ -124,7 +127,8 @@ export function TenantOnboarding({ tenant }: TenantOnboardingProps) {
                   <strong className="text-slate-800">Email:</strong> {bootstrap.adminEmail}
                 </p>
                 <p>
-                  <strong className="text-slate-800">Invite attempts:</strong> {bootstrap.inviteAttempts} of 5
+                  <strong className="text-slate-800">Invite attempts:</strong>{" "}
+                  {bootstrap.inviteAttempts} of 5
                 </p>
                 {bootstrap.invitedAt && (
                   <p>
@@ -148,9 +152,13 @@ export function TenantOnboarding({ tenant }: TenantOnboardingProps) {
                     onClick={() => void resend()}
                   >
                     {loading ? (
-                      <><Spinner className="h-3.5 w-3.5" /> Sending…</>
+                      <>
+                        <Spinner className="h-3.5 w-3.5" /> Sending…
+                      </>
                     ) : (
-                      <><RefreshCw size={14} /> Resend invite</>
+                      <>
+                        <RefreshCw size={14} /> Resend invite
+                      </>
                     )}
                   </Button>
                 </div>
@@ -168,7 +176,10 @@ export function TenantOnboarding({ tenant }: TenantOnboardingProps) {
                     const isDelivered = event.eventType === "DELIVERY";
                     const isIssue = ["BOUNCE", "COMPLAINT", "REJECT"].includes(event.eventType);
                     return (
-                      <div key={event.id} className="flex gap-2.5 items-start text-xs border-b border-slate-100 pb-2">
+                      <div
+                        key={event.id}
+                        className="flex gap-2.5 items-start text-xs border-b border-slate-100 pb-2"
+                      >
                         {isDelivered ? (
                           <CheckCircle2 size={15} className="text-emerald-500 shrink-0 mt-0.5" />
                         ) : isIssue ? (

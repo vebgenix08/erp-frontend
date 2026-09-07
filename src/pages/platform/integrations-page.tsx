@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  Cloud,
-  Mail,
-  CreditCard,
-  HardDrive,
-  MessageSquare,
-} from "lucide-react";
+import { Cloud, Mail, CreditCard, HardDrive, MessageSquare } from "lucide-react";
 import {
   listPlatformIntegrations,
   setPlatformIntegration,
@@ -36,9 +30,7 @@ export function PlatformIntegrationsPage() {
     setLoading(true);
     void listPlatformIntegrations()
       .then(setItems)
-      .catch((e) =>
-        setError(e instanceof Error ? e.message : "Unable to load integrations"),
-      )
+      .catch((e) => setError(e instanceof Error ? e.message : "Unable to load integrations"))
       .finally(() => setLoading(false));
   };
 
@@ -79,7 +71,10 @@ export function PlatformIntegrationsPage() {
       </header>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {error}
         </div>
       )}

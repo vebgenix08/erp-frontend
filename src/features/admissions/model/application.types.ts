@@ -57,10 +57,7 @@ export interface AdmissionApplication {
   cancelledAt?: string;
   cancellationReason?: string;
 }
-export type ApplicationDuplicateReason =
-  | "PHONE"
-  | "EMAIL"
-  | "NAME_AND_DATE_OF_BIRTH";
+export type ApplicationDuplicateReason = "PHONE" | "EMAIL" | "NAME_AND_DATE_OF_BIRTH";
 export interface ApplicationDuplicateMatch {
   applicationId: string;
   applicationNumber?: string;

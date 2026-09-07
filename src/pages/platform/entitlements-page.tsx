@@ -7,7 +7,10 @@ import {
   listPlatformEntitlements,
   setPlatformEntitlement,
 } from "../../features/platform-entitlements/api/platform-entitlements.api";
-import type { PlatformEntitlement, TenantCapability } from "../../features/platform-entitlements/model/platform-entitlement.types";
+import type {
+  PlatformEntitlement,
+  TenantCapability,
+} from "../../features/platform-entitlements/model/platform-entitlement.types";
 import { ErrorState, LoadingState } from "../../shared/ui/page-state";
 import { Card, CardContent } from "../../shared/ui/card";
 import { Badge } from "../../shared/ui/badge";
@@ -26,20 +29,14 @@ export function PlatformEntitlementsPage() {
   const load = () => {
     setLoading(true);
     setError(null);
-    void Promise.all([
-      listTenants(),
-      listTenantCapabilityCatalog(),
-      listPlatformEntitlements(),
-    ])
+    void Promise.all([listTenants(), listTenantCapabilityCatalog(), listPlatformEntitlements()])
       .then(([t, catalog, e]) => {
         setTenants(t.filter((x) => !x.deletedAt));
         setCapabilities(catalog);
         setItems(e);
         setSelected((current) => current || t[0]?.id || "");
       })
-      .catch((e) =>
-        setError(e instanceof Error ? e.message : "Unable to load entitlements"),
-      )
+      .catch((e) => setError(e instanceof Error ? e.message : "Unable to load entitlements"))
       .finally(() => setLoading(false));
   };
 
@@ -52,9 +49,14 @@ export function PlatformEntitlementsPage() {
     );
     return capabilities.map((capability) => {
       const entitlement = selectedItems.find((item) => item.featureCode === capability.code);
-      const missingDependencies = capability.dependencies.filter((dependency) => !enabledCodes.has(dependency));
+      const missingDependencies = capability.dependencies.filter(
+        (dependency) => !enabledCodes.has(dependency),
+      );
       const enabledDependents = capabilities
-        .filter((candidate) => enabledCodes.has(candidate.code) && candidate.dependencies.includes(capability.code))
+        .filter(
+          (candidate) =>
+            enabledCodes.has(candidate.code) && candidate.dependencies.includes(capability.code),
+        )
         .map((candidate) => candidate.code);
       const blockedReason =
         entitlement?.status === "ENABLED"
@@ -100,7 +102,10 @@ export function PlatformEntitlementsPage() {
       </header>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {error}
         </div>
       )}
@@ -140,12 +145,16 @@ export function PlatformEntitlementsPage() {
                   </span>
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <strong className="text-sm font-bold text-slate-805">{capability.name}</strong>
+                      <strong className="text-sm font-bold text-slate-805">
+                        {capability.name}
+                      </strong>
                       <Badge variant={isEnabled ? "success" : "secondary"}>
                         {entitlement?.status ?? "DISABLED"}
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-500 leading-normal">{capability.description}</p>
+                    <p className="text-xs text-slate-500 leading-normal">
+                      {capability.description}
+                    </p>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-450 font-medium">
                       <code className="bg-slate-105 px-1 rounded font-mono">{capability.code}</code>
                       <span>·</span>
@@ -155,12 +164,16 @@ export function PlatformEntitlementsPage() {
                       {capability.dependencies.length > 0 && (
                         <>
                           <span>·</span>
-                          <span className="text-amber-600">Requires: {capability.dependencies.join(", ")}</span>
+                          <span className="text-amber-600">
+                            Requires: {capability.dependencies.join(", ")}
+                          </span>
                         </>
                       )}
                     </div>
                     {blockedReason && (
-                      <p className="text-[10px] font-semibold text-rose-500 mt-1">{blockedReason}</p>
+                      <p className="text-[10px] font-semibold text-rose-500 mt-1">
+                        {blockedReason}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -175,10 +188,13 @@ export function PlatformEntitlementsPage() {
                       onChange={() => void toggle(capability.code, entitlement)}
                       className="sr-only peer"
                     />
-                    <div className={cn(
-                      "w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-600",
-                      (busy === capability.code || Boolean(blockedReason)) && "opacity-50 cursor-not-allowed"
-                    )}></div>
+                    <div
+                      className={cn(
+                        "w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-600",
+                        (busy === capability.code || Boolean(blockedReason)) &&
+                          "opacity-50 cursor-not-allowed",
+                      )}
+                    ></div>
                   </label>
                 </div>
               </CardContent>

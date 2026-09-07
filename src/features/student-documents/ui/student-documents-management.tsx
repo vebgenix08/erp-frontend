@@ -27,9 +27,17 @@ import { Badge } from "../../../shared/ui/badge";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
+import { ModernSelect } from "../../../shared/ui/select";
 import { Modal } from "../../../shared/ui/modal";
 import { EmptyState, LoadingState } from "../../../shared/ui/page-state";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
 
 const types: Array<[StudentDocumentType, string, LucideIcon]> = [
@@ -99,7 +107,9 @@ export function StudentDocumentsManagement() {
         studentId,
         documentType,
         ...(purpose.trim() ? { purpose: purpose.trim() } : {}),
-        ...(validUntil ? { validUntil: new Date(`${validUntil}T00:00:00.000Z`).toISOString() } : {}),
+        ...(validUntil
+          ? { validUntil: new Date(`${validUntil}T00:00:00.000Z`).toISOString() }
+          : {}),
       });
       setOpen(false);
       setStudentId("");
@@ -120,7 +130,9 @@ export function StudentDocumentsManagement() {
     setError(null);
     revokeStudentDocument(row.id, reason.trim())
       .then(load)
-      .catch((value) => setError(value instanceof Error ? value.message : "Unable to revoke document"))
+      .catch((value) =>
+        setError(value instanceof Error ? value.message : "Unable to revoke document"),
+      )
       .finally(() => setBusy(false));
   };
 
@@ -153,7 +165,8 @@ export function StudentDocumentsManagement() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Certificates & Student ID Cards</h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Issue numbered, institution-branded certificates and digital ID cards for {selectedCampus?.name ?? "Campus"}
+            Issue numbered, institution-branded certificates and digital ID cards for{" "}
+            {selectedCampus?.name ?? "Campus"}
           </p>
         </div>
         <Button
@@ -167,7 +180,10 @@ export function StudentDocumentsManagement() {
       </div>
 
       {error && (
-        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs">
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs"
+        >
           {error}
         </div>
       )}
@@ -184,7 +200,9 @@ export function StudentDocumentsManagement() {
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 leading-none">{totalCount}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">Official student records issued</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            Official student records issued
+          </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
@@ -196,8 +214,12 @@ export function StudentDocumentsManagement() {
               <Award className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-purple-600 leading-none">{certificatesCount}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">Bonafide, Study & Transfer</div>
+          <div className="text-2xl font-black text-purple-600 leading-none">
+            {certificatesCount}
+          </div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            Bonafide, Study & Transfer
+          </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
@@ -210,7 +232,9 @@ export function StudentDocumentsManagement() {
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-600 leading-none">{idCardsCount}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">Active student ID cards</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            Active student ID cards
+          </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
@@ -223,7 +247,9 @@ export function StudentDocumentsManagement() {
             </div>
           </div>
           <div className="text-2xl font-black text-rose-600 leading-none">{revokedCount}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">Cancelled or replaced</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            Cancelled or replaced
+          </div>
         </div>
       </div>
 
@@ -263,7 +289,10 @@ export function StudentDocumentsManagement() {
       {/* Toolbar Filter Card */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
         <div className="relative flex-1 min-w-[240px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+          />
           <Input
             aria-label="Search documents"
             placeholder="Search student name, admission #, or document #"
@@ -274,15 +303,16 @@ export function StudentDocumentsManagement() {
         </div>
 
         <div className="flex items-center gap-2">
-          <select
+          <ModernSelect
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="ISSUED">Issued (Active)</option>
-            <option value="REVOKED">Revoked</option>
-          </select>
+            onValueChange={(val) => setStatusFilter(val)}
+            className="w-[150px]"
+            options={[
+              { label: "All Statuses", value: "ALL" },
+              { label: "Issued (Active)", value: "ISSUED" },
+              { label: "Revoked", value: "REVOKED" },
+            ]}
+          />
           <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 whitespace-nowrap">
             {filteredRows.length} Document{filteredRows.length === 1 ? "" : "s"}
           </span>
@@ -297,10 +327,14 @@ export function StudentDocumentsManagement() {
               <TableRow className="border-b border-slate-200">
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Document #</TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Student</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3">Document Type</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">
+                  Document Type
+                </TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Issue Date</TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Status</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">Actions</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100">
@@ -331,7 +365,9 @@ export function StudentDocumentsManagement() {
                     <TableCell className="py-3 text-xs">
                       <div className="flex items-center gap-1.5">
                         <IconComponent className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                        <span className="font-semibold text-slate-800">{typeObj?.[1] ?? row.documentType}</span>
+                        <span className="font-semibold text-slate-800">
+                          {typeObj?.[1] ?? row.documentType}
+                        </span>
                       </div>
                     </TableCell>
 
@@ -357,7 +393,7 @@ export function StudentDocumentsManagement() {
                           disabled={row.status !== "ISSUED"}
                           onClick={() =>
                             void downloadStudentDocument(row).catch((value) =>
-                              setError(value instanceof Error ? value.message : "Download failed")
+                              setError(value instanceof Error ? value.message : "Download failed"),
                             )
                           }
                           className="h-8 px-2.5 text-xs font-semibold border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-100"
@@ -410,7 +446,8 @@ export function StudentDocumentsManagement() {
               <option value="">Select active student</option>
               {students.map((student) => (
                 <option key={student.id} value={student.id}>
-                  {student.name} • Adm: {student.admissionNumber} ({student.enrollment?.classId || "Class"})
+                  {student.name} • Adm: {student.admissionNumber} (
+                  {student.enrollment?.classId || "Class"})
                 </option>
               ))}
             </select>
@@ -466,10 +503,11 @@ export function StudentDocumentsManagement() {
 
               <div className="text-[11px] space-y-1 text-slate-700">
                 <p>
-                  <strong>Student:</strong> {selectedStudentObj.name} (Adm: {selectedStudentObj.admissionNumber})
+                  <strong>Student:</strong> {selectedStudentObj.name} (Adm:{" "}
+                  {selectedStudentObj.admissionNumber})
                 </p>
                 <p>
-                  <strong>Campus:</strong> {selectedCampus?.name ?? "Main Campus"}
+                  <strong>Campus:</strong> {selectedCampus?.name ?? "—"}
                 </p>
                 <p>
                   <strong>Format:</strong> High-Resolution Official PDF with QR Verification Seal

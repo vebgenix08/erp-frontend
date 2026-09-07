@@ -5,15 +5,19 @@ import {
   FileCheck2,
   FileText,
   Plus,
+  RotateCcw,
   Search,
   Send,
   UserCheck,
   Users,
 } from "lucide-react";
-import { useDeferredValue, useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { listClasses, listSections } from "../../academic-structure/api/academic-structure.api";
-import type { AcademicClass, Section } from "../../academic-structure/model/academic-structure.types";
+import type {
+  AcademicClass,
+  Section,
+} from "../../academic-structure/model/academic-structure.types";
 import { listTenantTemplates } from "../../tenant-settings/api/settings.api";
 import { useSelectedAcademicYear } from "../../tenant-settings/model/selected-academic-year-provider";
 import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
@@ -41,8 +45,16 @@ import type {
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
+import { ModernSelect } from "../../../shared/ui/select";
 import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
 import { ServerPagination } from "../../../shared/ui/server-pagination";
 import { getStudentByAdmissionApplicationId } from "../../students/api/students.api";
@@ -55,6 +67,13 @@ const statuses: ApplicationStatus[] = [
   "CONFIRMED",
   "CANCELLED",
 ];
+const pageSizes = new Set([10, 25, 50, 100]);
+const positiveInteger = (value: string | null, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+const startOfDate = (value: string) => `${value}T00:00:00.000Z`;
+const endOfDate = (value: string) => `${value}T23:59:59.999Z`;
 
 const SYSTEM_KEYS = [
   "studentName",
@@ -83,21 +102,31 @@ const label = (value: string) =>
 
 const getStatusVariant = (status: ApplicationStatus) => {
   switch (status) {
-    case "DRAFT": return "secondary";
-    case "SUBMITTED": return "default";
-    case "APPROVED": return "brand";
-    case "CONFIRMED": return "success";
+    case "DRAFT":
+      return "secondary";
+    case "SUBMITTED":
+      return "default";
+    case "APPROVED":
+      return "brand";
+    case "CONFIRMED":
+      return "success";
     case "REJECTED":
     case "CANCELLED":
       return "destructive";
-    default: return "secondary";
+    default:
+      return "secondary";
   }
 };
 
 export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?: boolean }) {
+  const location = useLocation();
   const navigate = useNavigate();
+  const [query, setQuery] = useSearchParams();
   const { selectedCampus } = useSelectedCampus();
   const { selectedAcademicYear } = useSelectedAcademicYear();
+  const operatingContextRef = useRef(
+    `${selectedCampus?.id ?? ""}:${selectedAcademicYear?.id ?? ""}`,
+  );
   const [items, setItems] = useState<AdmissionApplication[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [classes, setClasses] = useState<AcademicClass[]>([]);
@@ -109,12 +138,22 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<ApplicationStatus | "">(confirmedOnly ? "CONFIRMED" : "");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const search = query.get("search") ?? "";
+  const [draftSearch, setDraftSearch] = useState(search);
+  const rawStatus = query.get("status") ?? "";
+  const status: ApplicationStatus | "" = confirmedOnly
+    ? "CONFIRMED"
+    : statuses.includes(rawStatus as ApplicationStatus)
+      ? (rawStatus as ApplicationStatus)
+      : "";
+  const academicTargetId = query.get("classId") ?? "";
+  const sectionId = query.get("sectionId") ?? "";
+  const dateFrom = query.get("from") ?? "";
+  const dateTo = query.get("to") ?? "";
+  const page = positiveInteger(query.get("page"), 1);
+  const requestedPageSize = positiveInteger(query.get("pageSize"), 25);
+  const pageSize = pageSizes.has(requestedPageSize) ? requestedPageSize : 25;
   const [total, setTotal] = useState(0);
-  const deferredSearch = useDeferredValue(search);
   const [confirmation, setConfirmation] = useState<AdmissionApplication | null>(null);
   const [duplicateCheck, setDuplicateCheck] = useState<ApplicationDuplicateCheck | null>(null);
   const [resolvingStudentId, setResolvingStudentId] = useState("");
@@ -132,9 +171,13 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
       setResolvingStudentId(application.id);
       setError(null);
       const student = await getStudentByAdmissionApplicationId(application.id);
-      navigate(`/admin/students/${student.id}`);
+      navigate(`/admin/students/${student.id}`, {
+        state: { from: `${location.pathname}${location.search}` },
+      });
     } catch (value) {
-      setError(value instanceof Error ? value.message : "Unable to open the admitted student record");
+      setError(
+        value instanceof Error ? value.message : "Unable to open the admitted student record",
+      );
     } finally {
       setResolvingStudentId("");
     }
@@ -149,7 +192,18 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
           ...(status ? { status } : {}),
           ...(selectedCampus ? { campusId: selectedCampus.id } : {}),
           ...(selectedAcademicYear ? { academicYearId: selectedAcademicYear.id } : {}),
-          ...(deferredSearch.trim() ? { search: deferredSearch.trim() } : {}),
+          ...(academicTargetId ? { academicTargetId } : {}),
+          ...(sectionId ? { sectionId } : {}),
+          ...(confirmedOnly
+            ? {
+                ...(dateFrom ? { confirmedFrom: startOfDate(dateFrom) } : {}),
+                ...(dateTo ? { confirmedTo: endOfDate(dateTo) } : {}),
+              }
+            : {
+                ...(dateFrom ? { createdFrom: startOfDate(dateFrom) } : {}),
+                ...(dateTo ? { createdTo: endOfDate(dateTo) } : {}),
+              }),
+          ...(search.trim() ? { search: search.trim() } : {}),
           page,
           pageSize,
         }),
@@ -166,8 +220,7 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
           .filter((item) => item.status === "PUBLISHED" && item.layout === "APPLICATION_FORM")
           .sort(
             (left, right) =>
-              (right.publishedVersion ?? right.version) -
-              (left.publishedVersion ?? left.version),
+              (right.publishedVersion ?? right.version) - (left.publishedVersion ?? left.version),
           )[0] ?? null,
       );
       setClasses(classRows.filter((item) => item.status === "ACTIVE"));
@@ -182,7 +235,55 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, selectedCampus?.id, selectedAcademicYear?.id, deferredSearch, page, pageSize]);
+  }, [
+    academicTargetId,
+    confirmedOnly,
+    dateFrom,
+    dateTo,
+    status,
+    sectionId,
+    selectedCampus?.id,
+    selectedAcademicYear?.id,
+    search,
+    page,
+    pageSize,
+  ]);
+
+  useEffect(() => setDraftSearch(search), [search]);
+  useEffect(() => {
+    const currentContext = `${selectedCampus?.id ?? ""}:${selectedAcademicYear?.id ?? ""}`;
+    if (operatingContextRef.current === currentContext) return;
+    operatingContextRef.current = currentContext;
+    const next = new URLSearchParams(query);
+    next.set("page", "1");
+    setQuery(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCampus?.id, selectedAcademicYear?.id]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (draftSearch === search) return;
+      const next = new URLSearchParams(query);
+      if (draftSearch.trim()) next.set("search", draftSearch.trim());
+      else next.delete("search");
+      next.set("page", "1");
+      setQuery(next, { replace: true });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [draftSearch, query, search, setQuery]);
+
+  const updateQuery = (updates: Record<string, string | number | undefined>, resetPage = true) => {
+    const next = new URLSearchParams(query);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === undefined || value === "") next.delete(key);
+      else next.set(key, String(value));
+    });
+    if (resetPage && !("page" in updates)) next.set("page", "1");
+    setQuery(next, { replace: true });
+  };
+
+  const availableSections = sections.filter(
+    (item) => !academicTargetId || item.classId === academicTargetId,
+  );
 
   const selectEnquiry = (enquiryId: string) => {
     const enquiry = enquiries.find((item) => item.id === enquiryId);
@@ -226,7 +327,9 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
         studentName: form.studentName,
         parentName: form.parentName,
         phone: form.phone,
-        ...(typeof emailValue === "string" && emailValue.trim() ? { email: emailValue.trim() } : {}),
+        ...(typeof emailValue === "string" && emailValue.trim()
+          ? { email: emailValue.trim() }
+          : {}),
         ...(typeof dobValue === "string" && dobValue
           ? { dateOfBirth: new Date(`${dobValue.slice(0, 10)}T00:00:00.000Z`).toISOString() }
           : {}),
@@ -234,7 +337,9 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
         ["MALE", "FEMALE", "OTHER"].includes(genderValue.toUpperCase())
           ? { gender: genderValue.toUpperCase() as "MALE" | "FEMALE" | "OTHER" }
           : {}),
-        ...(typeof addressValue === "string" && addressValue.trim() ? { address: addressValue.trim() } : {}),
+        ...(typeof addressValue === "string" && addressValue.trim()
+          ? { address: addressValue.trim() }
+          : {}),
         ...(typeof parentPhoneValue === "string" && parentPhoneValue.trim()
           ? { parentPhone: parentPhoneValue.trim() }
           : {}),
@@ -247,7 +352,7 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
       });
       setItems((current) => (page === 1 ? [saved, ...current].slice(0, pageSize) : current));
       setTotal((current) => current + 1);
-      setPage(1);
+      updateQuery({ page: 1 }, false);
       setForm(empty);
       setCustomFields({});
       setOpen(false);
@@ -261,7 +366,10 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
   const replace = (saved: AdmissionApplication) =>
     setItems((current) => current.map((item) => (item.id === saved.id ? saved : item)));
 
-  const act = async (item: AdmissionApplication, action: "submit" | "approve" | "reject" | "cancel") => {
+  const act = async (
+    item: AdmissionApplication,
+    action: "submit" | "approve" | "reject" | "cancel",
+  ) => {
     const reason =
       action === "reject"
         ? window.prompt("Reason for rejection")
@@ -317,7 +425,8 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
   };
 
   if (loading) return <LoadingState label="Loading admission applications" />;
-  if (error && !items.length && !template) return <ErrorState message={error} retry={() => void load()} />;
+  if (error && !items.length && !template)
+    return <ErrorState message={error} retry={() => void load()} />;
 
   const draftCount = items.filter((i) => i.status === "DRAFT").length;
   const reviewCount = items.filter((i) => ["SUBMITTED", "APPROVED"].includes(i.status)).length;
@@ -352,14 +461,21 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
       </div>
 
       {error && (
-        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs">
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs"
+        >
           {error}
         </div>
       )}
 
       {!template && !confirmedOnly && (
-        <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 shadow-xs">
-          Publish an admission form template under Setup → Templates before creating new applications.
+        <div
+          role="alert"
+          className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 shadow-xs"
+        >
+          Publish an admission form template under Setup → Templates before creating new
+          applications.
         </div>
       )}
 
@@ -392,7 +508,9 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                 </div>
               </div>
               <div className="text-2xl font-black text-slate-800 leading-none">{draftCount}</div>
-              <div className="text-[11px] text-slate-500 font-medium leading-none">Incomplete draft applications</div>
+              <div className="text-[11px] text-slate-500 font-medium leading-none">
+                Incomplete draft applications
+              </div>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
@@ -405,7 +523,9 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                 </div>
               </div>
               <div className="text-2xl font-black text-purple-600 leading-none">{reviewCount}</div>
-              <div className="text-[11px] text-slate-500 font-medium leading-none">Submitted / Verified applications</div>
+              <div className="text-[11px] text-slate-500 font-medium leading-none">
+                Submitted / Verified applications
+              </div>
             </div>
           </>
         )}
@@ -420,50 +540,111 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-600 leading-none">{confirmedCount}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">Active student directory records</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            Active student directory records
+          </div>
         </div>
       </div>
 
       {/* Toolbar Filter Card */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
         <div className="relative flex-1 min-w-[240px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+          />
           <Input
             aria-label="Search applications"
             placeholder="Search applicant name, parent, phone or application #"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
+            value={draftSearch}
+            onChange={(event) => setDraftSearch(event.target.value)}
             className="pl-9 h-9 text-xs"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          {!confirmedOnly && (
-            <select
-              aria-label="Filter application status"
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as ApplicationStatus | "");
-                setPage(1);
-              }}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="">All Statuses</option>
-              {statuses.map((value) => (
-                <option key={value} value={value}>
-                  {label(value)}
-                </option>
-              ))}
-            </select>
-          )}
+        {!confirmedOnly && (
+          <ModernSelect
+            aria-label="Filter application status"
+            value={status}
+            onValueChange={(val) => updateQuery({ status: val })}
+            placeholder="All Statuses"
+            className="w-[140px]"
+            options={[
+              { label: "All Statuses", value: "" },
+              ...statuses.map((value) => ({ label: label(value), value })),
+            ]}
+          />
+        )}
 
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 whitespace-nowrap">
-            {total} Record{total === 1 ? "" : "s"}
-          </span>
-        </div>
+        <ModernSelect
+          aria-label="Filter application class"
+          value={academicTargetId}
+          onValueChange={(val) => updateQuery({ classId: val, sectionId: undefined })}
+          placeholder="All Classes"
+          className="w-[140px]"
+          options={[
+            { label: "All Classes", value: "" },
+            ...classes.map((item) => ({ label: item.name, value: item.id })),
+          ]}
+        />
+
+        <ModernSelect
+          aria-label="Filter application section"
+          value={sectionId}
+          onValueChange={(val) => updateQuery({ sectionId: val })}
+          placeholder="All Sections"
+          className="w-[140px]"
+          options={[
+            { label: "All Sections", value: "" },
+            ...availableSections.map((item) => ({
+              label: academicTargetId
+                ? item.name
+                : `${classes.find((row) => row.id === item.classId)?.name ?? "Class"} - ${item.name}`,
+              value: item.id,
+            })),
+          ]}
+        />
+        <Input
+          aria-label={`${confirmedOnly ? "Admissions confirmed" : "Applications created"} from date`}
+          title="From date"
+          type="date"
+          value={dateFrom}
+          onChange={(event) => updateQuery({ from: event.target.value })}
+          className="h-9 w-[145px]"
+        />
+        <Input
+          aria-label={`${confirmedOnly ? "Admissions confirmed" : "Applications created"} to date`}
+          title="To date"
+          type="date"
+          min={dateFrom || undefined}
+          value={dateTo}
+          onChange={(event) => updateQuery({ to: event.target.value })}
+          className="h-9 w-[145px]"
+        />
+        {(search ||
+          (!confirmedOnly && status) ||
+          academicTargetId ||
+          sectionId ||
+          dateFrom ||
+          dateTo) && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-xs font-semibold"
+            onClick={() => {
+              setDraftSearch("");
+              setQuery(new URLSearchParams({ page: "1", pageSize: String(pageSize) }), {
+                replace: true,
+              });
+            }}
+          >
+            <RotateCcw className="mr-1 h-3.5 w-3.5" /> Clear
+          </Button>
+        )}
+
+        <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 whitespace-nowrap">
+          {total} Record{total === 1 ? "" : "s"}
+        </span>
       </div>
 
       {/* Data Table Container */}
@@ -472,11 +653,19 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow className="border-b border-slate-200">
-                <TableHead className="font-bold text-slate-700 text-xs py-3">Applicant Name</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3">Target Class</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3">Parent & Contact</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">
+                  Applicant Name
+                </TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">
+                  Target Class
+                </TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">
+                  Parent & Contact
+                </TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Status</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">Actions</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100">
@@ -517,6 +706,11 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                     <Badge variant="secondary" className="font-semibold">
                       {classes.find((row) => row.id === item.academicTargetId)?.name ?? "—"}
                     </Badge>
+                    {item.sectionId && (
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {sections.find((row) => row.id === item.sectionId)?.name ?? "Section"}
+                      </p>
+                    )}
                   </TableCell>
 
                   <TableCell className="py-3 text-xs">
@@ -525,9 +719,7 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                   </TableCell>
 
                   <TableCell className="py-3 text-xs">
-                    <Badge variant={getStatusVariant(item.status)}>
-                      {label(item.status)}
-                    </Badge>
+                    <Badge variant={getStatusVariant(item.status)}>{label(item.status)}</Badge>
                   </TableCell>
 
                   <TableCell className="py-3 text-right">
@@ -543,7 +735,12 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                           {resolvingStudentId === item.id ? "Opening..." : "View Student"}
                         </Button>
                       ) : (
-                        <Button asChild variant="outline" size="sm" className="h-8 px-2.5 text-xs font-semibold">
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2.5 text-xs font-semibold"
+                        >
                           <Link to={`/admin/admissions/applications/${item.id}`}>View Details</Link>
                         </Button>
                       )}
@@ -594,10 +791,9 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
               page={page}
               pageSize={pageSize}
               total={total}
-              onPageChange={setPage}
+              onPageChange={(value) => updateQuery({ page: value }, false)}
               onPageSizeChange={(value) => {
-                setPageSize(value);
-                setPage(1);
+                updateQuery({ pageSize: value, page: 1 }, false);
               }}
             />
           </div>
@@ -624,7 +820,9 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
         <form onSubmit={(e) => void create(e)} className="space-y-4 font-sans text-xs">
           {enquiries.length > 0 && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-700">Link to Enquiry (Optional)</Label>
+              <Label className="text-xs font-semibold text-slate-700">
+                Link to Enquiry (Optional)
+              </Label>
               <select
                 value={form.enquiryId}
                 onChange={(e) => selectEnquiry(e.target.value)}
@@ -659,11 +857,21 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                       <select
                         required={field.required}
                         value={form.academicTargetId}
-                        onChange={(event) => setForm((current) => ({ ...current, academicTargetId: event.target.value, sectionId: "" }))}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            academicTargetId: event.target.value,
+                            sectionId: "",
+                          }))
+                        }
                         className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-500/20"
                       >
                         <option value="">Select target class</option>
-                        {classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                        {classes.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
                       </select>
                     );
                   }
@@ -672,16 +880,36 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                       <select
                         required={field.required}
                         value={form.sectionId}
-                        onChange={(event) => setForm((current) => ({ ...current, sectionId: event.target.value }))}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, sectionId: event.target.value }))
+                        }
                         className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-500/20"
                       >
                         <option value="">Select section</option>
-                        {sections.filter((item) => !form.academicTargetId || item.classId === form.academicTargetId).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                        {sections
+                          .filter(
+                            (item) =>
+                              !form.academicTargetId || item.classId === form.academicTargetId,
+                          )
+                          .map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
+                          ))}
                       </select>
                     );
                   }
                   if (field.key === "campusId" || field.key === "academicYearId") {
-                    return <Input value={field.key === "campusId" ? selectedCampus?.name ?? "" : selectedAcademicYear?.name ?? ""} disabled />;
+                    return (
+                      <Input
+                        value={
+                          field.key === "campusId"
+                            ? (selectedCampus?.name ?? "")
+                            : (selectedAcademicYear?.name ?? "")
+                        }
+                        disabled
+                      />
+                    );
                   }
                   return null;
                 }}
@@ -692,10 +920,21 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
           <Separator />
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)} className="h-9 text-xs font-semibold">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setOpen(false)}
+              className="h-9 text-xs font-semibold"
+            >
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={busy} className="h-9 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={busy}
+              className="h-9 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700"
+            >
               Create Application
             </Button>
           </div>
@@ -727,14 +966,21 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                 <div>
                   <p className="font-bold">No Duplicates Found</p>
                   <p className="mt-0.5 text-[11px]">
-                    Ready to confirm admission and generate an active student record in Student Directory.
+                    Ready to confirm admission and generate an active student record in Student
+                    Directory.
                   </p>
                 </div>
               </div>
             )}
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setConfirmation(null)} className="h-9 text-xs font-semibold">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmation(null)}
+                className="h-9 text-xs font-semibold"
+              >
                 Cancel
               </Button>
               <Button

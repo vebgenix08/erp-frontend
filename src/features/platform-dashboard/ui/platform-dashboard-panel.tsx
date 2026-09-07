@@ -16,10 +16,30 @@ interface Props {
 
 export function PlatformDashboardPanel({ summary, recentActivity }: Props) {
   const metrics = [
-    { label: "Tenants", value: summary.tenantCount, note: `${summary.activeTenantCount} active`, icon: Building2 },
-    { label: "Suspended", value: summary.suspendedTenantCount, note: "Requires review", icon: ShieldCheck },
-    { label: "Onboarding", value: summary.onboardingTenantCount, note: `${summary.failedBootstrapCount} invite failures`, icon: UserRoundCheck },
-    { label: "Audit events", value: summary.auditLogCount, note: "Recorded platform actions", icon: Activity },
+    {
+      label: "Tenants",
+      value: summary.tenantCount,
+      note: `${summary.activeTenantCount} active`,
+      icon: Building2,
+    },
+    {
+      label: "Suspended",
+      value: summary.suspendedTenantCount,
+      note: "Requires review",
+      icon: ShieldCheck,
+    },
+    {
+      label: "Onboarding",
+      value: summary.onboardingTenantCount,
+      note: `${summary.failedBootstrapCount} invite failures`,
+      icon: UserRoundCheck,
+    },
+    {
+      label: "Audit events",
+      value: summary.auditLogCount,
+      note: "Recorded platform actions",
+      icon: Activity,
+    },
   ];
 
   return (
@@ -47,7 +67,9 @@ export function PlatformDashboardPanel({ summary, recentActivity }: Props) {
         {metrics.map(({ label, value, note, icon: Icon }) => (
           <Card key={label} className="relative overflow-hidden">
             <CardContent className="pt-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {label}
+              </p>
               <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
               <p className="mt-0.5 text-xs text-slate-500">{note}</p>
               <span className="absolute right-4 top-4 text-accent-300 opacity-70">
@@ -64,7 +86,10 @@ export function PlatformDashboardPanel({ summary, recentActivity }: Props) {
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between pb-3">
             <CardTitle>Recent platform activity</CardTitle>
-            <Link to="/platform/audit-logs" className="text-xs font-medium text-accent-600 hover:underline">
+            <Link
+              to="/platform/audit-logs"
+              className="text-xs font-medium text-accent-600 hover:underline"
+            >
               View all
             </Link>
           </CardHeader>
@@ -115,7 +140,10 @@ export function PlatformDashboardPanel({ summary, recentActivity }: Props) {
           <div className="px-5 pb-3 pt-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-slate-700">Feature governance</h4>
-              <Link to="/platform/features" className="text-xs font-medium text-accent-600 hover:underline">
+              <Link
+                to="/platform/features"
+                className="text-xs font-medium text-accent-600 hover:underline"
+              >
                 Manage
               </Link>
             </div>

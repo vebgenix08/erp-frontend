@@ -4,7 +4,20 @@ export interface SessionUserSnapshot {
   id: string;
   email?: string;
   role?: string;
+  roles: Array<{ id?: string; code: string; name: string }>;
   permissions: Permission[];
+  scopes: Array<{
+    assignmentId: string;
+    roleId: string;
+    roleCode: string;
+    scope: {
+      scopeType: string;
+      campusIds?: string[];
+      programIds?: string[];
+      classIds?: string[];
+      sectionIds?: string[];
+    };
+  }>;
   source: "jwt-claims" | "headers" | "request" | "unknown";
 }
 
@@ -22,4 +35,4 @@ export interface SessionPayload {
   authenticatedAt: string;
 }
 
-export type SessionStatus = "loading" | "authenticated" | "anonymous";
+export type SessionStatus = "loading" | "authenticated" | "anonymous" | "error";

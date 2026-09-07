@@ -7,6 +7,7 @@ import type { NumberingPolicy, NumberingPolicyInput } from "../model/settings.ty
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
+import { ModernSelect } from "../../../shared/ui/select";
 import { Badge } from "../../../shared/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../shared/ui/card";
 import { Separator } from "../../../shared/ui/separator";
@@ -80,7 +81,8 @@ export function NumberingManagement() {
         <div>
           <h2 className="text-xl font-bold text-slate-900">Numbering</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Control how operational references are formatted. Counters remain system-generated and cannot be entered manually.
+            Control how operational references are formatted. Counters remain system-generated and
+            cannot be entered manually.
           </p>
         </div>
         <Card className="p-3 flex items-center gap-3">
@@ -92,7 +94,10 @@ export function NumberingManagement() {
       </header>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {error}
         </div>
       )}
@@ -173,11 +178,17 @@ export function NumberingManagement() {
                 id="num-format"
                 required
                 value={form.format}
-                onChange={(e) => setForm({ ...form, format: e.target.value.toUpperCase().replace(/[^A-Z0-9_/{}/.-]/g, "") })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    format: e.target.value.toUpperCase().replace(/[^A-Z0-9_/{}/.-]/g, ""),
+                  })
+                }
                 placeholder="STU/{YEAR}/{SEQUENCE}"
               />
               <p className="text-xs text-slate-500">
-                Tokens: {"{SEQUENCE}"}, {"{YEAR}"}, {"{MONTH}"}, {"{ACADEMIC_YEAR}"}, {"{CAMPUS_CODE}"}, {"{CLASS_CODE}"}
+                Tokens: {"{SEQUENCE}"}, {"{YEAR}"}, {"{MONTH}"}, {"{ACADEMIC_YEAR}"},{" "}
+                {"{CAMPUS_CODE}"}, {"{CLASS_CODE}"}
               </p>
             </div>
 
@@ -199,68 +210,57 @@ export function NumberingManagement() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="num-sep">Separator</Label>
-                <select
-                  id="num-sep"
+                <ModernSelect
                   value={form.separator}
-                  onChange={(e) => setForm({ ...form, separator: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
-                >
-                  <option value="-">Hyphen (-)</option>
-                  <option value="/">Slash (/)</option>
-                  <option value="_">Underscore (_)</option>
-                  <option value="">None</option>
-                </select>
+                  onValueChange={(val) => setForm({ ...form, separator: val })}
+                  options={[
+                    { label: "Hyphen (-)", value: "-" },
+                    { label: "Slash (/)", value: "/" },
+                    { label: "Underscore (_)", value: "_" },
+                    { label: "None", value: "" },
+                  ]}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="num-len">Number length</Label>
-                <select
-                  id="num-len"
-                  value={form.padding}
-                  onChange={(e) => setForm({ ...form, padding: Number(e.target.value) })}
-                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
-                >
-                  {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((v) => (
-                    <option value={v} key={v}>
-                      {v} digits
-                    </option>
-                  ))}
-                </select>
+                <ModernSelect
+                  value={String(form.padding)}
+                  onValueChange={(val) => setForm({ ...form, padding: Number(val) })}
+                  options={[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((v) => ({
+                    label: `${v} digits`,
+                    value: String(v),
+                  }))}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="num-scope">Scope</Label>
-                <select
-                  id="num-scope"
+                <ModernSelect
                   disabled={editing.issuedCount > 0}
                   value={form.scope}
-                  onChange={(e) =>
-                    setForm({ ...form, scope: e.target.value as NumberingPolicyInput["scope"] })
+                  onValueChange={(val) =>
+                    setForm({ ...form, scope: val as NumberingPolicyInput["scope"] })
                   }
-                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600 disabled:opacity-55"
-                >
-                  {["TENANT", "CAMPUS", "ACADEMIC_YEAR", "PROGRAM", "CLASS", "SECTION"].map((v) => (
-                    <option value={v} key={v}>
-                      {label(v)}
-                    </option>
-                  ))}
-                </select>
+                  options={["TENANT", "CAMPUS", "ACADEMIC_YEAR", "PROGRAM", "CLASS", "SECTION"].map(
+                    (v) => ({
+                      label: label(v),
+                      value: v,
+                    }),
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="num-reset">Reset</Label>
-                <select
-                  id="num-reset"
+                <ModernSelect
                   disabled={editing.issuedCount > 0}
                   value={form.reset}
-                  onChange={(e) =>
-                    setForm({ ...form, reset: e.target.value as NumberingPolicyInput["reset"] })
+                  onValueChange={(val) =>
+                    setForm({ ...form, reset: val as NumberingPolicyInput["reset"] })
                   }
-                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600 disabled:opacity-55"
-                >
-                  {["NEVER", "ACADEMIC_YEAR", "CALENDAR_YEAR", "MONTHLY"].map((v) => (
-                    <option value={v} key={v}>
-                      {label(v)}
-                    </option>
-                  ))}
-                </select>
+                  options={["NEVER", "ACADEMIC_YEAR", "CALENDAR_YEAR", "MONTHLY"].map((v) => ({
+                    label: label(v),
+                    value: v,
+                  }))}
+                />
               </div>
               <div className="flex items-center pt-5">
                 <label className="flex items-center gap-2.5 cursor-pointer">
@@ -289,7 +289,10 @@ export function NumberingManagement() {
                 </span>
                 <strong className="block text-sm font-mono text-slate-850 mt-0.5">
                   {form.format
-                    .replaceAll("{SEQUENCE}", String(editing.nextNumber).padStart(form.padding, "0"))
+                    .replaceAll(
+                      "{SEQUENCE}",
+                      String(editing.nextNumber).padStart(form.padding, "0"),
+                    )
                     .replaceAll("{YEAR}", "2026")
                     .replaceAll("{MONTH}", "07")
                     .replaceAll("{ACADEMIC_YEAR}", "26-27")

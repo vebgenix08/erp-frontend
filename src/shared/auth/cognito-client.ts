@@ -14,7 +14,13 @@ interface CognitoResponse {
 }
 
 export class CognitoAuthError extends Error {
-  constructor(message: string, readonly code: string) { super(message); this.name = "CognitoAuthError"; }
+  constructor(
+    message: string,
+    readonly code: string,
+  ) {
+    super(message);
+    this.name = "CognitoAuthError";
+  }
 }
 
 export function validateNewPassword(password: string): string[] {
@@ -30,7 +36,10 @@ export type SignInResult =
   | { type: "authenticated"; idToken: string }
   | { type: "new-password-required"; session: string; username: string };
 
-async function cognitoRequest(target: string, body: Record<string, unknown>): Promise<CognitoResponse> {
+async function cognitoRequest(
+  target: string,
+  body: Record<string, unknown>,
+): Promise<CognitoResponse> {
   if (!env.awsRegion || !env.cognitoClientId) {
     throw new Error("Cognito frontend configuration is incomplete");
   }
@@ -43,7 +52,7 @@ async function cognitoRequest(target: string, body: Record<string, unknown>): Pr
     },
     body: JSON.stringify(body),
   });
-  const payload = await response.json() as CognitoResponse;
+  const payload = (await response.json()) as CognitoResponse;
   if (!response.ok) {
     const code = payload.__type?.split("#").pop() || "AuthenticationError";
     throw new CognitoAuthError(payload.message || code, code);
@@ -60,10 +69,15 @@ export async function signIn(username: string, password: string): Promise<SignIn
   });
 
   if (payload.ChallengeName === "NEW_PASSWORD_REQUIRED" && payload.Session) {
-    return { type: "new-password-required", session: payload.Session, username: normalizedUsername };
+    return {
+      type: "new-password-required",
+      session: payload.Session,
+      username: normalizedUsername,
+    };
   }
   const idToken = payload.AuthenticationResult?.IdToken;
-  if (!idToken) throw new Error(`Unsupported Cognito challenge: ${payload.ChallengeName ?? "unknown"}`);
+  if (!idToken)
+    throw new Error(`Unsupported Cognito challenge: ${payload.ChallengeName ?? "unknown"}`);
   return { type: "authenticated", idToken };
 }
 
@@ -73,7 +87,8 @@ export async function completeNewPassword(input: {
   session: string;
 }): Promise<string> {
   const validationErrors = validateNewPassword(input.newPassword);
-  if (validationErrors.length) throw new CognitoAuthError(validationErrors.join(". "), "PasswordPolicyError");
+  if (validationErrors.length)
+    throw new CognitoAuthError(validationErrors.join(". "), "PasswordPolicyError");
   const payload = await cognitoRequest("RespondToAuthChallenge", {
     ChallengeName: "NEW_PASSWORD_REQUIRED",
     ClientId: env.cognitoClientId,

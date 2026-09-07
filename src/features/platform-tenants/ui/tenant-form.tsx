@@ -13,8 +13,18 @@ interface TenantFormProps {
 }
 
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 export function TenantForm({ initialValue, submitLabel, onSubmit }: TenantFormProps) {
@@ -58,11 +68,20 @@ export function TenantForm({ initialValue, submitLabel, onSubmit }: TenantFormPr
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="tenant-email">Contact email</Label>
-          <Input id="tenant-email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+          <Input
+            id="tenant-email"
+            type="email"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="tenant-phone">Contact phone</Label>
-          <Input id="tenant-phone" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+          <Input
+            id="tenant-phone"
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+          />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="tenant-address">Address</Label>
@@ -83,20 +102,31 @@ export function TenantForm({ initialValue, submitLabel, onSubmit }: TenantFormPr
             className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
           >
             {MONTHS.map((month, index) => (
-              <option key={month} value={index + 1}>{month}</option>
+              <option key={month} value={index + 1}>
+                {month}
+              </option>
             ))}
           </select>
         </div>
       </div>
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {error}
         </div>
       )}
       <Separator />
       <div className="flex justify-end">
         <Button type="submit" disabled={saving}>
-          {saving ? <><Spinner className="h-4 w-4" /> Saving…</> : submitLabel}
+          {saving ? (
+            <>
+              <Spinner className="h-4 w-4" /> Saving…
+            </>
+          ) : (
+            submitLabel
+          )}
         </Button>
       </div>
     </form>

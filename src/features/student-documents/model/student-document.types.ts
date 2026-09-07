@@ -1,2 +1,26 @@
-export type StudentDocumentType = "BONAFIDE_CERTIFICATE" | "STUDY_CERTIFICATE" | "TRANSFER_CERTIFICATE" | "STUDENT_ID_CARD";
-export interface StudentDocument { id:string;documentNumber:string;documentType:StudentDocumentType;studentId:string;studentName:string;admissionNumber:string;registrationNumber:string;campusId:string;academicYearId:string;classId:string;sectionId?:string;purpose?:string;validUntil?:string;status:"ISSUED"|"REVOKED";issuedBy:string;issuedAt:string;updatedAt:string;revokedAt?:string;revokeReason?:string }
+export type StudentDocumentType =
+  | "BONAFIDE_CERTIFICATE"
+  | "STUDY_CERTIFICATE"
+  | "TRANSFER_CERTIFICATE"
+  | "STUDENT_ID_CARD";
+export interface StudentDocument {
+  id: string;
+  documentNumber: string;
+  documentType: StudentDocumentType;
+  studentId: string;
+  studentName: string;
+  admissionNumber: string;
+  registrationNumber: string;
+  campusId: string;
+  academicYearId: string;
+  classId: string;
+  sectionId?: string;
+  purpose?: string;
+  validUntil?: string;
+  status: "ISSUED" | "REVOKED";
+  issuedBy: string;
+  issuedAt: string;
+  updatedAt: string;
+  revokedAt?: string;
+  revokeReason?: string;
+}

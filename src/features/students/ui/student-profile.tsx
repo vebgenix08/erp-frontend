@@ -1,27 +1,27 @@
 import {
+  ArrowLeft,
   Banknote,
   BookOpen,
   Building2,
   Calendar,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   CreditCard,
   Download,
   Eye,
   FileText,
   GraduationCap,
+  MoreHorizontal,
+  NotebookPen,
   Pencil,
   Printer,
-  Search,
   Trash2,
   Upload,
   UserRound,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   listClasses,
   listPrograms,
@@ -39,7 +39,19 @@ import type {
   FinanceReceipt,
   PaymentMethod,
 } from "../../finance/model/finance-operations.types";
-import { changeStudentEnrollment, createCampusTransfer, createStudentNote, getStudent, listCampusTransfers, listStudentNotes, updateStudentNote, type CampusTransfer, type StudentNote } from "../api/students.api";
+import {
+  changeStudentEnrollment,
+  createCampusTransfer,
+  createStudentNote,
+  getStudent,
+  listCampusTransfers,
+  listStudentNotes,
+  updateStudent,
+  updateStudentNote,
+  type CampusTransfer,
+  type StudentNote,
+  type UpdateStudentInput,
+} from "../api/students.api";
 import type { Student } from "../model/student.types";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import {
@@ -59,7 +71,14 @@ import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
 import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
 import { cn } from "../../../shared/ui/utils";
 import { downloadReceiptPdf, printReceiptPdf } from "../../finance/lib/receipt-document";
@@ -71,13 +90,7 @@ import type { StudentDocument } from "../../student-documents/model/student-docu
 import { listCampuses } from "../../tenant-settings/api/settings.api";
 import type { Campus } from "../../tenant-settings/model/settings.types";
 
-type Tab =
-  | "summary"
-  | "academic"
-  | "finance"
-  | "documents"
-  | "timeline"
-  | "notes";
+type Tab = "summary" | "academic" | "finance" | "documents" | "timeline" | "notes";
 
 const tabLabels: Record<Tab, { label: string; icon: LucideIcon }> = {
   summary: { label: "Summary", icon: UserRound },
@@ -101,9 +114,7 @@ const studentDocumentTypes = [
 ] as const;
 
 const money = (minor: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
-    minor / 100,
-  );
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(minor / 100);
 
 const dateStr = (value?: string) =>
   value
@@ -122,6 +133,8 @@ function downloadReceipt(receipt: FinanceReceipt) {
 
 export function StudentProfile() {
   const { studentId = "" } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("summary");
   const [academicSubTab, setAcademicSubTab] = useState<"SUBJECTS" | "HISTORY" | "DOCS">("SUBJECTS");
   const [student, setStudent] = useState<Student | null>(null);
@@ -164,6 +177,19 @@ export function StudentProfile() {
   const [paymentReference, setPaymentReference] = useState("");
   const [collectionRequestId, setCollectionRequestId] = useState("");
   const [collecting, setCollecting] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(false);
+  const [savingStudent, setSavingStudent] = useState(false);
+  const [studentDraft, setStudentDraft] = useState<UpdateStudentInput>({
+    name: "",
+    dateOfBirth: null,
+    gender: null,
+    phone: "",
+    email: null,
+    address: null,
+    guardianName: "",
+    guardianPhone: null,
+    guardianRelation: null,
+  });
 
   const load = useCallback(async () => {
     try {
@@ -217,22 +243,15 @@ export function StudentProfile() {
       setNotes(noteRows);
       setCampusTransfers(transferRows);
       setLabels({
-        program:
-          programsData.find((item) => item.id === record.enrollment.programId)
-            ?.name ?? "—",
+        program: programsData.find((item) => item.id === record.enrollment.programId)?.name ?? "—",
         academicClass:
-          classesData.find((item) => item.id === record.enrollment.classId)
-            ?.name ?? "—",
+          classesData.find((item) => item.id === record.enrollment.classId)?.name ?? "—",
         section:
-          sectionsData.find((item) => item.id === record.enrollment.sectionId)
-            ?.name ?? "Not assigned",
+          sectionsData.find((item) => item.id === record.enrollment.sectionId)?.name ??
+          "Not assigned",
       });
     } catch (value) {
-      setError(
-        value instanceof Error
-          ? value.message
-          : "Unable to load student profile",
-      );
+      setError(value instanceof Error ? value.message : "Unable to load student profile");
     } finally {
       setLoading(false);
     }
@@ -245,7 +264,7 @@ export function StudentProfile() {
     try {
       if (editingNoteId) {
         const saved = await updateStudentNote(editingNoteId, noteBody);
-        setNotes((current) => current.map((item) => item.id === saved.id ? saved : item));
+        setNotes((current) => current.map((item) => (item.id === saved.id ? saved : item)));
       } else {
         const saved = await createStudentNote(studentId, noteBody);
         setNotes((current) => [saved, ...current]);
@@ -340,9 +359,7 @@ export function StudentProfile() {
       openPrintableReceipt(receipt);
     } catch (value) {
       setError(
-        value instanceof Error
-          ? value.message
-          : "Payment collection could not be completed",
+        value instanceof Error ? value.message : "Payment collection could not be completed",
       );
     } finally {
       setCollecting(false);
@@ -360,6 +377,38 @@ export function StudentProfile() {
     setChangeReason("");
     setError(null);
     setEditingEnrollment(true);
+  }
+
+  function beginStudentEdit() {
+    if (!student) return;
+    setStudentDraft({
+      name: student.name,
+      dateOfBirth: student.dateOfBirth?.slice(0, 10) ?? null,
+      gender: student.gender ?? null,
+      phone: student.phone,
+      email: student.email ?? null,
+      address: student.address ?? null,
+      guardianName: student.guardian.name,
+      guardianPhone: student.guardian.phone ?? null,
+      guardianRelation: student.guardian.relation ?? null,
+    });
+    setError(null);
+    setEditingStudent(true);
+  }
+
+  async function saveStudentDetails() {
+    if (!student) return;
+    try {
+      setSavingStudent(true);
+      setError(null);
+      const updated = await updateStudent(student.id, studentDraft);
+      setStudent(updated);
+      setEditingStudent(false);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "Unable to update student details");
+    } finally {
+      setSavingStudent(false);
+    }
   }
 
   async function selectTargetCampus(cId: string) {
@@ -392,7 +441,16 @@ export function StudentProfile() {
       setSavingEnrollment(true);
       setError(null);
       if (targetCampusId !== student.enrollment.campusId) {
-        const transfer = await createCampusTransfer({ studentId: student.id, targetCampusId, academicYearId: student.enrollment.academicYearId, targetClassId: classId, ...(sectionId ? { targetSectionId: sectionId } : {}), effectiveAt: new Date().toISOString(), reason: changeReason.trim(), clientRequestId: crypto.randomUUID() });
+        const transfer = await createCampusTransfer({
+          studentId: student.id,
+          targetCampusId,
+          academicYearId: student.enrollment.academicYearId,
+          targetClassId: classId,
+          ...(sectionId ? { targetSectionId: sectionId } : {}),
+          effectiveAt: new Date().toISOString(),
+          reason: changeReason.trim(),
+          clientRequestId: crypto.randomUUID(),
+        });
         setCampusTransfers((current) => [transfer, ...current]);
         setEditingEnrollment(false);
         return;
@@ -410,20 +468,16 @@ export function StudentProfile() {
       setSections(targetSections);
       setLabels({
         program:
-          targetPrograms.find((item) => item.id === record.enrollment.programId)
-            ?.name ?? "—",
+          targetPrograms.find((item) => item.id === record.enrollment.programId)?.name ?? "—",
         academicClass:
-          targetClasses.find((item) => item.id === record.enrollment.classId)
-            ?.name ?? "—",
+          targetClasses.find((item) => item.id === record.enrollment.classId)?.name ?? "—",
         section:
-          targetSections.find((item) => item.id === record.enrollment.sectionId)
-            ?.name ?? "Not assigned",
+          targetSections.find((item) => item.id === record.enrollment.sectionId)?.name ??
+          "Not assigned",
       });
       setEditingEnrollment(false);
     } catch (value) {
-      setError(
-        value instanceof Error ? value.message : "Unable to change enrollment",
-      );
+      setError(value instanceof Error ? value.message : "Unable to change enrollment");
     } finally {
       setSavingEnrollment(false);
     }
@@ -454,9 +508,7 @@ export function StudentProfile() {
       );
       setPendingDocument(null);
     } catch (value) {
-      setError(
-        value instanceof Error ? value.message : "Unable to upload document",
-      );
+      setError(value instanceof Error ? value.message : "Unable to upload document");
     } finally {
       setUploading(false);
     }
@@ -481,11 +533,7 @@ export function StudentProfile() {
       const url = await getFileDownloadUrl(file.id);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (value) {
-      setError(
-        value instanceof Error
-          ? value.message
-          : "Unable to retrieve document link",
-      );
+      setError(value instanceof Error ? value.message : "Unable to retrieve document link");
     }
   }
 
@@ -494,14 +542,35 @@ export function StudentProfile() {
   if (!student) return null;
 
   const currentCampusName = campuses.find((c) => c.id === student.enrollment.campusId)?.name || "—";
-  const overdueOrders = orders.filter((o) => o.balanceMinor > 0 && !["PAID", "CLOSED", "CANCELLED"].includes(o.status));
+  const overdueOrders = orders.filter(
+    (o) => o.balanceMinor > 0 && !["PAID", "CLOSED", "CANCELLED"].includes(o.status),
+  );
   const overdueTotalMinor = overdueOrders.reduce((sum, o) => sum + o.balanceMinor, 0);
+  const profileActions: Array<{
+    label: string;
+    icon: LucideIcon;
+    action: () => void;
+  }> = [
+    { label: "Change class or campus", icon: GraduationCap, action: beginEnrollmentChange },
+    { label: "Open fee payments", icon: CreditCard, action: () => setTab("finance") },
+    { label: "Open documents", icon: FileText, action: () => setTab("documents") },
+    { label: "Open internal notes", icon: NotebookPen, action: () => setTab("notes") },
+  ];
+  const returnTo = (location.state as { from?: string } | null)?.from ?? "/admin/students";
 
   return (
     <section className="space-y-5 pb-12">
-      {/* Top Breadcrumb & Header Action */}
-      <div className="flex flex-wrap items-center justify-between gap-4 text-xs">
-        <div className="flex items-center gap-2 text-slate-500 font-medium">
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(returnTo)}
+          className="h-8 shrink-0 gap-1.5 border-slate-300 font-bold"
+        >
+          <ArrowLeft size={14} /> Back
+        </Button>
+        <div className="flex min-w-0 items-center gap-2 text-slate-500 font-medium">
           <Link to="/admin/students" className="hover:text-slate-900 transition-colors">
             Students
           </Link>
@@ -510,98 +579,82 @@ export function StudentProfile() {
           <span>›</span>
           <span className="text-slate-900 font-bold">Student Details</span>
         </div>
-
-        <div className="flex items-center gap-3">
-          <div className="relative min-w-[240px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <Input placeholder="Search students, admission no., roll no..." className="pl-8 h-8 text-xs font-medium bg-white" />
-          </div>
-          <button type="button" className="h-8 w-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 relative">
-            <span className="h-2 w-2 rounded-full bg-rose-500 absolute top-1.5 right-1.5 ring-2 ring-white"></span>
-            🔔
-          </button>
-        </div>
       </div>
 
-      {/* Top Student Hero Banner Card (100% REAL BACKEND DATA) */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          {/* Avatar Photo & Core Badges */}
-          <div className="flex items-center gap-4">
-            <div className="h-24 w-20 rounded-xl bg-slate-900 text-white font-extrabold text-lg flex items-center justify-center shrink-0 border-2 border-slate-200 shadow-2xs overflow-hidden">
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-900 text-lg font-extrabold text-white">
               {student.name.substring(0, 2).toUpperCase()}
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">{student.name}</h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 uppercase">
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="truncate text-2xl font-extrabold text-slate-950">{student.name}</h1>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-extrabold uppercase text-emerald-800">
                   {student.status}
                 </span>
               </div>
-              <div className="text-xs font-semibold text-slate-600 space-x-3">
-                <span>Admission No : <strong className="text-slate-900">{student.admissionNumber}</strong></span>
-                <span>Roll No : <strong className="text-slate-900">{student.enrollment.rollNumber || "—"}</strong></span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-800">
-                  {labels.academicClass} {labels.section !== "Not assigned" ? `- ${labels.section}` : ""}
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-600">
+                <span>
+                  Admission No.{" "}
+                  <strong className="text-slate-900">{student.admissionNumber}</strong>
                 </span>
-                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-brand-50 text-brand-700">
-                  {student.gender || "—"}
-                </span>
-                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-600 border border-slate-200">
-                  {dateStr(student.dateOfBirth)}
+                <span>
+                  Roll No.{" "}
+                  <strong className="text-slate-900">
+                    {student.enrollment.rollNumber || "Not assigned"}
+                  </strong>
                 </span>
               </div>
             </div>
           </div>
-
-          {/* Key Quick Info Columns */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-xs font-medium text-slate-700 border-l border-slate-200 pl-6 my-auto">
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-400 font-bold">Guardian Name</span>
-              <span className="font-extrabold text-slate-900">: {student.guardian?.name || "—"}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-400 font-bold">Relation</span>
-              <span className="font-bold text-slate-900">: {student.guardian?.relation || "—"}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-400 font-bold">Mobile</span>
-              <span className="font-bold text-slate-900">: {student.guardian?.phone || student.phone || "—"}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-400 font-bold">Email</span>
-              <span className="font-semibold text-slate-800">: {student.email || "—"}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-400 font-bold">Aadhaar / Reg</span>
-              <span className="font-mono text-slate-800">: {student.registrationNumber || "—"}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-400 font-bold">Admission No</span>
-              <span className="font-mono font-bold text-brand-700">: {student.admissionNumber}</span>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-xs font-bold border-slate-300">
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={beginStudentEdit}
+              className="h-9 text-xs font-bold border-slate-300"
+            >
               <Pencil size={13} /> Edit Student
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs font-bold border-slate-300">
-              ... More Actions
-            </Button>
-            <div className="flex items-center gap-0.5 border border-slate-200 rounded-lg p-0.5">
-              <button type="button" className="h-7 w-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded">
-                <ChevronLeft size={16} />
-              </button>
-              <button type="button" className="h-7 w-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded">
-                <ChevronRight size={16} />
-              </button>
-            </div>
+            <details className="relative">
+              <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                <MoreHorizontal size={15} /> More Actions
+              </summary>
+              <div className="absolute right-0 z-30 mt-2 w-64 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-xl">
+                {profileActions.map(({ label, icon: Icon, action }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={(event) => {
+                      action();
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    <Icon size={15} className="text-brand-700" /> {label}
+                  </button>
+                ))}
+              </div>
+            </details>
           </div>
         </div>
+        <dl className="mt-5 grid gap-3 border-t border-slate-200 pt-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["Campus", currentCampusName],
+            ["Program", labels.program],
+            [
+              "Class and section",
+              `${labels.academicClass}${labels.section !== "Not assigned" ? ` - ${labels.section}` : ""}`,
+            ],
+            ["Registration No.", student.registrationNumber || "Not assigned"],
+          ].map(([label, value]) => (
+            <div key={label} className="min-w-0">
+              <dt className="text-[10px] font-bold uppercase text-slate-400">{label}</dt>
+              <dd className="mt-1 truncate text-sm font-bold text-slate-900">{value}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       {/* 8 Tab Navigation Bar */}
@@ -640,8 +693,12 @@ export function StudentProfile() {
                   <Calendar size={18} />
                 </div>
                 <div>
-                  <span className="text-[10.5px] font-bold text-slate-400 block uppercase">Admission Date</span>
-                  <strong className="text-xs font-extrabold text-slate-900 block">{dateStr(student.createdAt)}</strong>
+                  <span className="text-[10.5px] font-bold text-slate-400 block uppercase">
+                    Admission Date
+                  </span>
+                  <strong className="text-xs font-extrabold text-slate-900 block">
+                    {dateStr(student.createdAt)}
+                  </strong>
                 </div>
               </div>
 
@@ -650,8 +707,12 @@ export function StudentProfile() {
                   <BookOpen size={18} />
                 </div>
                 <div>
-                  <span className="text-[10.5px] font-bold text-slate-400 block uppercase">Current Class</span>
-                  <strong className="text-xs font-extrabold text-slate-900 block">{labels.academicClass}</strong>
+                  <span className="text-[10.5px] font-bold text-slate-400 block uppercase">
+                    Current Class
+                  </span>
+                  <strong className="text-xs font-extrabold text-slate-900 block">
+                    {labels.academicClass}
+                  </strong>
                 </div>
               </div>
 
@@ -660,8 +721,12 @@ export function StudentProfile() {
                   <Building2 size={18} />
                 </div>
                 <div>
-                  <span className="text-[10.5px] font-bold text-slate-400 block uppercase">Campus</span>
-                  <strong className="text-xs font-extrabold text-slate-900 block">{currentCampusName}</strong>
+                  <span className="text-[10.5px] font-bold text-slate-400 block uppercase">
+                    Campus
+                  </span>
+                  <strong className="text-xs font-extrabold text-slate-900 block">
+                    {currentCampusName}
+                  </strong>
                 </div>
               </div>
 
@@ -670,8 +735,12 @@ export function StudentProfile() {
                   <CheckCircle2 size={18} />
                 </div>
                 <div>
-                  <span className="text-[10.5px] font-bold text-slate-400 block uppercase">Status</span>
-                  <strong className="text-xs font-extrabold text-slate-900 block">{student.status}</strong>
+                  <span className="text-[10.5px] font-bold text-slate-400 block uppercase">
+                    Status
+                  </span>
+                  <strong className="text-xs font-extrabold text-slate-900 block">
+                    {student.status}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -697,10 +766,6 @@ export function StudentProfile() {
                     <span>: {dateStr(student.dateOfBirth)}</span>
                   </div>
                   <div className="grid grid-cols-[100px_1fr]">
-                    <span className="text-slate-400 font-bold">Aadhaar No</span>
-                    <span className="font-mono">: {student.registrationNumber || "—"}</span>
-                  </div>
-                  <div className="grid grid-cols-[100px_1fr]">
                     <span className="text-slate-400 font-bold">Mobile</span>
                     <span>: {student.phone || "—"}</span>
                   </div>
@@ -723,7 +788,10 @@ export function StudentProfile() {
                 <div className="space-y-2 text-xs font-medium text-slate-800">
                   <div className="grid grid-cols-[110px_1fr]">
                     <span className="text-slate-400 font-bold">Class - Section</span>
-                    <span className="font-bold text-slate-900">: {labels.academicClass} {labels.section !== "Not assigned" ? `- ${labels.section}` : ""}</span>
+                    <span className="font-bold text-slate-900">
+                      : {labels.academicClass}{" "}
+                      {labels.section !== "Not assigned" ? `- ${labels.section}` : ""}
+                    </span>
                   </div>
                   <div className="grid grid-cols-[110px_1fr]">
                     <span className="text-slate-400 font-bold">Roll No</span>
@@ -753,9 +821,15 @@ export function StudentProfile() {
                   Parent / Guardian Information
                 </h3>
                 <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/50 space-y-1 text-xs">
-                  <span className="text-[10px] font-extrabold text-brand-700 uppercase block">{student.guardian?.relation || "Guardian"}</span>
-                  <strong className="block text-slate-900 font-bold">{student.guardian?.name || "—"}</strong>
-                  <span className="text-[11px] text-slate-500 block">{student.guardian?.phone || student.phone || "—"}</span>
+                  <span className="text-[10px] font-extrabold text-brand-700 uppercase block">
+                    {student.guardian?.relation || "Guardian"}
+                  </span>
+                  <strong className="block text-slate-900 font-bold">
+                    {student.guardian?.name || "—"}
+                  </strong>
+                  <span className="text-[11px] text-slate-500 block">
+                    {student.guardian?.phone || student.phone || "—"}
+                  </span>
                 </div>
               </div>
 
@@ -766,7 +840,9 @@ export function StudentProfile() {
                 </h3>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-900">
-                    <span className="text-[10px] font-bold block text-emerald-700">Total Payable</span>
+                    <span className="text-[10px] font-bold block text-emerald-700">
+                      Total Payable
+                    </span>
                     <strong className="text-xs font-black">{money(totals.total)}</strong>
                   </div>
                   <div className="p-2.5 rounded-lg bg-brand-50 text-brand-900">
@@ -793,26 +869,46 @@ export function StudentProfile() {
           <div className="space-y-4">
             {/* Quick Actions Box */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs">
-              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Quick Actions</h3>
+              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
+                Quick Actions
+              </h3>
               <div className="space-y-1.5 text-xs font-bold">
-                <button type="button" className="w-full text-left p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={beginStudentEdit}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-2"
+                >
                   <Pencil size={14} className="text-brand-600" /> Edit Student
                 </button>
-                <button type="button" onClick={beginEnrollmentChange} className="w-full text-left p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-2">
-                  <GraduationCap size={14} className="text-brand-600" /> Promote / Upgrade Class
+                <button
+                  type="button"
+                  onClick={beginEnrollmentChange}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-2"
+                >
+                  <GraduationCap size={14} className="text-brand-600" /> Change Class or Campus
                 </button>
-                <button type="button" className="w-full text-left p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-2">
-                  <CreditCard size={14} className="text-brand-600" /> Generate ID Card
+                <button
+                  type="button"
+                  onClick={() => setTab("finance")}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-2"
+                >
+                  <CreditCard size={14} className="text-brand-600" /> Open Fee Payments
                 </button>
-                <button type="button" className="w-full text-left p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-2">
-                  <FileText size={14} className="text-brand-600" /> Generate Documents
+                <button
+                  type="button"
+                  onClick={() => setTab("documents")}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-2"
+                >
+                  <FileText size={14} className="text-brand-600" /> Open Documents
                 </button>
               </div>
             </div>
 
             {/* Important Dates Box */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs text-xs">
-              <h3 className="font-extrabold text-slate-900 uppercase tracking-wide">Important Dates</h3>
+              <h3 className="font-extrabold text-slate-900 uppercase tracking-wide">
+                Important Dates
+              </h3>
               <div className="space-y-2 text-slate-700 font-medium">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Admission Date</span>
@@ -831,23 +927,87 @@ export function StudentProfile() {
       {/* TAB 2: ACADEMIC VIEW (STRICTLY REAL DATA) */}
       {tab === "academic" && (
         <div className="space-y-5">
-          {campusTransfers.length > 0 && <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs"><div className="flex items-center justify-between"><div><h3 className="text-sm font-extrabold text-slate-900">Campus transfer history</h3><p className="mt-1 text-xs text-slate-500">Cross-campus changes are coordinated with Finance before the enrollment is switched.</p></div><Badge variant={campusTransfers[0]?.status === "COMPLETED" ? "success" : campusTransfers[0]?.status === "FAILED" ? "destructive" : "warning"}>{campusTransfers[0]?.status.replaceAll("_", " ")}</Badge></div><div className="mt-4 divide-y divide-slate-100 border-y border-slate-100">{campusTransfers.map((item)=><div key={item.id} className="grid gap-2 py-3 text-xs sm:grid-cols-[1fr_auto]"><div><strong className="text-slate-800">{campuses.find(c=>c.id===item.source.campusId)?.name??"Previous campus"} to {campuses.find(c=>c.id===item.target.campusId)?.name??"Target campus"}</strong><p className="mt-1 text-slate-500">{item.reason}</p>{item.warning&&<p className="mt-1 font-semibold text-amber-700">{item.warning}</p>}{item.failureReason&&<p className="mt-1 font-semibold text-rose-700">{item.failureReason}</p>}</div><div className="text-right text-slate-500"><div>{dateStr(item.effectiveAt)}</div><div className="mt-1 font-semibold">Registration: {item.registrationAction.toLowerCase()}</div></div></div>)}</div></div>}
+          {campusTransfers.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Campus transfer history</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Cross-campus changes are coordinated with Finance before the enrollment is
+                    switched.
+                  </p>
+                </div>
+                <Badge
+                  variant={
+                    campusTransfers[0]?.status === "COMPLETED"
+                      ? "success"
+                      : campusTransfers[0]?.status === "FAILED"
+                        ? "destructive"
+                        : "warning"
+                  }
+                >
+                  {campusTransfers[0]?.status.replaceAll("_", " ")}
+                </Badge>
+              </div>
+              <div className="mt-4 divide-y divide-slate-100 border-y border-slate-100">
+                {campusTransfers.map((item) => (
+                  <div key={item.id} className="grid gap-2 py-3 text-xs sm:grid-cols-[1fr_auto]">
+                    <div>
+                      <strong className="text-slate-800">
+                        {campuses.find((c) => c.id === item.source.campusId)?.name ??
+                          "Previous campus"}{" "}
+                        to{" "}
+                        {campuses.find((c) => c.id === item.target.campusId)?.name ??
+                          "Target campus"}
+                      </strong>
+                      <p className="mt-1 text-slate-500">{item.reason}</p>
+                      {item.warning && (
+                        <p className="mt-1 font-semibold text-amber-700">{item.warning}</p>
+                      )}
+                      {item.failureReason && (
+                        <p className="mt-1 font-semibold text-rose-700">{item.failureReason}</p>
+                      )}
+                    </div>
+                    <div className="text-right text-slate-500">
+                      <div>{dateStr(item.effectiveAt)}</div>
+                      <div className="mt-1 font-semibold">
+                        Registration: {item.registrationAction.toLowerCase()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Top Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Current Class - Section</span>
-              <strong className="text-xs font-black text-slate-900 block mt-0.5">{labels.academicClass} {labels.section !== "Not assigned" ? `- ${labels.section}` : ""}</strong>
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                Current Class - Section
+              </span>
+              <strong className="text-xs font-black text-slate-900 block mt-0.5">
+                {labels.academicClass}{" "}
+                {labels.section !== "Not assigned" ? `- ${labels.section}` : ""}
+              </strong>
             </div>
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
               <span className="text-[10px] font-bold text-slate-400 uppercase block">Roll No.</span>
-              <strong className="text-xs font-black text-slate-900 font-mono block mt-0.5">{student.enrollment.rollNumber || "—"}</strong>
+              <strong className="text-xs font-black text-slate-900 font-mono block mt-0.5">
+                {student.enrollment.rollNumber || "—"}
+              </strong>
             </div>
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Admission Date</span>
-              <strong className="text-xs font-black text-slate-900 block mt-0.5">{dateStr(student.createdAt)}</strong>
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                Admission Date
+              </span>
+              <strong className="text-xs font-black text-slate-900 block mt-0.5">
+                {dateStr(student.createdAt)}
+              </strong>
             </div>
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Admission Type</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                Admission Type
+              </span>
               <strong className="text-xs font-black text-slate-900 block mt-0.5">Regular</strong>
             </div>
           </div>
@@ -877,7 +1037,12 @@ export function StudentProfile() {
                 </button>
               ))}
             </div>
-            <Button size="sm" variant="outline" onClick={beginEnrollmentChange} className="h-7 text-xs font-bold">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={beginEnrollmentChange}
+              className="h-7 text-xs font-bold"
+            >
               Change Assignment
             </Button>
           </div>
@@ -888,7 +1053,8 @@ export function StudentProfile() {
               <BookOpen size={28} className="mx-auto text-slate-300" />
               <h3 className="text-xs font-extrabold text-slate-800">Class Subjects</h3>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Subjects are automatically assigned based on the active class curriculum. No custom subject overrides logged for {labels.academicClass}.
+                Subjects are automatically assigned based on the active class curriculum. No custom
+                subject overrides logged for {labels.academicClass}.
               </p>
             </div>
           )}
@@ -896,7 +1062,9 @@ export function StudentProfile() {
           {/* Sub-Tab 2: Class & Section History Table */}
           {academicSubTab === "HISTORY" && (
             <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs">
-              <h3 className="text-xs font-extrabold text-slate-900">Class & Section Enrollment History</h3>
+              <h3 className="text-xs font-extrabold text-slate-900">
+                Class & Section Enrollment History
+              </h3>
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 text-xs font-bold text-slate-600">
@@ -908,8 +1076,13 @@ export function StudentProfile() {
                 </TableHeader>
                 <TableBody className="text-xs">
                   <TableRow>
-                    <TableCell className="font-bold text-slate-800">{labels.academicClass} {labels.section !== "Not assigned" ? `- ${labels.section}` : ""}</TableCell>
-                    <TableCell className="font-mono">{student.enrollment.rollNumber || "—"}</TableCell>
+                    <TableCell className="font-bold text-slate-800">
+                      {labels.academicClass}{" "}
+                      {labels.section !== "Not assigned" ? `- ${labels.section}` : ""}
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      {student.enrollment.rollNumber || "—"}
+                    </TableCell>
                     <TableCell>{dateStr(student.enrollment.enrolledAt)}</TableCell>
                     <TableCell>
                       <Badge variant="success">Current</Badge>
@@ -923,12 +1096,18 @@ export function StudentProfile() {
           {/* Sub-Tab 3: Academic Documents */}
           {academicSubTab === "DOCS" && (
             <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs">
-              <h3 className="text-xs font-extrabold text-slate-900">Issued Academic Certificates</h3>
+              <h3 className="text-xs font-extrabold text-slate-900">
+                Issued Academic Certificates
+              </h3>
               {issuedDocuments.length === 0 ? (
                 <div className="p-8 text-center space-y-1">
                   <FileText size={28} className="mx-auto text-slate-300" />
-                  <p className="text-xs font-bold text-slate-700">No academic certificates issued yet.</p>
-                  <p className="text-[11px] text-slate-400">Certificates issued from Certificates & ID Cards will appear here.</p>
+                  <p className="text-xs font-bold text-slate-700">
+                    No academic certificates issued yet.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Certificates issued from Certificates & ID Cards will appear here.
+                  </p>
                 </div>
               ) : (
                 <Table>
@@ -943,11 +1122,20 @@ export function StudentProfile() {
                   <TableBody className="text-xs">
                     {issuedDocuments.map((doc) => (
                       <TableRow key={doc.id}>
-                        <TableCell className="font-mono font-bold text-slate-900">{doc.documentNumber}</TableCell>
-                        <TableCell className="font-bold text-slate-800">{doc.documentType}</TableCell>
+                        <TableCell className="font-mono font-bold text-slate-900">
+                          {doc.documentNumber}
+                        </TableCell>
+                        <TableCell className="font-bold text-slate-800">
+                          {doc.documentType}
+                        </TableCell>
                         <TableCell className="text-slate-600">{dateStr(doc.issuedAt)}</TableCell>
                         <TableCell className="text-right">
-                          <Button size="icon-sm" variant="ghost" title="Download PDF" onClick={() => void downloadStudentDocument(doc)}>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            title="Download PDF"
+                            onClick={() => void downloadStudentDocument(doc)}
+                          >
                             <Download size={14} />
                           </Button>
                         </TableCell>
@@ -968,23 +1156,41 @@ export function StudentProfile() {
             {/* 5 KPI Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3">
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Payable</span>
-                <strong className="text-sm font-black text-slate-900 block mt-0.5">{money(totals.total)}</strong>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                  Total Payable
+                </span>
+                <strong className="text-sm font-black text-slate-900 block mt-0.5">
+                  {money(totals.total)}
+                </strong>
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Paid</span>
-                <strong className="text-sm font-black text-emerald-600 block mt-0.5">{money(totals.paid)}</strong>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                  Total Paid
+                </span>
+                <strong className="text-sm font-black text-emerald-600 block mt-0.5">
+                  {money(totals.paid)}
+                </strong>
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Balance Due</span>
-                <strong className="text-sm font-black text-amber-600 block mt-0.5">{money(totals.balance)}</strong>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                  Balance Due
+                </span>
+                <strong className="text-sm font-black text-amber-600 block mt-0.5">
+                  {money(totals.balance)}
+                </strong>
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Overdue Amount</span>
-                <strong className="text-sm font-black text-rose-600 block mt-0.5">{money(overdueTotalMinor)}</strong>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                  Overdue Amount
+                </span>
+                <strong className="text-sm font-black text-rose-600 block mt-0.5">
+                  {money(overdueTotalMinor)}
+                </strong>
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Last Payment</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                  Last Payment
+                </span>
                 <strong className="text-xs font-bold text-slate-800 block mt-0.5">
                   {payments[0]?.amountMinor ? money(payments[0].amountMinor) : "—"}
                 </strong>
@@ -994,10 +1200,14 @@ export function StudentProfile() {
             {/* Fee Orders Table */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <h3 className="text-xs font-extrabold text-slate-900">Fee Orders ({orders.length})</h3>
+                <h3 className="text-xs font-extrabold text-slate-900">
+                  Fee Orders ({orders.length})
+                </h3>
               </div>
               {orders.length === 0 ? (
-                <p className="text-xs text-slate-400 p-4 text-center">No fee orders generated for this student yet.</p>
+                <p className="text-xs text-slate-400 p-4 text-center">
+                  No fee orders generated for this student yet.
+                </p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -1014,11 +1224,21 @@ export function StudentProfile() {
                   <TableBody className="text-xs">
                     {orders.map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell className="font-mono font-bold text-slate-900">{order.orderNumber}</TableCell>
-                        <TableCell className="font-medium text-slate-800">{order.structureName}</TableCell>
-                        <TableCell className="font-semibold text-slate-800">{money(order.totalMinor)}</TableCell>
-                        <TableCell className="font-semibold text-emerald-700">{money(order.paidMinor)}</TableCell>
-                        <TableCell className="font-semibold text-amber-700">{money(order.balanceMinor)}</TableCell>
+                        <TableCell className="font-mono font-bold text-slate-900">
+                          {order.orderNumber}
+                        </TableCell>
+                        <TableCell className="font-medium text-slate-800">
+                          {order.structureName}
+                        </TableCell>
+                        <TableCell className="font-semibold text-slate-800">
+                          {money(order.totalMinor)}
+                        </TableCell>
+                        <TableCell className="font-semibold text-emerald-700">
+                          {money(order.paidMinor)}
+                        </TableCell>
+                        <TableCell className="font-semibold text-amber-700">
+                          {money(order.balanceMinor)}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={order.status === "PAID" ? "success" : "brand"}>
                             {order.status}
@@ -1026,7 +1246,12 @@ export function StudentProfile() {
                         </TableCell>
                         <TableCell className="text-right">
                           {order.balanceMinor > 0 && (
-                            <Button size="sm" variant="brand" onClick={() => beginCollection(order)} className="h-7 text-xs font-bold px-3">
+                            <Button
+                              size="sm"
+                              variant="brand"
+                              onClick={() => beginCollection(order)}
+                              className="h-7 text-xs font-bold px-3"
+                            >
                               Collect Fee
                             </Button>
                           )}
@@ -1041,13 +1266,19 @@ export function StudentProfile() {
             {/* Payment & Receipts History Table */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <h3 className="text-xs font-extrabold text-slate-900">Payment History & Receipts ({payments.length})</h3>
+                <h3 className="text-xs font-extrabold text-slate-900">
+                  Payment History & Receipts ({payments.length})
+                </h3>
               </div>
               {payments.length === 0 ? (
                 <div className="p-8 text-center space-y-1">
                   <CreditCard size={28} className="mx-auto text-slate-300" />
-                  <p className="text-xs font-bold text-slate-700">No payment receipts recorded yet.</p>
-                  <p className="text-[11px] text-slate-400">Payments collected will appear here with instant receipt download.</p>
+                  <p className="text-xs font-bold text-slate-700">
+                    No payment receipts recorded yet.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Payments collected will appear here with instant receipt download.
+                  </p>
                 </div>
               ) : (
                 <Table>
@@ -1065,15 +1296,23 @@ export function StudentProfile() {
                   <TableBody className="text-xs">
                     {payments.map((payment) => (
                       <TableRow key={payment.id} className="hover:bg-slate-50/60">
-                        <TableCell className="font-mono font-bold text-brand-700">{payment.receiptNumber}</TableCell>
-                        <TableCell className="text-slate-600 font-medium">{dateStr(payment.paidAt)}</TableCell>
+                        <TableCell className="font-mono font-bold text-brand-700">
+                          {payment.receiptNumber}
+                        </TableCell>
+                        <TableCell className="text-slate-600 font-medium">
+                          {dateStr(payment.paidAt)}
+                        </TableCell>
                         <TableCell className="font-bold text-slate-800">
                           <span className="px-2 py-0.5 rounded bg-slate-100 text-[10.5px]">
                             {payment.method.replaceAll("_", " ")}
                           </span>
                         </TableCell>
-                        <TableCell className="font-mono text-slate-600 text-[11px]">{payment.reference || "—"}</TableCell>
-                        <TableCell className="font-extrabold text-slate-900">{money(payment.amountMinor)}</TableCell>
+                        <TableCell className="font-mono text-slate-600 text-[11px]">
+                          {payment.reference || "—"}
+                        </TableCell>
+                        <TableCell className="font-extrabold text-slate-900">
+                          {money(payment.amountMinor)}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={payment.status === "SUCCESS" ? "success" : "secondary"}>
                             {payment.status}
@@ -1112,11 +1351,16 @@ export function StudentProfile() {
           {/* Right Sidebar */}
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs">
-              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Quick Actions</h3>
+              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
+                Quick Actions
+              </h3>
               <div className="space-y-1.5 text-xs font-bold">
                 <button
                   type="button"
-                  onClick={() => { const firstOrder = orders[0]; if (firstOrder) beginCollection(firstOrder); }}
+                  onClick={() => {
+                    const firstOrder = orders[0];
+                    if (firstOrder) beginCollection(firstOrder);
+                  }}
                   className="w-full text-left p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-2 cursor-pointer"
                 >
                   <Banknote size={14} className="text-brand-600" /> Collect Payment
@@ -1145,35 +1389,56 @@ export function StudentProfile() {
             <div className="relative border-l-2 border-slate-200 ml-4 space-y-6 text-xs">
               <div className="relative pl-6">
                 <span className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-emerald-600 ring-4 ring-white"></span>
-                <span className="text-[11px] font-bold text-slate-400 block">{dateStr(student.createdAt)}</span>
-                <strong className="text-slate-900 font-bold block mt-0.5">Student Record Created</strong>
-                <p className="text-slate-600 text-[11.5px] mt-0.5">Enrolled into {labels.academicClass} at {currentCampusName}.</p>
+                <span className="text-[11px] font-bold text-slate-400 block">
+                  {dateStr(student.createdAt)}
+                </span>
+                <strong className="text-slate-900 font-bold block mt-0.5">
+                  Student Record Created
+                </strong>
+                <p className="text-slate-600 text-[11.5px] mt-0.5">
+                  Enrolled into {labels.academicClass} at {currentCampusName}.
+                </p>
               </div>
 
               {orders.map((o) => (
                 <div key={o.id} className="relative pl-6">
                   <span className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-amber-500 ring-4 ring-white"></span>
-                  <span className="text-[11px] font-bold text-slate-400 block">{dateStr(o.createdAt)}</span>
-                  <strong className="text-slate-900 font-bold block mt-0.5">Fee Order Generated: {o.orderNumber}</strong>
-                  <p className="text-slate-600 text-[11.5px] mt-0.5">{o.structureName} — Total: {money(o.totalMinor)}</p>
+                  <span className="text-[11px] font-bold text-slate-400 block">
+                    {dateStr(o.createdAt)}
+                  </span>
+                  <strong className="text-slate-900 font-bold block mt-0.5">
+                    Fee Order Generated: {o.orderNumber}
+                  </strong>
+                  <p className="text-slate-600 text-[11.5px] mt-0.5">
+                    {o.structureName} — Total: {money(o.totalMinor)}
+                  </p>
                 </div>
               ))}
 
               {payments.map((p) => (
                 <div key={p.id} className="relative pl-6">
                   <span className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-brand-600 ring-4 ring-white"></span>
-                  <span className="text-[11px] font-bold text-slate-400 block">{dateStr(p.paidAt)}</span>
-                  <strong className="text-slate-900 font-bold block mt-0.5">Payment Received: {money(p.amountMinor)}</strong>
-                  <p className="text-slate-600 text-[11.5px] mt-0.5">Receipt {p.receiptNumber} issued via {p.method}.</p>
+                  <span className="text-[11px] font-bold text-slate-400 block">
+                    {dateStr(p.paidAt)}
+                  </span>
+                  <strong className="text-slate-900 font-bold block mt-0.5">
+                    Payment Received: {money(p.amountMinor)}
+                  </strong>
+                  <p className="text-slate-600 text-[11.5px] mt-0.5">
+                    Receipt {p.receiptNumber} issued via {p.method}.
+                  </p>
                 </div>
               ))}
 
               {issuedDocuments.map((document) => (
                 <div key={document.id} className="relative pl-6">
                   <span className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-indigo-500 ring-4 ring-white"></span>
-                  <span className="text-[11px] font-bold text-slate-400 block">{dateStr(document.issuedAt)}</span>
+                  <span className="text-[11px] font-bold text-slate-400 block">
+                    {dateStr(document.issuedAt)}
+                  </span>
                   <strong className="text-slate-900 font-bold block mt-0.5">
-                    {document.status === "REVOKED" ? "Document Revoked" : "Document Issued"}: {document.documentNumber}
+                    {document.status === "REVOKED" ? "Document Revoked" : "Document Issued"}:{" "}
+                    {document.documentNumber}
                   </strong>
                   <p className="text-slate-600 text-[11.5px] mt-0.5">
                     {document.documentType.replaceAll("_", " ").toLowerCase()}
@@ -1188,7 +1453,9 @@ export function StudentProfile() {
                   <span className="text-[11px] font-bold text-slate-400 block">
                     {document.createdAt ? dateStr(document.createdAt) : "Date unavailable"}
                   </span>
-                  <strong className="text-slate-900 font-bold block mt-0.5">Student File Added</strong>
+                  <strong className="text-slate-900 font-bold block mt-0.5">
+                    Student File Added
+                  </strong>
                   <p className="text-slate-600 text-[11.5px] mt-0.5">{document.fileName}</p>
                 </div>
               ))}
@@ -1196,8 +1463,12 @@ export function StudentProfile() {
               {notes.map((note) => (
                 <div key={note.id} className="relative pl-6">
                   <span className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-slate-500 ring-4 ring-white"></span>
-                  <span className="text-[11px] font-bold text-slate-400 block">{dateStr(note.updatedAt)}</span>
-                  <strong className="text-slate-900 font-bold block mt-0.5">Internal Note Updated</strong>
+                  <span className="text-[11px] font-bold text-slate-400 block">
+                    {dateStr(note.updatedAt)}
+                  </span>
+                  <strong className="text-slate-900 font-bold block mt-0.5">
+                    Internal Note Updated
+                  </strong>
                   <p className="text-slate-600 text-[11.5px] mt-0.5 line-clamp-2">{note.body}</p>
                 </div>
               ))}
@@ -1206,12 +1477,19 @@ export function StudentProfile() {
 
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs text-xs">
-              <h3 className="font-extrabold text-slate-900 uppercase tracking-wide">Timeline Summary</h3>
+              <h3 className="font-extrabold text-slate-900 uppercase tracking-wide">
+                Timeline Summary
+              </h3>
               <div className="space-y-2 text-slate-700 font-medium">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Total Events</span>
                   <strong className="font-bold">
-                    {1 + orders.length + payments.length + issuedDocuments.length + documents.length + notes.length}
+                    {1 +
+                      orders.length +
+                      payments.length +
+                      issuedDocuments.length +
+                      documents.length +
+                      notes.length}
                   </strong>
                 </div>
                 <div className="flex justify-between">
@@ -1242,11 +1520,10 @@ export function StudentProfile() {
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h3 className="text-sm font-extrabold text-slate-900">
-                  Student record files
-                </h3>
+                <h3 className="text-sm font-extrabold text-slate-900">Student record files</h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Upload identity, admission, academic, and supporting records into the student’s protected file scope.
+                  Upload identity, admission, academic, and supporting records into the student’s
+                  protected file scope.
                 </p>
               </div>
               <Badge variant="secondary">{documents.length} uploaded</Badge>
@@ -1277,9 +1554,7 @@ export function StudentProfile() {
                 <Input
                   id="student-document-file"
                   type="file"
-                  onChange={(event) =>
-                    setPendingDocument(event.target.files?.[0] ?? null)
-                  }
+                  onChange={(event) => setPendingDocument(event.target.files?.[0] ?? null)}
                   className="h-9 bg-white text-xs"
                 />
               </div>
@@ -1325,9 +1600,7 @@ export function StudentProfile() {
                           file.metadata?.documentType ??
                           "Student document"}
                       </TableCell>
-                      <TableCell className="text-slate-600">
-                        {dateStr(file.createdAt)}
-                      </TableCell>
+                      <TableCell className="text-slate-600">{dateStr(file.createdAt)}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
                           <Button
@@ -1361,9 +1634,7 @@ export function StudentProfile() {
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-extrabold text-slate-900">
-                  Issued documents
-                </h3>
+                <h3 className="text-sm font-extrabold text-slate-900">Issued documents</h3>
                 <p className="mt-1 text-xs text-slate-500">
                   Certificates and official documents generated by the ERP.
                 </p>
@@ -1411,7 +1682,9 @@ export function StudentProfile() {
         <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4 shadow-2xs text-xs">
           <h3 className="font-extrabold text-slate-900">Student Internal Notes</h3>
           <div className="space-y-2">
-            <Label htmlFor="student-note">{editingNoteId ? "Update note" : "Add internal note"}</Label>
+            <Label htmlFor="student-note">
+              {editingNoteId ? "Update note" : "Add internal note"}
+            </Label>
             <textarea
               id="student-note"
               rows={4}
@@ -1423,9 +1696,24 @@ export function StudentProfile() {
             />
             <div className="flex justify-end gap-2">
               {editingNoteId ? (
-                <Button type="button" variant="outline" size="sm" onClick={() => { setEditingNoteId(""); setNoteBody(""); }}>Cancel</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditingNoteId("");
+                    setNoteBody("");
+                  }}
+                >
+                  Cancel
+                </Button>
               ) : null}
-              <Button type="button" size="sm" disabled={savingNote || !noteBody.trim()} onClick={() => void saveNote()}>
+              <Button
+                type="button"
+                size="sm"
+                disabled={savingNote || !noteBody.trim()}
+                onClick={() => void saveNote()}
+              >
                 {editingNoteId ? "Update note" : "Add note"}
               </Button>
             </div>
@@ -1438,7 +1726,15 @@ export function StudentProfile() {
                   <p className="whitespace-pre-wrap text-sm text-slate-800">{note.body}</p>
                   <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500">
                     <span>{new Date(note.updatedAt).toLocaleString()}</span>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingNoteId(note.id); setNoteBody(note.body); }}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingNoteId(note.id);
+                        setNoteBody(note.body);
+                      }}
+                    >
                       <Pencil size={13} /> Edit
                     </Button>
                   </div>
@@ -1446,10 +1742,179 @@ export function StudentProfile() {
               ))}
             </div>
           ) : (
-            <p className="text-slate-500">No internal staff notes recorded for this student profile yet.</p>
+            <p className="text-slate-500">
+              No internal staff notes recorded for this student profile yet.
+            </p>
           )}
         </div>
       )}
+
+      <Modal
+        open={editingStudent}
+        title="Edit Student"
+        description="Update the student and guardian profile. Admission and registration numbers are controlled by numbering rules."
+        onClose={() => {
+          if (!savingStudent) setEditingStudent(false);
+        }}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveStudentDetails();
+          }}
+          className="space-y-5"
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="student-edit-name">Full name</Label>
+              <Input
+                id="student-edit-name"
+                required
+                value={studentDraft.name}
+                onChange={(event) =>
+                  setStudentDraft((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-edit-dob">Date of birth</Label>
+              <Input
+                id="student-edit-dob"
+                type="date"
+                value={studentDraft.dateOfBirth ?? ""}
+                onChange={(event) =>
+                  setStudentDraft((current) => ({
+                    ...current,
+                    dateOfBirth: event.target.value || null,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-edit-gender">Gender</Label>
+              <select
+                id="student-edit-gender"
+                value={studentDraft.gender ?? ""}
+                onChange={(event) =>
+                  setStudentDraft((current) => ({
+                    ...current,
+                    gender: (event.target.value || null) as UpdateStudentInput["gender"],
+                  }))
+                }
+                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              >
+                <option value="">Not specified</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-edit-phone">Student phone</Label>
+              <Input
+                id="student-edit-phone"
+                required
+                inputMode="tel"
+                value={studentDraft.phone}
+                onChange={(event) =>
+                  setStudentDraft((current) => ({ ...current, phone: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-edit-email">Student email</Label>
+              <Input
+                id="student-edit-email"
+                type="email"
+                value={studentDraft.email ?? ""}
+                onChange={(event) =>
+                  setStudentDraft((current) => ({
+                    ...current,
+                    email: event.target.value || null,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="student-edit-address">Address</Label>
+              <textarea
+                id="student-edit-address"
+                rows={3}
+                value={studentDraft.address ?? ""}
+                onChange={(event) =>
+                  setStudentDraft((current) => ({
+                    ...current,
+                    address: event.target.value || null,
+                  }))
+                }
+                className="w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          <fieldset className="grid gap-4 sm:grid-cols-2">
+            <legend className="mb-3 text-sm font-extrabold text-slate-900">Guardian details</legend>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-edit-guardian">Guardian name</Label>
+              <Input
+                id="student-edit-guardian"
+                required
+                value={studentDraft.guardianName}
+                onChange={(event) =>
+                  setStudentDraft((current) => ({
+                    ...current,
+                    guardianName: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-edit-guardian-phone">Guardian phone</Label>
+              <Input
+                id="student-edit-guardian-phone"
+                inputMode="tel"
+                value={studentDraft.guardianPhone ?? ""}
+                onChange={(event) =>
+                  setStudentDraft((current) => ({
+                    ...current,
+                    guardianPhone: event.target.value || null,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="student-edit-relation">Relationship</Label>
+              <Input
+                id="student-edit-relation"
+                value={studentDraft.guardianRelation ?? ""}
+                onChange={(event) =>
+                  setStudentDraft((current) => ({
+                    ...current,
+                    guardianRelation: event.target.value || null,
+                  }))
+                }
+                placeholder="Parent, guardian, or other relationship"
+              />
+            </div>
+          </fieldset>
+
+          <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditingStudent(false)}
+              disabled={savingStudent}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="brand" disabled={savingStudent}>
+              {savingStudent ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Collect Fee Modal */}
       <Modal
@@ -1472,7 +1937,9 @@ export function StudentProfile() {
         >
           <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs space-y-1">
             <span className="block text-slate-500 font-bold">Outstanding Balance</span>
-            <strong className="block text-xl text-slate-900 font-black">{money(collectingOrder?.balanceMinor ?? 0)}</strong>
+            <strong className="block text-xl text-slate-900 font-black">
+              {money(collectingOrder?.balanceMinor ?? 0)}
+            </strong>
             <span className="block text-[11px] text-slate-500 font-semibold">
               {collectingOrder?.orderNumber} · {collectingOrder?.structureName}
             </span>
@@ -1480,7 +1947,9 @@ export function StudentProfile() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="col-amount" className="font-bold text-slate-800">Amount (INR)</Label>
+              <Label htmlFor="col-amount" className="font-bold text-slate-800">
+                Amount (INR)
+              </Label>
               <Input
                 id="col-amount"
                 required
@@ -1495,7 +1964,9 @@ export function StudentProfile() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="col-method" className="font-bold text-slate-800">Payment Method</Label>
+              <Label htmlFor="col-method" className="font-bold text-slate-800">
+                Payment Method
+              </Label>
               <select
                 id="col-method"
                 value={paymentMethod}
@@ -1540,7 +2011,12 @@ export function StudentProfile() {
             >
               Cancel
             </Button>
-            <Button disabled={collecting || (paymentMethod !== "CASH" && !paymentReference.trim())} size="sm" variant="brand" className="h-8 text-xs font-bold">
+            <Button
+              disabled={collecting || (paymentMethod !== "CASH" && !paymentReference.trim())}
+              size="sm"
+              variant="brand"
+              className="h-8 text-xs font-bold"
+            >
               {collecting ? "Collecting..." : "Collect & Print Receipt"}
             </Button>
           </div>
@@ -1563,7 +2039,9 @@ export function StudentProfile() {
         >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="change-campus" className="font-bold text-slate-800">Campus</Label>
+              <Label htmlFor="change-campus" className="font-bold text-slate-800">
+                Campus
+              </Label>
               <select
                 id="change-campus"
                 value={targetCampusId}
@@ -1572,13 +2050,19 @@ export function StudentProfile() {
                 className="flex h-8.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-800"
               >
                 <option value="">Select campus</option>
-                {campuses.filter((c) => c.status === "ACTIVE").map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {campuses
+                  .filter((c) => c.status === "ACTIVE")
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="change-class" className="font-bold text-slate-800">Class</Label>
+              <Label htmlFor="change-class" className="font-bold text-slate-800">
+                Class
+              </Label>
               <select
                 id="change-class"
                 value={classId}
@@ -1600,7 +2084,9 @@ export function StudentProfile() {
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="change-sec" className="font-bold text-slate-800">Section</Label>
+              <Label htmlFor="change-sec" className="font-bold text-slate-800">
+                Section
+              </Label>
               <select
                 id="change-sec"
                 value={sectionId}
@@ -1620,7 +2106,9 @@ export function StudentProfile() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="change-reason" className="font-bold text-slate-800">Reason</Label>
+            <Label htmlFor="change-reason" className="font-bold text-slate-800">
+              Reason
+            </Label>
             <textarea
               id="change-reason"
               value={changeReason}
@@ -1634,11 +2122,26 @@ export function StudentProfile() {
 
           <Separator />
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditingEnrollment(false)} className="h-8 text-xs font-bold">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setEditingEnrollment(false)}
+              className="h-8 text-xs font-bold"
+            >
               Cancel
             </Button>
-            <Button size="sm" variant="brand" disabled={savingEnrollment || !targetCampusId || !classId || !changeReason.trim()} className="h-8 text-xs font-bold">
-              {savingEnrollment ? "Saving..." : targetCampusId !== student.enrollment.campusId ? "Start Campus Transfer" : "Confirm Assignment"}
+            <Button
+              size="sm"
+              variant="brand"
+              disabled={savingEnrollment || !targetCampusId || !classId || !changeReason.trim()}
+              className="h-8 text-xs font-bold"
+            >
+              {savingEnrollment
+                ? "Saving..."
+                : targetCampusId !== student.enrollment.campusId
+                  ? "Start Campus Transfer"
+                  : "Confirm Assignment"}
             </Button>
           </div>
         </form>

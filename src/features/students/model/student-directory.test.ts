@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { directoryPageNumbers, normalizeStudentSort, normalizeStudentStatus } from "./student-directory";
+import {
+  directoryPageNumbers,
+  normalizeStudentSort,
+  normalizeStudentStatus,
+} from "./student-directory";
 
 describe("student directory state", () => {
   it("rejects unsupported status and sort query values", () => {

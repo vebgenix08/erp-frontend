@@ -22,8 +22,7 @@ export class ApiError extends Error implements ApiErrorShape {
   }
 }
 
-export const isApiError = (value: unknown): value is ApiError =>
-  value instanceof ApiError;
+export const isApiError = (value: unknown): value is ApiError => value instanceof ApiError;
 
 export const friendlyApiMessage = (error: unknown): string => {
   if (isApiError(error) && error.code === "SERVICE_BUSY") {

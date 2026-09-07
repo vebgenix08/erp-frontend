@@ -13,19 +13,39 @@ import {
   Users,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useSelectedAcademicYear } from "../../tenant-settings/model/selected-academic-year-provider";
 import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
 import { listStudentPage, listStudents, type StudentPage } from "../api/students.api";
 import type { Student } from "../model/student.types";
-import { directoryPageNumbers, normalizeStudentSort, normalizeStudentStatus } from "../model/student-directory";
+import {
+  directoryPageNumbers,
+  normalizeStudentSort,
+  normalizeStudentStatus,
+} from "../model/student-directory";
 import { listClasses, listSections } from "../../academic-structure/api/academic-structure.api";
-import type { AcademicClass, Section } from "../../academic-structure/model/academic-structure.types";
-import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "../../../shared/lib/tabular-export";
+import type {
+  AcademicClass,
+  Section,
+} from "../../academic-structure/model/academic-structure.types";
+import {
+  exportRowsToExcel,
+  exportRowsToPdf,
+  type ExportColumn,
+} from "../../../shared/lib/tabular-export";
+import { loadColumnPreference, saveColumnPreference } from "../../../shared/lib/column-preferences";
 import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import { ModernSelect } from "../../../shared/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { cn } from "../../../shared/ui/utils";
 
 const pageSizes = new Set([10, 20, 25, 50, 100]);
@@ -63,12 +83,31 @@ const defaultStudentColumns: StudentColumnId[] = [
   "gender",
   "status",
 ];
+const allStudentColumns: StudentColumnId[] = [
+  "student",
+  "admissionNumber",
+  "rollNumber",
+  "classSection",
+  "dateOfBirth",
+  "gender",
+  "phone",
+  "guardian",
+  "status",
+  "updatedAt",
+];
+const studentColumnPreferenceKey = "vebgenix.student-directory.columns.v2";
 
-const formatDate = (value?: string) => value
-  ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-  : "-";
+const formatDate = (value?: string) =>
+  value
+    ? new Date(value).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "-";
 
 export function StudentDirectory() {
+  const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useSearchParams();
   const { selectedCampus } = useSelectedCampus();
@@ -90,8 +129,14 @@ export function StudentDirectory() {
   const [exportScope, setExportScope] = useState<"PAGE" | "FILTERED" | "SELECTED">("FILTERED");
   const [exporting, setExporting] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
-  const [selectedColumnIds, setSelectedColumnIds] = useState<StudentColumnId[]>(defaultStudentColumns);
+  const [selectedColumnIds, setSelectedColumnIds] = useState<StudentColumnId[]>(() =>
+    loadColumnPreference(studentColumnPreferenceKey, defaultStudentColumns, allStudentColumns, [
+      "student",
+      "classSection",
+    ]),
+  );
   const [total, setTotal] = useState(0);
+  const [overall, setOverall] = useState({ total: 0, active: 0, inactive: 0, missingSection: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,53 +162,117 @@ export function StudentDirectory() {
       });
       setStudents(result.items);
       setTotal(result.total);
+      setOverall(result.overall);
     } catch (value) {
       setError(value instanceof Error ? value.message : "Unable to load students");
     } finally {
       setLoading(false);
     }
-  }, [classId, page, pageSize, search, sectionId, selectedAcademicYear, selectedCampus, sortBy, sortDirection, status]);
+  }, [
+    classId,
+    page,
+    pageSize,
+    search,
+    sectionId,
+    selectedAcademicYear,
+    selectedCampus,
+    sortBy,
+    sortDirection,
+    status,
+  ]);
 
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => { setSelected(new Map()); }, [classId, search, sectionId, selectedCampus?.id, selectedAcademicYear?.id, status]);
-  useEffect(() => { setDraftSearch(search); }, [search]);
   useEffect(() => {
-    if (!selectedCampus) { setClasses([]); setSections([]); return; }
+    void load();
+  }, [load]);
+  useEffect(() => {
+    setSelected(new Map());
+  }, [classId, search, sectionId, selectedCampus?.id, selectedAcademicYear?.id, status]);
+  useEffect(() => {
+    setDraftSearch(search);
+  }, [search]);
+  useEffect(() => {
+    saveColumnPreference(studentColumnPreferenceKey, selectedColumnIds);
+  }, [selectedColumnIds]);
+  useEffect(() => {
+    if (!selectedCampus) {
+      setClasses([]);
+      setSections([]);
+      return;
+    }
     void Promise.all([listClasses(selectedCampus.id), listSections(selectedCampus.id)])
       .then(([classRows, sectionRows]) => {
         setClasses(classRows.filter((item) => item.status === "ACTIVE"));
         setSections(sectionRows.filter((item) => item.status === "ACTIVE"));
       })
-      .catch((value) => setError(value instanceof Error ? value.message : "Unable to load class filters"));
+      .catch((value) =>
+        setError(value instanceof Error ? value.message : "Unable to load class filters"),
+      );
   }, [selectedCampus]);
 
-  const classNameById = useMemo(() => new Map(classes.map((item) => [item.id, item.name])), [classes]);
-  const sectionNameById = useMemo(() => new Map(sections.map((item) => [item.id, item.name])), [sections]);
+  const classNameById = useMemo(
+    () => new Map(classes.map((item) => [item.id, item.name])),
+    [classes],
+  );
+  const sectionNameById = useMemo(
+    () => new Map(sections.map((item) => [item.id, item.name])),
+    [sections],
+  );
   const availableSections = useMemo(
     () => sections.filter((item) => !classId || item.classId === classId),
     [classId, sections],
   );
-  const columnDefinitions = useMemo<StudentColumn[]>(() => [
-    { id: "student", label: "Student", width: 24, sortField: "name", value: (item) => item.name },
-    { id: "admissionNumber", label: "Admission No.", width: 18, sortField: "admissionNumber", value: (item) => item.admissionNumber || "-" },
-    { id: "rollNumber", label: "Roll No.", width: 12, value: (item) => item.enrollment.rollNumber || "-" },
-    {
-      id: "classSection",
-      label: "Class - Section",
-      width: 20,
-      value: (item) => {
-        const className = classNameById.get(item.enrollment.classId) ?? "-";
-        const sectionName = item.enrollment.sectionId ? sectionNameById.get(item.enrollment.sectionId) : undefined;
-        return sectionName ? `${className} - ${sectionName}` : className;
+  const columnDefinitions = useMemo<StudentColumn[]>(
+    () => [
+      { id: "student", label: "Student", width: 24, sortField: "name", value: (item) => item.name },
+      {
+        id: "admissionNumber",
+        label: "Admission No.",
+        width: 18,
+        sortField: "admissionNumber",
+        value: (item) => item.admissionNumber || "-",
       },
-    },
-    { id: "dateOfBirth", label: "Date of Birth", width: 16, value: (item) => formatDate(item.dateOfBirth) },
-    { id: "gender", label: "Gender", width: 12, value: (item) => item.gender ? item.gender[0] + item.gender.slice(1).toLowerCase() : "-" },
-    { id: "phone", label: "Phone", width: 16, value: (item) => item.phone || "-" },
-    { id: "guardian", label: "Guardian", width: 22, value: (item) => item.guardian?.name || "-" },
-    { id: "status", label: "Status", width: 14, value: (item) => item.status },
-    { id: "updatedAt", label: "Last Updated", width: 16, value: (item) => formatDate(item.updatedAt) },
-  ], [classNameById, sectionNameById]);
+      {
+        id: "rollNumber",
+        label: "Roll No.",
+        width: 12,
+        value: (item) => item.enrollment.rollNumber || "-",
+      },
+      {
+        id: "classSection",
+        label: "Class - Section",
+        width: 20,
+        value: (item) => {
+          const className = classNameById.get(item.enrollment.classId) ?? "-";
+          const sectionName = item.enrollment.sectionId
+            ? sectionNameById.get(item.enrollment.sectionId)
+            : undefined;
+          return sectionName ? `${className} - ${sectionName}` : className;
+        },
+      },
+      {
+        id: "dateOfBirth",
+        label: "Date of Birth",
+        width: 16,
+        value: (item) => formatDate(item.dateOfBirth),
+      },
+      {
+        id: "gender",
+        label: "Gender",
+        width: 12,
+        value: (item) => (item.gender ? item.gender[0] + item.gender.slice(1).toLowerCase() : "-"),
+      },
+      { id: "phone", label: "Phone", width: 16, value: (item) => item.phone || "-" },
+      { id: "guardian", label: "Guardian", width: 22, value: (item) => item.guardian?.name || "-" },
+      { id: "status", label: "Status", width: 14, value: (item) => item.status },
+      {
+        id: "updatedAt",
+        label: "Last Updated",
+        width: 16,
+        value: (item) => formatDate(item.updatedAt),
+      },
+    ],
+    [classNameById, sectionNameById],
+  );
   const visibleColumnIds = useMemo(() => new Set(selectedColumnIds), [selectedColumnIds]);
   const visibleColumns = useMemo(
     () => columnDefinitions.filter((column) => visibleColumnIds.has(column.id)),
@@ -254,7 +363,8 @@ export function StudentDirectory() {
         width: column.width,
       }));
       const suffix = exportScope.toLowerCase();
-      if (format === "XLSX") await exportRowsToExcel(`students-${suffix}`, "Students", columns, rows);
+      if (format === "XLSX")
+        await exportRowsToExcel(`students-${suffix}`, "Students", columns, rows);
       else await exportRowsToPdf(`students-${suffix}`, "Student Directory", columns, rows);
     } catch (value) {
       setError(value instanceof Error ? value.message : "Unable to export students");
@@ -272,36 +382,47 @@ export function StudentDirectory() {
           </span>
           <div className="min-w-0">
             <p className="truncate font-bold text-brand-700">{student.name}</p>
-            <p className="truncate text-[11px] text-slate-500">{student.guardian?.name || "No guardian recorded"}</p>
+            <p className="truncate text-[11px] text-slate-500">
+              {student.guardian?.name || "No guardian recorded"}
+            </p>
           </div>
         </div>
       );
     }
     if (column.id === "gender") {
       return (
-        <span className={cn(
-          "inline-block rounded-full px-2.5 py-0.5 text-[10.5px] font-bold",
-          student.gender === "FEMALE" ? "bg-rose-50 text-rose-700" : "bg-brand-50 text-brand-700",
-        )}>
+        <span
+          className={cn(
+            "inline-block rounded-full px-2.5 py-0.5 text-[10.5px] font-bold",
+            student.gender === "FEMALE" ? "bg-rose-50 text-rose-700" : "bg-brand-50 text-brand-700",
+          )}
+        >
           {column.value(student)}
         </span>
       );
     }
     if (column.id === "status") {
       return (
-        <span className={cn(
-          "inline-block rounded-full px-2.5 py-0.5 text-[10.5px] font-extrabold",
-          student.status === "ACTIVE" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700",
-        )}>
+        <span
+          className={cn(
+            "inline-block rounded-full px-2.5 py-0.5 text-[10.5px] font-extrabold",
+            student.status === "ACTIVE"
+              ? "bg-emerald-100 text-emerald-800"
+              : "bg-slate-100 text-slate-700",
+          )}
+        >
           {column.value(student)}
         </span>
       );
     }
     return (
-      <span className={cn(
-        "font-medium text-slate-700",
-        (column.id === "admissionNumber" || column.id === "rollNumber") && "font-mono font-semibold",
-      )}>
+      <span
+        className={cn(
+          "font-medium text-slate-700",
+          (column.id === "admissionNumber" || column.id === "rollNumber") &&
+            "font-mono font-semibold",
+        )}
+      >
         {column.value(student)}
       </span>
     );
@@ -315,17 +436,14 @@ export function StudentDirectory() {
       />
     );
 
-  const activeStudentsCount = students.filter((s) => s.status === "ACTIVE").length;
-  const inactiveStudentsCount = students.filter((s) => s.status === "INACTIVE").length;
-  const missingSectionCount = students.filter((s) => !s.enrollment.sectionId).length;
-
   return (
     <section className="space-y-6 pb-12">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Student Directory</h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            Manage student records, active class enrollments, and academic profiles for {selectedCampus.name}.
+            Manage student records, active class enrollments, and academic profiles for{" "}
+            {selectedCampus.name}.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -348,9 +466,9 @@ export function StudentDirectory() {
           <div>
             <span className="text-[11px] font-semibold text-slate-500 block">Total Students</span>
             <p className="text-lg font-black text-slate-900 leading-tight">
-              {total.toLocaleString()}
+              {overall.total.toLocaleString()}
             </p>
-            <span className="text-[10px] font-bold text-slate-500">Total enrolled</span>
+            <span className="text-[10px] font-bold text-slate-500">Overall enrolled</span>
           </div>
         </div>
 
@@ -359,11 +477,11 @@ export function StudentDirectory() {
             <UserCheck size={20} />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-500 block">Active on Page</span>
+            <span className="text-[11px] font-semibold text-slate-500 block">Active Students</span>
             <p className="text-lg font-black text-slate-900 leading-tight">
-              {activeStudentsCount.toLocaleString()}
+              {overall.active.toLocaleString()}
             </p>
-            <span className="text-[10px] font-bold text-emerald-600">Current result page</span>
+            <span className="text-[10px] font-bold text-emerald-600">Overall active</span>
           </div>
         </div>
 
@@ -373,10 +491,10 @@ export function StudentDirectory() {
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 block">Records on Page</span>
-            <p className="text-lg font-black text-slate-900 leading-tight">
-              {students.length}
-            </p>
-            <span className="text-[10px] font-bold text-amber-700">Page {page} of {totalPages}</span>
+            <p className="text-lg font-black text-slate-900 leading-tight">{students.length}</p>
+            <span className="text-[10px] font-bold text-amber-700">
+              Page {page} of {totalPages}
+            </span>
           </div>
         </div>
 
@@ -385,11 +503,13 @@ export function StudentDirectory() {
             <UserMinus size={20} />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-500 block">Inactive on Page</span>
+            <span className="text-[11px] font-semibold text-slate-500 block">
+              Inactive Students
+            </span>
             <p className="text-lg font-black text-slate-900 leading-tight">
-              {inactiveStudentsCount.toLocaleString()}
+              {overall.inactive.toLocaleString()}
             </p>
-            <span className="text-[10px] font-bold text-brand-600">Current result page</span>
+            <span className="text-[10px] font-bold text-brand-600">Overall inactive</span>
           </div>
         </div>
 
@@ -400,177 +520,179 @@ export function StudentDirectory() {
           <div>
             <span className="text-[11px] font-semibold text-slate-500 block">Missing Section</span>
             <p className="text-lg font-black text-slate-900 leading-tight">
-              {missingSectionCount.toLocaleString()}
+              {overall.missingSection.toLocaleString()}
             </p>
             <span className="text-[10px] font-bold text-rose-600">Needs placement</span>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-3.5 space-y-3 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <div className="space-y-1 min-w-[130px]">
-            <span className="text-[11px] font-bold text-slate-700 block">Academic Year</span>
-            <input aria-label="Academic year" readOnly value={selectedAcademicYear.name} className="h-8.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-600" />
-          </div>
-
-          <div className="space-y-1 min-w-[150px]">
-            <span className="text-[11px] font-bold text-slate-700 block">Campus</span>
-            <input aria-label="Campus" readOnly value={selectedCampus.name} className="h-8.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-600" />
-          </div>
-
-          {/* Class Select */}
-          <div className="space-y-1 min-w-[140px]">
-            <span className="text-[11px] font-bold text-slate-700 block">Class</span>
-            <select
-              aria-label="Class"
-              value={classId}
-              onChange={(e) => updateQuery({ classId: e.target.value, sectionId: undefined })}
-              className="h-8.5 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-600"
-            >
-              <option value="">All Classes</option>
-              {classes.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Section Select */}
-          <div className="space-y-1 min-w-[130px]">
-            <span className="text-[11px] font-bold text-slate-700 block">Section</span>
-            <select
-              aria-label="Section"
-              value={sectionId}
-              onChange={(e) => updateQuery({ sectionId: e.target.value })}
-              className="h-8.5 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-600"
-            >
-              <option value="">All Sections</option>
-              {availableSections.map((item) => (
-                <option key={item.id} value={item.id}>
-                  Section {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Select */}
-          <div className="space-y-1 min-w-[130px]">
-            <span className="text-[11px] font-bold text-slate-700 block">Status</span>
-            <select
-              aria-label="Status"
-              value={status}
-              onChange={(e) => updateQuery({ status: e.target.value })}
-              className="h-8.5 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-600"
-            >
-              <option value="">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-              <option value="GRADUATED">Graduated</option>
-              <option value="TRANSFERRED">Transferred</option>
-            </select>
-          </div>
-
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+      {/* Single-Line Unified Filter Toolbar */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-3 shadow-2xs space-y-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Search Input (Flex 1) */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
               updateQuery({ search: draftSearch.trim() });
             }}
-            className="relative flex-1 min-w-[280px]"
+            className="relative flex-1 min-w-[200px]"
           >
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            />
             <Input
               aria-label="Search students"
               value={draftSearch}
               onChange={(e) => setDraftSearch(e.target.value)}
-              placeholder="Search by name, admission no., roll no., mobile..."
-              className="pl-9 h-8.5 text-xs font-medium bg-slate-50/50"
+              placeholder="Search name, admission no., PEN, mobile..."
+              className="pl-8.5 h-9 text-xs font-semibold rounded-xl bg-slate-50/50 border-slate-200"
             />
           </form>
 
-          <div className="flex items-center gap-2">
-            {(search || classId || sectionId || status) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setDraftSearch("");
-                  setQuery(new URLSearchParams({ page: "1", pageSize: String(pageSize) }), { replace: true });
-                }}
-                className="h-8.5 text-xs font-bold text-slate-600"
-              >
-                <RotateCcw size={13} /> Clear Filters
-              </Button>
-            )}
+          {/* Class Select */}
+          <ModernSelect
+            aria-label="Class"
+            value={classId}
+            onValueChange={(val) => updateQuery({ classId: val, sectionId: undefined })}
+            placeholder="All Classes"
+            className="w-[140px]"
+            options={[
+              { label: "All Classes", value: "" },
+              ...classes.map((item) => ({ label: item.name, value: item.id })),
+            ]}
+          />
 
-            <div className="flex items-center gap-1 border border-slate-300 rounded-lg p-0.5 bg-white">
-              <select
-                value={exportScope}
-                onChange={(e) => setExportScope(e.target.value as "PAGE" | "FILTERED" | "SELECTED")}
-                className="h-7 text-[11px] font-bold text-slate-700 bg-transparent border-0 px-2 pr-6"
-              >
-                <option value="PAGE">Current Page</option>
-                <option value="FILTERED">All Filtered</option>
-                <option value="SELECTED" disabled={!selected.size}>
-                  Selected ({selected.size})
-                </option>
-              </select>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Export Excel"
-                disabled={exporting}
-                onClick={() => void exportStudents("XLSX")}
-                className="h-7 w-7 text-emerald-700 hover:bg-emerald-50"
-              >
-                <FileSpreadsheet size={15} />
-              </Button>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Export PDF"
-                disabled={exporting}
-                onClick={() => void exportStudents("PDF")}
-                className="h-7 w-7 text-rose-700 hover:bg-rose-50"
-              >
-                <FileText size={15} />
-              </Button>
-            </div>
+          {/* Section Select */}
+          <ModernSelect
+            aria-label="Section"
+            value={sectionId}
+            onValueChange={(val) => updateQuery({ sectionId: val })}
+            placeholder="All Sections"
+            className="w-[130px]"
+            options={[
+              { label: "All Sections", value: "" },
+              ...availableSections.map((item) => ({ label: item.name, value: item.id })),
+            ]}
+          />
 
+          {/* Status Select */}
+          <ModernSelect
+            aria-label="Status"
+            value={status}
+            onValueChange={(val) => updateQuery({ status: val })}
+            placeholder="All Statuses"
+            className="w-[130px]"
+            options={[
+              { label: "All Statuses", value: "" },
+              { label: "Active", value: "ACTIVE" },
+              { label: "Inactive", value: "INACTIVE" },
+              { label: "Graduated", value: "GRADUATED" },
+              { label: "Transferred", value: "TRANSFERRED" },
+            ]}
+          />
+
+          {/* Clear Filters Button */}
+          {(search || classId || sectionId || status) && (
             <Button
               variant="outline"
               size="sm"
-              aria-expanded={columnsOpen}
-              onClick={() => setColumnsOpen((current) => !current)}
-              className="h-8.5 text-xs font-bold border-slate-300"
+              onClick={() => {
+                setDraftSearch("");
+                setQuery(new URLSearchParams({ page: "1", pageSize: String(pageSize) }), {
+                  replace: true,
+                });
+              }}
+              className="h-9 text-xs font-bold text-slate-600 rounded-xl"
             >
-              <Columns3 size={14} /> Columns ({visibleColumns.length})
+              <RotateCcw size={13} /> Clear
+            </Button>
+          )}
+
+          {/* Scope & Export Actions */}
+          <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-0.5 bg-white shadow-2xs">
+            <ModernSelect
+              value={exportScope}
+              onValueChange={(val) => setExportScope(val as "PAGE" | "FILTERED" | "SELECTED")}
+              className="h-8 min-w-[90px] border-none shadow-none text-[11px] font-bold px-2"
+              options={[
+                { label: "Page", value: "PAGE" },
+                { label: "Filtered", value: "FILTERED" },
+                {
+                  label: `Selected (${selected.size})`,
+                  value: "SELECTED",
+                  disabled: !selected.size,
+                },
+              ]}
+            />
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              title="Export Excel"
+              disabled={exporting}
+              onClick={() => void exportStudents("XLSX")}
+              className="h-7 w-7 text-emerald-700 hover:bg-emerald-50 rounded-lg"
+            >
+              <FileSpreadsheet size={14} />
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              title="Export PDF"
+              disabled={exporting}
+              onClick={() => void exportStudents("PDF")}
+              className="h-7 w-7 text-rose-700 hover:bg-rose-50 rounded-lg"
+            >
+              <FileText size={14} />
             </Button>
           </div>
+
+          {/* Columns Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            aria-expanded={columnsOpen}
+            onClick={() => setColumnsOpen((current) => !current)}
+            className="h-9 text-xs font-bold border-slate-200 rounded-xl"
+          >
+            <Columns3 size={14} /> Columns ({visibleColumns.length})
+          </Button>
         </div>
         {columnsOpen && (
           <div className="border-t border-slate-100 pt-3" aria-label="Student directory columns">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-bold text-slate-800">View and download columns</p>
-                <p className="text-[11px] text-slate-500">The table, Excel file and PDF use the same selected columns.</p>
+                <p className="text-[11px] text-slate-500">
+                  The table, Excel file and PDF use the same selected columns.
+                </p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setSelectedColumnIds(columnDefinitions.map((column) => column.id))} className="h-8 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedColumnIds(columnDefinitions.map((column) => column.id))}
+                  className="h-8 text-xs"
+                >
                   Select all
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setSelectedColumnIds(defaultStudentColumns)} className="h-8 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedColumnIds(defaultStudentColumns)}
+                  className="h-8 text-xs"
+                >
                   Compact view
                 </Button>
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
               {columnDefinitions.map((column) => (
-                <label key={column.id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                <label
+                  key={column.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
                   <input
                     type="checkbox"
                     checked={visibleColumnIds.has(column.id)}
@@ -605,16 +727,33 @@ export function StudentDirectory() {
                     />
                   </TableHead>
                   {visibleColumns.map((column) => (
-                    <TableHead key={column.id} className="whitespace-nowrap py-3 font-bold text-slate-800">
+                    <TableHead
+                      key={column.id}
+                      className="whitespace-nowrap py-3 font-bold text-slate-800"
+                    >
                       {column.sortField ? (
-                        <button type="button" onClick={() => toggleSort(column.sortField!)} className="inline-flex items-center gap-1 hover:text-brand-700">
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(column.sortField!)}
+                          className="inline-flex items-center gap-1 hover:text-brand-700"
+                        >
                           {column.label}
-                          <span aria-hidden="true">{sortBy === column.sortField ? (sortDirection === "ASC" ? "↑" : "↓") : "↕"}</span>
+                          <span aria-hidden="true">
+                            {sortBy === column.sortField
+                              ? sortDirection === "ASC"
+                                ? "↑"
+                                : "↓"
+                              : "↕"}
+                          </span>
                         </button>
-                      ) : column.label}
+                      ) : (
+                        column.label
+                      )}
                     </TableHead>
                   ))}
-                  <TableHead className="py-3 text-right font-bold text-slate-800">Actions</TableHead>
+                  <TableHead className="py-3 text-right font-bold text-slate-800">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -624,9 +763,17 @@ export function StudentDirectory() {
                     key={student.id}
                     role="link"
                     tabIndex={0}
-                    onClick={() => navigate(`/admin/students/${student.id}`)}
+                    onClick={() =>
+                      navigate(`/admin/students/${student.id}`, {
+                        state: { from: `${location.pathname}${location.search}` },
+                      })
+                    }
                     onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") navigate(`/admin/students/${student.id}`);
+                      if (event.key === "Enter" || event.key === " ") {
+                        navigate(`/admin/students/${student.id}`, {
+                          state: { from: `${location.pathname}${location.search}` },
+                        });
+                      }
                     }}
                     className="hover:bg-slate-50/70 transition-colors cursor-pointer"
                   >
@@ -649,7 +796,11 @@ export function StudentDirectory() {
                         size="sm"
                         variant="outline"
                         title="View student profile"
-                        onClick={() => navigate(`/admin/students/${student.id}`)}
+                        onClick={() =>
+                          navigate(`/admin/students/${student.id}`, {
+                            state: { from: `${location.pathname}${location.search}` },
+                          })
+                        }
                         className="h-7 text-xs font-semibold text-brand-700"
                       >
                         <Eye size={14} /> View
@@ -664,14 +815,17 @@ export function StudentDirectory() {
           {/* Table Footer Pagination Row */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50/50 text-xs">
             <span className="text-slate-500 font-medium">
-              Showing {students.length ? (page - 1) * pageSize + 1 : 0} to {Math.min(page * pageSize, total)} of {total.toLocaleString()} students
+              Showing {students.length ? (page - 1) * pageSize + 1 : 0} to{" "}
+              {Math.min(page * pageSize, total)} of {total.toLocaleString()} students
             </span>
 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5 text-slate-600 font-medium">
                 <select
                   value={pageSize}
-                  onChange={(e) => updateQuery({ pageSize: Number(e.target.value), page: 1 }, false)}
+                  onChange={(e) =>
+                    updateQuery({ pageSize: Number(e.target.value), page: 1 }, false)
+                  }
                   className="h-7 rounded-md border border-slate-300 bg-white px-2 text-xs font-bold"
                 >
                   <option value={10}>10 per page</option>
@@ -700,7 +854,10 @@ export function StudentDirectory() {
                     size="icon-sm"
                     variant={page === pNum ? "brand" : "outline"}
                     onClick={() => updateQuery({ page: pNum }, false)}
-                    className={cn("h-7 w-7 text-xs font-extrabold", page === pNum ? "shadow-2xs" : "")}
+                    className={cn(
+                      "h-7 w-7 text-xs font-extrabold",
+                      page === pNum ? "shadow-2xs" : "",
+                    )}
                   >
                     {pNum}
                   </Button>
@@ -730,7 +887,9 @@ export function StudentDirectory() {
                 variant="outline"
                 onClick={() => {
                   setDraftSearch("");
-                  setQuery(new URLSearchParams({ page: "1", pageSize: String(pageSize) }), { replace: true });
+                  setQuery(new URLSearchParams({ page: "1", pageSize: String(pageSize) }), {
+                    replace: true,
+                  });
                 }}
               >
                 Clear filters

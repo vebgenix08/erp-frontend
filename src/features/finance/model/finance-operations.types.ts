@@ -64,18 +64,8 @@ export interface GeneralCharge {
   createdAt: string;
   updatedAt: string;
 }
-export type PaymentMethod =
-  | "CASH"
-  | "CARD"
-  | "UPI"
-  | "BANK_TRANSFER"
-  | "CHEQUE"
-  | "ONLINE";
-export type FinancePaymentStatus =
-  | "SUCCESS"
-  | "PARTIALLY_REFUNDED"
-  | "VOIDED"
-  | "REFUNDED";
+export type PaymentMethod = "CASH" | "CARD" | "UPI" | "BANK_TRANSFER" | "CHEQUE" | "ONLINE";
+export type FinancePaymentStatus = "SUCCESS" | "PARTIALLY_REFUNDED" | "VOIDED" | "REFUNDED";
 export interface PaymentChargeAllocation {
   chargeId: string;
   feeHeadId: string;

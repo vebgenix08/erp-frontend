@@ -9,9 +9,15 @@ export function AdminAcademicStructurePage() {
     <section className="space-y-5">
       <header>
         <h1 className="text-xl font-bold text-slate-900">Academic Setup</h1>
-        <p className="mt-1 text-xs text-slate-500">Configure the operating year and campus academic hierarchy.</p>
+        <p className="mt-1 text-xs text-slate-500">
+          Configure the operating year and campus academic hierarchy.
+        </p>
       </header>
-      <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1" role="tablist" aria-label="Academic setup views">
+      <div
+        className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1"
+        role="tablist"
+        aria-label="Academic setup views"
+      >
         <button
           type="button"
           role="tab"

@@ -1,8 +1,18 @@
-type RuntimeEnv = Partial<Record<"VITE_API_BASE_URL" | "VITE_GRAPHQL_URL" | "VITE_AWS_REGION" | "VITE_COGNITO_CLIENT_ID" | "VITE_APP_NAME", string>>;
+type RuntimeEnv = Partial<
+  Record<
+    | "VITE_API_BASE_URL"
+    | "VITE_GRAPHQL_URL"
+    | "VITE_AWS_REGION"
+    | "VITE_COGNITO_CLIENT_ID"
+    | "VITE_APP_NAME",
+    string
+  >
+>;
 
 const developmentDefaults: Required<RuntimeEnv> = {
   VITE_API_BASE_URL: "https://cl2bdnzdfc.execute-api.ap-south-1.amazonaws.com",
-  VITE_GRAPHQL_URL: "https://cvhvlqs5bjdp3hu4e5dfusigx4.appsync-api.ap-south-1.amazonaws.com/graphql",
+  VITE_GRAPHQL_URL:
+    "https://cvhvlqs5bjdp3hu4e5dfusigx4.appsync-api.ap-south-1.amazonaws.com/graphql",
   VITE_AWS_REGION: "ap-south-1",
   VITE_COGNITO_CLIENT_ID: "7vebgt37o3gg0vrj41ndr79d6v",
   VITE_APP_NAME: "Vebgenix",

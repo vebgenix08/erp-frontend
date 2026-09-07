@@ -1,4 +1,15 @@
-import { Info, Mail, MapPin, Phone, ShieldCheck, Users, Globe, Edit3, Save, RotateCcw } from "lucide-react";
+import {
+  Info,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  Users,
+  Globe,
+  Edit3,
+  Save,
+  RotateCcw,
+} from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
@@ -22,24 +33,24 @@ export interface StaffEmailInviteData {
   acceptInviteUrl?: string;
 }
 
-// Preview fixture is intentionally colocated with the template renderer.
+// Template tokens show layout without fabricating tenant, employee, or credential data.
 // eslint-disable-next-line react-refresh/only-export-components
 export const DEFAULT_STAFF_INVITE_DATA: StaffEmailInviteData = {
-  recipientName: "Priya Malhotra",
-  recipientEmail: "priya.malhotra@wisdomera.edu.in",
-  temporaryPassword: "WEP$2026@Priya",
-  positionRole: "Mathematics Teacher",
-  department: "Academics",
-  campusName: "Talabalalu Main Campus",
-  reportingTo: "Head of Department - Mathematics",
-  expiryDate: "30 May 2026 at 11:59 PM",
-  institutionName: "WISDOM ERA PUBLIC SCHOOL",
-  tagline: "Nurturing Wisdom, Shaping Future",
-  contactPhone: "+91 98765 43210",
-  contactEmail: "info@wisdomera.edu.in",
-  contactWebsite: "www.wisdomera.edu.in",
-  campusAddress: "Talabalalu Main Campus, Bangalore – 560123",
-  acceptInviteUrl: "#",
+  recipientName: "{{recipient.name}}",
+  recipientEmail: "{{recipient.email}}",
+  temporaryPassword: "{{invite.temporaryPassword}}",
+  positionRole: "{{employee.designation}}",
+  department: "{{employee.department}}",
+  campusName: "{{campus.name}}",
+  reportingTo: "{{employee.reportingTo}}",
+  expiryDate: "{{invite.expiresAt}}",
+  institutionName: "{{institution.name}}",
+  tagline: "{{institution.tagline}}",
+  contactPhone: "{{institution.phone}}",
+  contactEmail: "{{institution.email}}",
+  contactWebsite: "{{institution.website}}",
+  campusAddress: "{{campus.address}}",
+  acceptInviteUrl: "{{invite.url}}",
 };
 
 export function StaffEmailInviteTemplate({
@@ -97,10 +108,20 @@ export function StaffEmailInviteTemplate({
 
             {isEditing && (
               <>
-                <Button variant="outline" size="sm" onClick={handleReset} className="h-8 text-xs font-bold text-slate-600">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReset}
+                  className="h-8 text-xs font-bold text-slate-600"
+                >
                   <RotateCcw size={13} /> Reset Defaults
                 </Button>
-                <Button variant="brand" size="sm" onClick={handleSave} className="h-8 text-xs font-bold shadow-xs">
+                <Button
+                  variant="brand"
+                  size="sm"
+                  onClick={handleSave}
+                  className="h-8 text-xs font-bold shadow-xs"
+                >
                   <Save size={14} /> Save Template Content
                 </Button>
               </>
@@ -286,7 +307,9 @@ export function StaffEmailInviteTemplate({
                 Hello {formData.recipientName},
               </h2>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                You have been invited to join <strong className="text-slate-900 font-bold">{formData.institutionName}</strong> as a staff member. We are excited to welcome you to our team!
+                You have been invited to join{" "}
+                <strong className="text-slate-900 font-bold">{formData.institutionName}</strong> as
+                a staff member. We are excited to welcome you to our team!
               </p>
             </div>
 
@@ -327,7 +350,8 @@ export function StaffEmailInviteTemplate({
                 Accept Invitation & Set Up Account
               </a>
               <p className="text-[10px] text-slate-400 font-semibold">
-                This invite link will expire on <span className="text-slate-700 font-bold">{formData.expiryDate}</span>.
+                This invite link will expire on{" "}
+                <span className="text-slate-700 font-bold">{formData.expiryDate}</span>.
               </p>
             </div>
 
@@ -344,7 +368,8 @@ export function StaffEmailInviteTemplate({
                     Your Temporary Login Credentials
                   </strong>
                   <span className="text-[10.5px] text-slate-500 block">
-                    Use the credentials below to set up your account. You will be prompted to create a new password.
+                    Use the credentials below to set up your account. You will be prompted to create
+                    a new password.
                   </span>
                 </div>
               </div>
@@ -356,7 +381,9 @@ export function StaffEmailInviteTemplate({
                 </div>
                 <div className="grid grid-cols-[130px_1fr]">
                   <span className="text-slate-500 font-bold">Temporary Password</span>
-                  <span className="font-black text-brand-700 tracking-wider">: {formData.temporaryPassword || "WEP$2026@Priya"}</span>
+                  <span className="font-black text-brand-700 tracking-wider">
+                    : {formData.temporaryPassword || "WEP$2026@Priya"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -370,7 +397,10 @@ export function StaffEmailInviteTemplate({
                 <strong className="block font-extrabold text-amber-950">Important Notes:</strong>
                 <ul className="space-y-0.5 text-[11px] font-medium text-amber-900 leading-tight">
                   <li>• Please do not share your temporary password with anyone.</li>
-                  <li>• For security reasons, you will be required to change your password on first login.</li>
+                  <li>
+                    • For security reasons, you will be required to change your password on first
+                    login.
+                  </li>
                   <li>• If you did not expect this invitation, please ignore this email.</li>
                 </ul>
               </div>

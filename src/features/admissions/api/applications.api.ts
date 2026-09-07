@@ -15,22 +15,22 @@ function map(value: Wire): AdmissionApplication {
   if (typeof value.customFields === "string") {
     try {
       const parsed = JSON.parse(value.customFields);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
-        customFields = parsed;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) customFields = parsed;
     } catch {
       customFields = undefined;
     }
   } else customFields = value.customFields;
   const record: Wire = { ...value };
   delete record.customFields;
-  return { ...(record as Omit<AdmissionApplication, "customFields">), ...(customFields ? { customFields } : {}) };
+  return {
+    ...(record as Omit<AdmissionApplication, "customFields">),
+    ...(customFields ? { customFields } : {}),
+  };
 }
 function wire<T extends { customFields?: Record<string, unknown> }>(input: T) {
   return {
     ...input,
-    ...(input.customFields
-      ? { customFields: JSON.stringify(input.customFields) }
-      : {}),
+    ...(input.customFields ? { customFields: JSON.stringify(input.customFields) } : {}),
   };
 }
 export async function listApplications(filter?: {
@@ -38,6 +38,11 @@ export async function listApplications(filter?: {
   campusId?: string;
   academicYearId?: string;
   academicTargetId?: string;
+  sectionId?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  confirmedFrom?: string;
+  confirmedTo?: string;
   search?: string;
 }) {
   return (
@@ -66,6 +71,11 @@ export async function listApplicationPage(filter: {
   campusId?: string;
   academicYearId?: string;
   academicTargetId?: string;
+  sectionId?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  confirmedFrom?: string;
+  confirmedTo?: string;
   search?: string;
   page: number;
   pageSize: number;
@@ -89,10 +99,7 @@ export async function createApplication(input: CreateApplicationInput) {
   );
   return map(value.createApplication);
 }
-export async function updateApplication(
-  id: string,
-  input: Partial<CreateApplicationInput>,
-) {
+export async function updateApplication(id: string, input: Partial<CreateApplicationInput>) {
   const value = await graphqlClient<
     { updateApplication: Wire },
     {
@@ -105,26 +112,18 @@ export async function updateApplication(
   );
   return map(value.updateApplication);
 }
-async function transition(
-  name: string,
-  id: string,
-  input?: Record<string, unknown>,
-) {
+async function transition(name: string, id: string, input?: Record<string, unknown>) {
   const inputVariable = input
     ? `,$input:${name === "approveApplication" ? "ApplicationReviewInput" : name === "rejectApplication" ? "ApplicationRejectInput!" : "ApplicationCancelInput!"}`
     : "";
   const inputArgument = input ? ",input:$input" : "";
-  const value = await graphqlClient<
-    Record<string, Wire>,
-    Record<string, unknown>
-  >(
+  const value = await graphqlClient<Record<string, Wire>, Record<string, unknown>>(
     `mutation Transition($id:ID!${inputVariable}){ ${name}(id:$id${inputArgument}){ ${fields} } }`,
     input ? { id, input } : { id },
   );
   return map(value[name]!);
 }
-export const submitApplication = (id: string) =>
-  transition("submitApplication", id);
+export const submitApplication = (id: string) => transition("submitApplication", id);
 export const approveApplication = (id: string, remarks?: string) =>
   transition("approveApplication", id, remarks ? { remarks } : {});
 export const rejectApplication = (id: string, reason: string) =>
@@ -133,19 +132,13 @@ export const cancelApplication = (id: string, reason: string) =>
   transition("cancelApplication", id, { reason });
 export async function checkApplicationDuplicates(id: string) {
   return (
-    await graphqlClient<
-      { applicationDuplicateCheck: ApplicationDuplicateCheck },
-      { id: string }
-    >(
+    await graphqlClient<{ applicationDuplicateCheck: ApplicationDuplicateCheck }, { id: string }>(
       `query ApplicationDuplicateCheck($id:ID!){ applicationDuplicateCheck(id:$id){ applicationId hasPotentialDuplicates checkedAt matches { applicationId applicationNumber admissionNumber studentName status reasons } } }`,
       { id },
     )
   ).applicationDuplicateCheck;
 }
-export async function confirmApplication(
-  id: string,
-  duplicateReviewAcknowledged: boolean,
-) {
+export async function confirmApplication(id: string, duplicateReviewAcknowledged: boolean) {
   const value = await graphqlClient<
     { confirmApplication: Wire },
     { id: string; input: { duplicateReviewAcknowledged: boolean } }

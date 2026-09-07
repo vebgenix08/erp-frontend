@@ -11,20 +11,20 @@ import type {
 } from "../model/fee-configuration.types";
 
 const headFields = "id code name category description refundable status";
-const scheduleFields =
-  "id campusId academicYearId code name pattern collectionPolicy status";
+const scheduleFields = "id campusId academicYearId code name pattern collectionPolicy status";
 const structureFields =
   "id campusId academicYearId code name currency totalAmountMinor status components { feeHeadId amountMinor allocationPriority }";
 const mappingFields =
   "id campusId academicYearId structureId scheduleId status target { programId classId sectionId }";
 const allFields = `feeHeads { ${headFields} } schedules { ${scheduleFields} } structures { ${structureFields} } mappings { ${mappingFields} }`;
 
-export async function getFeeConfiguration(
-  scope: { campusId: string; academicYearId: string }
-): Promise<FeeConfiguration>;
+export async function getFeeConfiguration(scope: {
+  campusId: string;
+  academicYearId: string;
+}): Promise<FeeConfiguration>;
 export async function getFeeConfiguration(
   campusId: string,
-  academicYearId: string
+  academicYearId: string,
 ): Promise<FeeConfiguration>;
 export async function getFeeConfiguration(
   campusIdOrScope: string | { campusId: string; academicYearId: string },
@@ -69,10 +69,7 @@ export async function updateFeeHead(
   },
 ) {
   return (
-    await graphqlClient<
-      { updateFeeHead: FeeHead },
-      { id: string; input: typeof input }
-    >(
+    await graphqlClient<{ updateFeeHead: FeeHead }, { id: string; input: typeof input }>(
       `mutation UpdateFeeHead($id:ID!,$input:UpdateFeeHeadInput!) { updateFeeHead(id:$id,input:$input) { ${headFields} } }`,
       { id, input },
     )
@@ -87,10 +84,7 @@ export async function createFeeSchedule(input: {
   collectionPolicy: FeeCollectionPolicy;
 }) {
   return (
-    await graphqlClient<
-      { createFeeSchedule: FeeSchedule },
-      { input: typeof input }
-    >(
+    await graphqlClient<{ createFeeSchedule: FeeSchedule }, { input: typeof input }>(
       `mutation CreateFeeSchedule($input: CreateFeeScheduleInput!) { createFeeSchedule(input:$input) { ${scheduleFields} } }`,
       { input },
     )
@@ -108,10 +102,7 @@ export async function createFeeStructure(input: {
   }>;
 }) {
   return (
-    await graphqlClient<
-      { createFeeStructure: FeeStructure },
-      { input: typeof input }
-    >(
+    await graphqlClient<{ createFeeStructure: FeeStructure }, { input: typeof input }>(
       `mutation CreateFeeStructure($input: CreateFeeStructureInput!) { createFeeStructure(input:$input) { ${structureFields} } }`,
       { input },
     )
@@ -126,10 +117,7 @@ export async function createFeeMapping(input: {
   target: { programId?: string; classId: string; sectionId?: string };
 }) {
   return (
-    await graphqlClient<
-      { createFeeMapping: FeeMapping },
-      { input: typeof input }
-    >(
+    await graphqlClient<{ createFeeMapping: FeeMapping }, { input: typeof input }>(
       `mutation CreateFeeMapping($input: CreateFeeMappingInput!) { createFeeMapping(input:$input) { ${mappingFields} } }`,
       { input },
     )

@@ -36,10 +36,8 @@ export function ProvisionTenantForm({ onProvision, onComplete }: Props) {
   const valid = useMemo(
     () =>
       step === 1
-        ? organizationName.trim().length > 1 &&
-          /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/.test(slug)
-        : primaryAdminFullName.trim().length > 1 &&
-          /^\S+@\S+\.\S+$/.test(primaryAdminEmail),
+        ? organizationName.trim().length > 1 && /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/.test(slug)
+        : primaryAdminFullName.trim().length > 1 && /^\S+@\S+\.\S+$/.test(primaryAdminEmail),
     [step, organizationName, slug, primaryAdminFullName, primaryAdminEmail],
   );
 
@@ -153,7 +151,10 @@ export function ProvisionTenantForm({ onProvision, onComplete }: Props) {
                 id="org-slug"
                 required
                 value={slug}
-                onChange={(e) => { setSlugEdited(true); setSlug(slugify(e.target.value)); }}
+                onChange={(e) => {
+                  setSlugEdited(true);
+                  setSlug(slugify(e.target.value));
+                }}
                 placeholder="northstar-academy"
                 className="flex-1 px-3 text-sm outline-none h-9 bg-transparent"
               />
@@ -193,7 +194,10 @@ export function ProvisionTenantForm({ onProvision, onComplete }: Props) {
           <div className="space-y-1.5">
             <Label htmlFor="admin-email">Work email</Label>
             <div className="relative">
-              <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Mail
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
               <Input
                 id="admin-email"
                 required
@@ -218,7 +222,8 @@ export function ProvisionTenantForm({ onProvision, onComplete }: Props) {
             <div>
               <h3 className="text-base font-bold text-slate-900">Review and provision</h3>
               <p className="text-sm text-slate-500">
-                Confirm the tenant and administrator. Campus and academic settings remain with the Tenant Admin.
+                Confirm the tenant and administrator. Campus and academic settings remain with the
+                Tenant Admin.
               </p>
             </div>
           </div>
@@ -239,7 +244,10 @@ export function ProvisionTenantForm({ onProvision, onComplete }: Props) {
       )}
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {error}
         </div>
       )}
@@ -248,7 +256,13 @@ export function ProvisionTenantForm({ onProvision, onComplete }: Props) {
 
       <div className="flex items-center justify-between">
         {step > 1 ? (
-          <Button type="button" variant="outline" size="sm" onClick={() => setStep(step - 1)} disabled={saving}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setStep(step - 1)}
+            disabled={saving}
+          >
             <ArrowLeft size={15} /> Back
           </Button>
         ) : (
@@ -256,11 +270,16 @@ export function ProvisionTenantForm({ onProvision, onComplete }: Props) {
         )}
         <Button type="submit" size="sm" disabled={saving || !valid}>
           {saving ? (
-            <><Spinner className="h-3.5 w-3.5" /> Provisioning…</>
+            <>
+              <Spinner className="h-3.5 w-3.5" /> Provisioning…
+            </>
           ) : step === 3 ? (
             "Provision tenant"
           ) : (
-            <> Continue <ArrowRight size={15} /></>
+            <>
+              {" "}
+              Continue <ArrowRight size={15} />
+            </>
           )}
         </Button>
       </div>

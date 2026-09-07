@@ -47,13 +47,17 @@ import { Button } from "../../shared/ui/button";
 import { Input } from "../../shared/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../shared/ui/tooltip";
 
+import { NetworkStatusProvider } from "../../shared/ui/offline-screen";
+
 export function TenantLayout() {
   return (
-    <SelectedCampusProvider>
-      <SelectedAcademicYearProvider>
-        <TenantWorkspace />
-      </SelectedAcademicYearProvider>
-    </SelectedCampusProvider>
+    <NetworkStatusProvider>
+      <SelectedCampusProvider>
+        <SelectedAcademicYearProvider>
+          <TenantWorkspace />
+        </SelectedAcademicYearProvider>
+      </SelectedCampusProvider>
+    </NetworkStatusProvider>
   );
 }
 
@@ -93,7 +97,7 @@ function TenantWorkspace() {
         setInstitutionName(profile?.name ?? null);
         const logo = profile?.logoFileId
           ? await getFileDownloadUrl(profile.logoFileId)
-          : profile?.logoUrl ?? null;
+          : (profile?.logoUrl ?? null);
         if (active) setInstitutionLogo(logo);
       })
       .catch(() => {
@@ -124,6 +128,7 @@ function TenantWorkspace() {
     ["/admin/setup/campuses", "Campuses", Building2],
     ["/admin/setup/academic-structure", "Academic Setup", BookOpen],
     ["/admin/academics/class-setup", "Class Setup", CalendarRange],
+    ["/admin/academics/assessments", "Assessment Setup", ClipboardCheck],
   ] as const;
 
   const administrationLinks = [
@@ -169,7 +174,11 @@ function TenantWorkspace() {
     ...setupLinks.map(([to, label]) => ({ category: "Academic Setup", label, to })),
     ...financeLinks.map(([to, label]) => ({ category: "Finance", label, to })),
     ...peopleLinks.map(([to, label]) => ({ category: "Students & Staff", label, to })),
-    ...academicOperationsLinks.map(([to, label]) => ({ category: "Academic Operations", label, to })),
+    ...academicOperationsLinks.map(([to, label]) => ({
+      category: "Academic Operations",
+      label,
+      to,
+    })),
     ...admissionsLinks.map(([to, label]) => ({ category: "Admissions", label, to })),
     ...accessLinks.map(([to, label]) => ({ category: "Access & Security", label, to })),
     ...administrationLinks.map(([to, label]) => ({ category: "Administration", label, to })),
@@ -177,8 +186,8 @@ function TenantWorkspace() {
 
   const filteredSearch = cmdSearch.trim()
     ? allSearchItems.filter((item) =>
-      `${item.label} ${item.category}`.toLowerCase().includes(cmdSearch.trim().toLowerCase())
-    )
+        `${item.label} ${item.category}`.toLowerCase().includes(cmdSearch.trim().toLowerCase()),
+      )
     : allSearchItems;
 
   const tenantLabel =
@@ -257,20 +266,20 @@ function TenantWorkspace() {
           className={cn(
             "fixed inset-y-0 left-0 z-40 flex w-56 flex-col bg-[#0f172a] text-slate-300 shadow-xl transition-transform duration-200 border-r border-slate-800",
             "md:relative md:translate-x-0",
-            mobileOpen ? "translate-x-0" : "-translate-x-full"
+            mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
           {/* Brand header */}
           <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-slate-800/80 bg-[#0b1329]/50">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white text-brand-600 shadow-xs">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900 text-brand-400 shadow-xs border border-slate-700 p-0.5">
               {institutionLogo ? (
                 <img
                   src={institutionLogo}
                   alt={`${tenantLabel} logo`}
-                  className="h-full w-full object-contain p-0.5"
+                  className="h-full w-full object-contain rounded-lg"
                 />
               ) : (
-                <GraduationCap size={18} />
+                <GraduationCap size={18} className="text-white" />
               )}
             </span>
             <div className="min-w-0 flex-1">
@@ -297,7 +306,7 @@ function TenantWorkspace() {
                     "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors",
                     isActive
                       ? "bg-brand-600 text-white font-bold shadow-xs"
-                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white",
                   )
                 }
               >
@@ -422,37 +431,33 @@ function TenantWorkspace() {
               {/* Command Palette Quick Button */}
               <button
                 onClick={() => setCmdOpen(true)}
-                className="hidden sm:flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-white hover:border-slate-300 transition-all"
+                className="hidden sm:flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-500 shadow-2xs hover:bg-slate-50/80 hover:border-slate-300 transition-all"
               >
-                <Search className="h-3.5 w-3.5 text-slate-400" />
+                <Search className="h-4 w-4 text-slate-400" />
                 <span>Quick Search...</span>
-                <kbd className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                <kbd className="rounded-md bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
                   Ctrl K
                 </kbd>
               </button>
 
               <OperatingContextControls />
 
-              <button
-                type="button"
-                className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
-                aria-label="Notifications"
-              >
-                <Bell size={16} />
-              </button>
-
+              {/* User Profile Pill in Top Right */}
               <NavLink
                 to="/admin/profile"
-                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1 text-xs font-bold hover:bg-white hover:border-slate-300 transition-colors"
+                className="flex h-10 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold shadow-2xs hover:bg-slate-50/80 hover:border-slate-300 transition-all shrink-0"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded bg-brand-600 text-white font-extrabold text-[11px]">
-                  {institutionLogo ? (
-                    <img src={institutionLogo} alt="" className="h-full w-full bg-white object-contain" />
-                  ) : (
-                    tenantLabel.slice(0, 1).toUpperCase()
-                  )}
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-600 text-white font-extrabold text-[11px] shadow-xs">
+                  {userInitial}
                 </span>
-                <span className="hidden md:inline text-slate-800">{tenantLabel}</span>
+                <div className="hidden md:flex flex-col text-left min-w-0">
+                  <span className="text-[11px] font-bold text-slate-800 leading-none truncate max-w-[130px]">
+                    {userEmail.split("@")[0]}
+                  </span>
+                  <span className="text-[9px] font-semibold text-slate-400 leading-tight mt-0.5">
+                    Tenant Admin
+                  </span>
+                </div>
               </NavLink>
             </div>
           </header>
@@ -504,7 +509,7 @@ function SidebarGroup({
                   "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors",
                   isActive
                     ? "bg-brand-600 text-white font-bold shadow-xs"
-                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white",
                 )
               }
             >

@@ -24,20 +24,19 @@ export const filterOfferingsForSection = <
 >(
   offerings: T[],
   teachingGroups: Array<Pick<TeachingGroup, "id" | "homeSectionId" | "sourceSectionIds">>,
-  sectionId: string
+  sectionId: string,
 ): T[] => {
   const groupIds = new Set(
     teachingGroups
       .filter(
-        (group) =>
-          group.homeSectionId === sectionId || group.sourceSectionIds?.includes(sectionId)
+        (group) => group.homeSectionId === sectionId || group.sourceSectionIds?.includes(sectionId),
       )
-      .map((group) => group.id)
+      .map((group) => group.id),
   );
 
   return offerings.filter(
     (offering) =>
       offering.sectionId === sectionId ||
-      (offering.teachingGroupId ? groupIds.has(offering.teachingGroupId) : false)
+      (offering.teachingGroupId ? groupIds.has(offering.teachingGroupId) : false),
   );
 };

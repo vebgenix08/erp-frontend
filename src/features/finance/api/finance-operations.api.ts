@@ -39,7 +39,10 @@ export async function listFeeOrders(filter: {
 }
 export async function listFeeOrderPage(filter: Parameters<typeof listFeeOrders>[0]) {
   return (
-    await graphqlClient<{ feeOrderPage: { items: FeeOrder[]; total: number; limit: number; offset: number } }, { filter: typeof filter }>(
+    await graphqlClient<
+      { feeOrderPage: { items: FeeOrder[]; total: number; limit: number; offset: number } },
+      { filter: typeof filter }
+    >(
       `query FeeOrderPage($filter: FeeOrderFilter) { feeOrderPage(filter:$filter) { items { ${orderFields} } total limit offset } }`,
       { filter },
     )
@@ -58,10 +61,7 @@ export async function listFinancePayments(filter: {
   offset?: number;
 }) {
   return (
-    await graphqlClient<
-      { financePayments: FinancePayment[] },
-      { filter: typeof filter }
-    >(
+    await graphqlClient<{ financePayments: FinancePayment[] }, { filter: typeof filter }>(
       `query FinancePayments($filter: PaymentFilter) { financePayments(filter:$filter) { ${paymentFields} } }`,
       { filter },
     )
@@ -69,7 +69,17 @@ export async function listFinancePayments(filter: {
 }
 export async function listFinancePaymentPage(filter: Parameters<typeof listFinancePayments>[0]) {
   return (
-    await graphqlClient<{ financePaymentPage: { items: FinancePayment[]; total: number; limit: number; offset: number } }, { filter: typeof filter }>(
+    await graphqlClient<
+      {
+        financePaymentPage: {
+          items: FinancePayment[];
+          total: number;
+          limit: number;
+          offset: number;
+        };
+      },
+      { filter: typeof filter }
+    >(
       `query FinancePaymentPage($filter: PaymentFilter) { financePaymentPage(filter:$filter) { items { ${paymentFields} } total limit offset } }`,
       { filter },
     )
@@ -88,10 +98,7 @@ export async function collectFinancePayment(input: {
   idempotencyKey: string;
 }) {
   return (
-    await graphqlClient<
-      { collectFinancePayment: FinancePayment },
-      { input: typeof input }
-    >(
+    await graphqlClient<{ collectFinancePayment: FinancePayment }, { input: typeof input }>(
       `mutation CollectFinancePayment($input: CollectPaymentInput!) { collectFinancePayment(input:$input) { ${paymentFields} } }`,
       { input },
     )
@@ -99,26 +106,35 @@ export async function collectFinancePayment(input: {
 }
 export async function getFinanceReceipt(paymentId: string) {
   return (
-    await graphqlClient<
-      { financeReceipt: FinanceReceipt },
-      { paymentId: string }
-    >(
+    await graphqlClient<{ financeReceipt: FinanceReceipt }, { paymentId: string }>(
       `query FinanceReceipt($paymentId: ID!) { financeReceipt(paymentId:$paymentId) { receiptNumber paymentId status student { id name } campusId academicYearId currency amountMinor method reference note allocations { feeOrderId label amountMinor chargeAllocations { chargeId feeHeadId label amountMinor } } paidAt issuedAt collectedBy fileName documentHtml paperSize } }`,
       { paymentId },
     )
   ).financeReceipt;
 }
-const receiptTemplateFields = "id title headerText footerText signatureLabel paperSize accentColor showInstitutionLogo showInstitutionAddress showPaymentMethod showPaymentReference updatedBy createdAt updatedAt";
+const receiptTemplateFields =
+  "id title headerText footerText signatureLabel paperSize accentColor showInstitutionLogo showInstitutionAddress showPaymentMethod showPaymentReference updatedBy createdAt updatedAt";
 export async function getFinanceReceiptTemplate() {
-  return (await graphqlClient<{ financeReceiptTemplate: FinanceReceiptTemplate }>(`query FinanceReceiptTemplate { financeReceiptTemplate { ${receiptTemplateFields} } }`)).financeReceiptTemplate;
+  return (
+    await graphqlClient<{ financeReceiptTemplate: FinanceReceiptTemplate }>(
+      `query FinanceReceiptTemplate { financeReceiptTemplate { ${receiptTemplateFields} } }`,
+    )
+  ).financeReceiptTemplate;
 }
-export async function saveFinanceReceiptTemplate(input: Omit<FinanceReceiptTemplate, "id" | "updatedBy" | "createdAt" | "updatedAt">) {
-  return (await graphqlClient<{ saveFinanceReceiptTemplate: FinanceReceiptTemplate }, { input: typeof input }>(`mutation SaveFinanceReceiptTemplate($input: SaveFinanceReceiptTemplateInput!) { saveFinanceReceiptTemplate(input:$input) { ${receiptTemplateFields} } }`, { input })).saveFinanceReceiptTemplate;
-}
-export async function getFinanceDashboard(
-  campusId: string,
-  academicYearId: string,
+export async function saveFinanceReceiptTemplate(
+  input: Omit<FinanceReceiptTemplate, "id" | "updatedBy" | "createdAt" | "updatedAt">,
 ) {
+  return (
+    await graphqlClient<
+      { saveFinanceReceiptTemplate: FinanceReceiptTemplate },
+      { input: typeof input }
+    >(
+      `mutation SaveFinanceReceiptTemplate($input: SaveFinanceReceiptTemplateInput!) { saveFinanceReceiptTemplate(input:$input) { ${receiptTemplateFields} } }`,
+      { input },
+    )
+  ).saveFinanceReceiptTemplate;
+}
+export async function getFinanceDashboard(campusId: string, academicYearId: string) {
   return (
     await graphqlClient<
       { financeDashboard: FinanceDashboard },
@@ -169,10 +185,7 @@ export async function listFeeOrderRecoveries(filter: {
   search?: string;
 }) {
   return (
-    await graphqlClient<
-      { feeOrderRecoveries: FeeOrderRecovery[] },
-      { filter: typeof filter }
-    >(
+    await graphqlClient<{ feeOrderRecoveries: FeeOrderRecovery[] }, { filter: typeof filter }>(
       `query FeeOrderRecoveries($filter: FeeOrderRecoveryFilter) { feeOrderRecoveries(filter:$filter) { ${recoveryFields} } }`,
       { filter },
     )
@@ -180,18 +193,25 @@ export async function listFeeOrderRecoveries(filter: {
 }
 export async function retryFeeOrderRecovery(id: string) {
   return (
-    await graphqlClient<
-      { retryFeeOrderRecovery: FeeOrderRecovery },
-      { id: string }
-    >(
+    await graphqlClient<{ retryFeeOrderRecovery: FeeOrderRecovery }, { id: string }>(
       `mutation RetryFeeOrderRecovery($id: ID!) { retryFeeOrderRecovery(id:$id) { ${recoveryFields} } }`,
       { id },
     )
   ).retryFeeOrderRecovery;
 }
-const generalChargeFields = "id campusId academicYearId name note feeHeadId feeHeadCode amountMinor collectionPolicy target { type ids } status assignedCount failureReason createdBy createdAt updatedAt";
-export async function listGeneralCharges(filter: { campusId?: string; academicYearId?: string; status?: GeneralCharge["status"] }) {
-  return (await graphqlClient<{ generalCharges: GeneralCharge[] }, { filter: typeof filter }>(`query GeneralCharges($filter: GeneralChargeFilter) { generalCharges(filter:$filter) { ${generalChargeFields} } }`, { filter })).generalCharges;
+const generalChargeFields =
+  "id campusId academicYearId name note feeHeadId feeHeadCode amountMinor collectionPolicy target { type ids } status assignedCount failureReason createdBy createdAt updatedAt";
+export async function listGeneralCharges(filter: {
+  campusId?: string;
+  academicYearId?: string;
+  status?: GeneralCharge["status"];
+}) {
+  return (
+    await graphqlClient<{ generalCharges: GeneralCharge[] }, { filter: typeof filter }>(
+      `query GeneralCharges($filter: GeneralChargeFilter) { generalCharges(filter:$filter) { ${generalChargeFields} } }`,
+      { filter },
+    )
+  ).generalCharges;
 }
 export async function createGeneralCharge(input: {
   campusId: string;
@@ -204,5 +224,10 @@ export async function createGeneralCharge(input: {
   target: GeneralCharge["target"];
   idempotencyKey: string;
 }) {
-  return (await graphqlClient<{ createGeneralCharge: GeneralCharge }, { input: typeof input }>(`mutation CreateGeneralCharge($input: CreateGeneralChargeInput!) { createGeneralCharge(input:$input) { ${generalChargeFields} } }`, { input })).createGeneralCharge;
+  return (
+    await graphqlClient<{ createGeneralCharge: GeneralCharge }, { input: typeof input }>(
+      `mutation CreateGeneralCharge($input: CreateGeneralChargeInput!) { createGeneralCharge(input:$input) { ${generalChargeFields} } }`,
+      { input },
+    )
+  ).createGeneralCharge;
 }

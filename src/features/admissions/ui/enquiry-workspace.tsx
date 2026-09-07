@@ -2,13 +2,15 @@ import {
   CheckCircle2,
   PhoneCall,
   Plus,
+  RotateCcw,
   Search,
   UserCheck,
   UserPlus,
   Users,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { listClasses } from "../../academic-structure/api/academic-structure.api";
 import type { AcademicClass } from "../../academic-structure/model/academic-structure.types";
 import { listTenantTemplates } from "../../tenant-settings/api/settings.api";
@@ -18,21 +20,42 @@ import type { TenantTemplate } from "../../tenant-settings/model/settings.types"
 import { TemplateFields } from "../../tenant-settings/ui/template-fields";
 import { Modal } from "../../../shared/ui/modal";
 import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
-import {
-  closeEnquiry,
-  createEnquiry,
-  listEnquiryPage,
-  updateEnquiry,
-} from "../api/enquiries.api";
+import { closeEnquiry, createEnquiry, listEnquiryPage, updateEnquiry } from "../api/enquiries.api";
 import type { Enquiry, EnquiryStatus } from "../model/enquiry.types";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
+import { ModernSelect } from "../../../shared/ui/select";
 import { Badge } from "../../../shared/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../shared/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
 import { ServerPagination } from "../../../shared/ui/server-pagination";
 
 const statuses: EnquiryStatus[] = ["NEW", "CONTACTED", "FOLLOW_UP", "CONVERTED", "CLOSED"];
+const sources = [
+  "Walk-in",
+  "Newspaper Ad",
+  "Social Media",
+  "Friend / Relative",
+  "Google Search",
+  "School Banner",
+  "Website",
+  "Referral",
+];
+const pageSizes = new Set([10, 25, 50, 100]);
+
+const positiveInteger = (value: string | null, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+const startOfDate = (value: string) => `${value}T00:00:00.000Z`;
+const endOfDate = (value: string) => `${value}T23:59:59.999Z`;
 
 const label = (value: string) =>
   value
@@ -62,18 +85,28 @@ const SYSTEM_KEYS = [
 
 const getStatusVariant = (status: EnquiryStatus) => {
   switch (status) {
-    case "NEW": return "warning";
-    case "CONTACTED": return "default";
-    case "FOLLOW_UP": return "brand";
-    case "CONVERTED": return "success";
-    case "CLOSED": return "secondary";
-    default: return "secondary";
+    case "NEW":
+      return "warning";
+    case "CONTACTED":
+      return "default";
+    case "FOLLOW_UP":
+      return "brand";
+    case "CONVERTED":
+      return "success";
+    case "CLOSED":
+      return "secondary";
+    default:
+      return "secondary";
   }
 };
 
 export function EnquiryWorkspace() {
+  const [query, setQuery] = useSearchParams();
   const { selectedCampus } = useSelectedCampus();
   const { selectedAcademicYear } = useSelectedAcademicYear();
+  const operatingContextRef = useRef(
+    `${selectedCampus?.id ?? ""}:${selectedAcademicYear?.id ?? ""}`,
+  );
   const [items, setItems] = useState<Enquiry[]>([]);
   const [classes, setClasses] = useState<AcademicClass[]>([]);
   const [template, setTemplate] = useState<TenantTemplate | null>(null);
@@ -81,10 +114,17 @@ export function EnquiryWorkspace() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<EnquiryStatus | "">("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const search = query.get("search") ?? "";
+  const [draftSearch, setDraftSearch] = useState(search);
+  const rawStatus = query.get("status") ?? "";
+  const status = statuses.includes(rawStatus as EnquiryStatus) ? (rawStatus as EnquiryStatus) : "";
+  const academicTargetId = query.get("classId") ?? "";
+  const source = query.get("source") ?? "";
+  const createdFrom = query.get("from") ?? "";
+  const createdTo = query.get("to") ?? "";
+  const page = positiveInteger(query.get("page"), 1);
+  const requestedPageSize = positiveInteger(query.get("pageSize"), 25);
+  const pageSize = pageSizes.has(requestedPageSize) ? requestedPageSize : 25;
   const [total, setTotal] = useState(0);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -97,7 +137,11 @@ export function EnquiryWorkspace() {
         listEnquiryPage({
           ...(selectedCampus ? { campusId: selectedCampus.id } : {}),
           ...(selectedAcademicYear ? { academicYearId: selectedAcademicYear.id } : {}),
+          ...(academicTargetId ? { academicTargetId } : {}),
           ...(status ? { status } : {}),
+          ...(source ? { source } : {}),
+          ...(createdFrom ? { createdFrom: startOfDate(createdFrom) } : {}),
+          ...(createdTo ? { createdTo: endOfDate(createdTo) } : {}),
           ...(search.trim() ? { search: search.trim() } : {}),
           limit: pageSize,
           offset: (page - 1) * pageSize,
@@ -113,8 +157,7 @@ export function EnquiryWorkspace() {
           .filter((item) => item.status === "PUBLISHED" && item.layout === "ENQUIRY_FORM")
           .sort(
             (left, right) =>
-              (right.publishedVersion ?? right.version) -
-              (left.publishedVersion ?? left.version),
+              (right.publishedVersion ?? right.version) - (left.publishedVersion ?? left.version),
           )[0] ?? null,
       );
     } catch (value) {
@@ -127,11 +170,51 @@ export function EnquiryWorkspace() {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, search, page, pageSize, selectedCampus?.id, selectedAcademicYear?.id]);
+  }, [
+    academicTargetId,
+    createdFrom,
+    createdTo,
+    status,
+    source,
+    search,
+    page,
+    pageSize,
+    selectedCampus?.id,
+    selectedAcademicYear?.id,
+  ]);
 
   useEffect(() => {
-    setPage(1);
+    const currentContext = `${selectedCampus?.id ?? ""}:${selectedAcademicYear?.id ?? ""}`;
+    if (operatingContextRef.current === currentContext) return;
+    operatingContextRef.current = currentContext;
+    const next = new URLSearchParams(query);
+    next.set("page", "1");
+    setQuery(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCampus?.id, selectedAcademicYear?.id]);
+
+  useEffect(() => setDraftSearch(search), [search]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (draftSearch === search) return;
+      const next = new URLSearchParams(query);
+      if (draftSearch.trim()) next.set("search", draftSearch.trim());
+      else next.delete("search");
+      next.set("page", "1");
+      setQuery(next, { replace: true });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [draftSearch, query, search, setQuery]);
+
+  const updateQuery = (updates: Record<string, string | number | undefined>, resetPage = true) => {
+    const next = new URLSearchParams(query);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === undefined || value === "") next.delete(key);
+      else next.set(key, String(value));
+    });
+    if (resetPage && !("page" in updates)) next.set("page", "1");
+    setQuery(next, { replace: true });
+  };
 
   const updateTemplateValue = (key: string, value: unknown) => {
     if (key in form) {
@@ -214,7 +297,8 @@ export function EnquiryWorkspace() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Admission Enquiries</h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Capture and track prospective students for {selectedCampus?.name ?? "Campus"} ({selectedAcademicYear?.name ?? "Academic Year"})
+            Capture and track prospective students for {selectedCampus?.name ?? "Campus"} (
+            {selectedAcademicYear?.name ?? "Academic Year"})
           </p>
         </div>
         <Button
@@ -229,13 +313,19 @@ export function EnquiryWorkspace() {
       </div>
 
       {error && (
-        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs">
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700 shadow-xs"
+        >
           {error}
         </div>
       )}
 
       {!template && (
-        <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 shadow-xs">
+        <div
+          role="alert"
+          className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 shadow-xs"
+        >
           Publish an admission form template under Setup → Templates before capturing new enquiries.
         </div>
       )}
@@ -252,7 +342,9 @@ export function EnquiryWorkspace() {
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 leading-none">{total}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">Overall leads recorded</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            Overall leads recorded
+          </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
@@ -265,7 +357,9 @@ export function EnquiryWorkspace() {
             </div>
           </div>
           <div className="text-2xl font-black text-amber-600 leading-none">{newCount}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">Awaiting initial contact</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            Awaiting initial contact
+          </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
@@ -278,7 +372,9 @@ export function EnquiryWorkspace() {
             </div>
           </div>
           <div className="text-2xl font-black text-purple-600 leading-none">{followCount}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">Active follow-ups in progress</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            Active follow-ups in progress
+          </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[96px]">
@@ -291,47 +387,98 @@ export function EnquiryWorkspace() {
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-600 leading-none">{convertedCount}</div>
-          <div className="text-[11px] text-slate-500 font-medium leading-none">Converted to application</div>
+          <div className="text-[11px] text-slate-500 font-medium leading-none">
+            Converted to application
+          </div>
         </div>
       </div>
 
       {/* Toolbar Filter Card */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
         <div className="relative flex-1 min-w-[240px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+          />
           <Input
             aria-label="Search enquiries"
             placeholder="Search student name, parent, phone or enquiry #"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
+            value={draftSearch}
+            onChange={(event) => setDraftSearch(event.target.value)}
             className="pl-9 h-9 text-xs"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <select
-            aria-label="Filter enquiry status"
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value as EnquiryStatus | "");
-              setPage(1);
+        <ModernSelect
+          aria-label="Filter enquiry status"
+          value={status}
+          onValueChange={(val) => updateQuery({ status: val })}
+          placeholder="All Statuses"
+          className="w-[140px]"
+          options={[
+            { label: "All Statuses", value: "" },
+            ...statuses.map((value) => ({ label: label(value), value })),
+          ]}
+        />
+
+        <ModernSelect
+          aria-label="Filter enquiry class"
+          value={academicTargetId}
+          onValueChange={(val) => updateQuery({ classId: val })}
+          placeholder="All Classes"
+          className="w-[140px]"
+          options={[
+            { label: "All Classes", value: "" },
+            ...classes.map((item) => ({ label: item.name, value: item.id })),
+          ]}
+        />
+
+        <ModernSelect
+          aria-label="Filter enquiry source"
+          value={source}
+          onValueChange={(val) => updateQuery({ source: val })}
+          placeholder="All Sources"
+          className="w-[140px]"
+          options={[
+            { label: "All Sources", value: "" },
+            ...sources.map((value) => ({ label: value, value })),
+          ]}
+        />
+        <Input
+          aria-label="Enquiries from date"
+          title="Created from"
+          type="date"
+          value={createdFrom}
+          onChange={(event) => updateQuery({ from: event.target.value })}
+          className="h-9 w-[145px]"
+        />
+        <Input
+          aria-label="Enquiries to date"
+          title="Created to"
+          type="date"
+          min={createdFrom || undefined}
+          value={createdTo}
+          onChange={(event) => updateQuery({ to: event.target.value })}
+          className="h-9 w-[145px]"
+        />
+        {(search || status || academicTargetId || source || createdFrom || createdTo) && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-xs font-semibold"
+            onClick={() => {
+              setDraftSearch("");
+              setQuery(new URLSearchParams({ page: "1", pageSize: String(pageSize) }), {
+                replace: true,
+              });
             }}
-            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
           >
-            <option value="">All Statuses</option>
-            {statuses.map((value) => (
-              <option key={value} value={value}>
-                {label(value)}
-              </option>
-            ))}
-          </select>
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 whitespace-nowrap">
-            {total} Record{total === 1 ? "" : "s"}
-          </span>
-        </div>
+            <RotateCcw className="mr-1 h-3.5 w-3.5" /> Clear
+          </Button>
+        )}
+        <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 whitespace-nowrap">
+          {total} Record{total === 1 ? "" : "s"}
+        </span>
       </div>
 
       {/* Data Table Container */}
@@ -340,12 +487,20 @@ export function EnquiryWorkspace() {
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow className="border-b border-slate-200">
-                <TableHead className="font-bold text-slate-700 text-xs py-3">Prospective Student</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3">Contact Details</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3">Interested Class</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">
+                  Prospective Student
+                </TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">
+                  Contact Details
+                </TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3">
+                  Interested Class
+                </TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Lead Source</TableHead>
                 <TableHead className="font-bold text-slate-700 text-xs py-3">Status</TableHead>
-                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">Actions</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs py-3 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100">
@@ -367,7 +522,9 @@ export function EnquiryWorkspace() {
 
                   <TableCell className="py-3 text-xs">
                     <p className="font-semibold text-slate-800">{item.phone}</p>
-                    <p className="text-[11px] text-slate-400">{item.email || "No email provided"}</p>
+                    <p className="text-[11px] text-slate-400">
+                      {item.email || "No email provided"}
+                    </p>
                   </TableCell>
 
                   <TableCell className="py-3 text-xs font-semibold text-slate-700">
@@ -381,9 +538,7 @@ export function EnquiryWorkspace() {
                   </TableCell>
 
                   <TableCell className="py-3 text-xs">
-                    <Badge variant={getStatusVariant(item.status)}>
-                      {label(item.status)}
-                    </Badge>
+                    <Badge variant={getStatusVariant(item.status)}>{label(item.status)}</Badge>
                   </TableCell>
 
                   <TableCell className="py-3 text-right">
@@ -439,10 +594,9 @@ export function EnquiryWorkspace() {
               page={page}
               pageSize={pageSize}
               total={total}
-              onPageChange={setPage}
+              onPageChange={(value) => updateQuery({ page: value }, false)}
               onPageSizeChange={(value) => {
-                setPageSize(value);
-                setPage(1);
+                updateQuery({ pageSize: value, page: 1 }, false);
               }}
             />
           </div>
@@ -490,7 +644,9 @@ export function EnquiryWorkspace() {
                     >
                       <option value="">Select target class</option>
                       {classes.map((item) => (
-                        <option key={item.id} value={item.id}>{item.name}</option>
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
                       ))}
                     </select>
                   );
@@ -500,8 +656,8 @@ export function EnquiryWorkspace() {
                     <Input
                       value={
                         field.key === "campusId"
-                          ? selectedCampus?.name ?? ""
-                          : selectedAcademicYear?.name ?? ""
+                          ? (selectedCampus?.name ?? "")
+                          : (selectedAcademicYear?.name ?? "")
                       }
                       disabled
                       className="h-9 text-xs"
@@ -516,10 +672,21 @@ export function EnquiryWorkspace() {
           <Separator />
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)} className="h-9 text-xs font-semibold">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setOpen(false)}
+              className="h-9 text-xs font-semibold"
+            >
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={busy} className="h-9 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={busy}
+              className="h-9 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700"
+            >
               Create Enquiry
             </Button>
           </div>

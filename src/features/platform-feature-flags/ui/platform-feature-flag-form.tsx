@@ -7,7 +7,12 @@ import { Spinner } from "../../../shared/ui/spinner";
 
 interface FeatureFlagFormProps {
   busy: boolean;
-  onSubmit: (input: { code: string; name: string; description?: string; isEnabled: boolean }) => Promise<void>;
+  onSubmit: (input: {
+    code: string;
+    name: string;
+    description?: string;
+    isEnabled: boolean;
+  }) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -74,7 +79,13 @@ export function PlatformFeatureFlagForm({ busy, onSubmit, onCancel }: FeatureFla
           Cancel
         </Button>
         <Button type="submit" size="sm" disabled={busy}>
-          {busy ? <><Spinner className="h-3.5 w-3.5" /> Creating…</> : "Create feature"}
+          {busy ? (
+            <>
+              <Spinner className="h-3.5 w-3.5" /> Creating…
+            </>
+          ) : (
+            "Create feature"
+          )}
         </Button>
       </div>
     </form>

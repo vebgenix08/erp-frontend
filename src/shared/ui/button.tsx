@@ -8,20 +8,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "bg-brand-600 text-white hover:bg-brand-700 shadow-xs",
-        brand:
-          "bg-brand-600 text-white hover:bg-brand-700 shadow-xs",
-        destructive:
-          "bg-rose-600 text-white hover:bg-rose-700 shadow-xs",
+        default: "bg-brand-600 text-white hover:bg-brand-700 shadow-xs",
+        brand: "bg-brand-600 text-white hover:bg-brand-700 shadow-xs",
+        destructive: "bg-rose-600 text-white hover:bg-rose-700 shadow-xs",
         outline:
           "border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 shadow-2xs",
-        secondary:
-          "bg-slate-100 text-slate-800 hover:bg-slate-200",
-        ghost:
-          "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-        link:
-          "text-brand-600 underline-offset-4 hover:underline",
+        secondary: "bg-slate-100 text-slate-800 hover:bg-slate-200",
+        ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+        link: "text-brand-600 underline-offset-4 hover:underline",
       },
       size: {
         default: "h-9 px-4 py-2 text-xs",
@@ -48,11 +42,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
+      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
     );
   },
 );
