@@ -32,6 +32,8 @@ import {
   getTeacherLeadershipWorkspace,
 } from "../../teacher-department/api/teacher-department.api";
 import { getTeacherSectionWorkspace } from "../../teacher-section/api/teacher-section.api";
+import { updateEmployee } from "../../staff/api/staff.api";
+import { getFileDownloadUrl, uploadFile } from "../../storage/api/files.api";
 
 vi.mock("../../teacher-attendance/api/teacher-attendance.api", () => ({
   getTeacherAttendanceWorkspace: vi.fn(),
@@ -85,6 +87,14 @@ vi.mock("../../teacher-section/api/teacher-section.api", () => ({
   getTeacherSectionWorkspace: vi.fn(),
   saveTeacherSectionFollowUp: vi.fn(),
   resolveTeacherSectionFollowUp: vi.fn(),
+}));
+
+vi.mock("../../staff/api/staff.api", () => ({ updateEmployee: vi.fn() }));
+
+vi.mock("../../storage/api/files.api", () => ({
+  uploadFile: vi.fn(),
+  getFileDownloadUrl: vi.fn(),
+  deleteFile: vi.fn(),
 }));
 
 const operatingContext = {
@@ -260,6 +270,7 @@ describe("teacher workspace pages", () => {
   afterEach(cleanup);
 
   beforeEach(() => {
+    vi.clearAllMocks();
     const emptyPage = { items: [], page: 1, pageSize: 10, total: 0, totalPages: 1 };
     vi.mocked(listTeacherLessonPlans).mockResolvedValue(emptyPage);
     vi.mocked(listTeacherDiaryEntries).mockResolvedValue(emptyPage);
@@ -269,6 +280,15 @@ describe("teacher workspace pages", () => {
     vi.mocked(listTeacherAcademicDoubts).mockResolvedValue(emptyPage);
     vi.mocked(listTeacherAttendanceHistory).mockResolvedValue(emptyPage);
     vi.mocked(listTeacherMarksHistory).mockResolvedValue(emptyPage);
+    vi.mocked(updateEmployee).mockResolvedValue({} as never);
+    vi.mocked(uploadFile).mockResolvedValue({
+      id: "file-profile-1",
+      fileName: "portrait.png",
+      contentType: "image/png",
+      status: "AVAILABLE",
+      scopeType: "TENANT",
+    });
+    vi.mocked(getFileDownloadUrl).mockResolvedValue("https://storage.test/portrait.png");
     vi.mocked(getTeacherDepartmentWorkspace).mockResolvedValue({
       scope: {
         responsibilityId: "hod-1",
@@ -602,6 +622,32 @@ describe("teacher workspace pages", () => {
     });
 
     expect(screen.getByText("active teacher was not found")).toBeInTheDocument();
+  });
+
+  it("uploads and attaches a self-service profile photo", async () => {
+    renderPage("/teacher/profile", emptyTeacherWorkspace);
+    expect(await screen.findByRole("heading", { name: "My Profile" })).toBeInTheDocument();
+
+    const photo = new File(["portrait"], "portrait.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Choose profile photo"), {
+      target: { files: [photo] },
+    });
+
+    await waitFor(() =>
+      expect(uploadFile).toHaveBeenCalledWith({
+        file: photo,
+        scopeType: "TENANT",
+        metadata: { category: "staff_profile", employeeId: "employee-1" },
+      }),
+    );
+    expect(updateEmployee).toHaveBeenCalledWith("employee-1", {
+      profilePhotoFileId: "file-profile-1",
+    });
+    expect(await screen.findByText("Profile photo updated.")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Anitha Rao profile" })).toHaveAttribute(
+      "src",
+      "https://storage.test/portrait.png",
+    );
   });
 
   it("renders real teaching context instead of repeating workload-only dashboard cards", () => {
