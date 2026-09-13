@@ -542,10 +542,9 @@ export function StudentProfile() {
   if (!student) return null;
 
   const currentCampusName = campuses.find((c) => c.id === student.enrollment.campusId)?.name || "—";
-  const overdueOrders = orders.filter(
+  const openOrders = orders.filter(
     (o) => o.balanceMinor > 0 && !["PAID", "CLOSED", "CANCELLED"].includes(o.status),
   );
-  const overdueTotalMinor = overdueOrders.reduce((sum, o) => sum + o.balanceMinor, 0);
   const profileActions: Array<{
     label: string;
     icon: LucideIcon;
@@ -1181,10 +1180,10 @@ export function StudentProfile() {
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
                 <span className="text-[10px] font-bold text-slate-400 uppercase block">
-                  Overdue Amount
+                  Open Fee Orders
                 </span>
-                <strong className="text-sm font-black text-rose-600 block mt-0.5">
-                  {money(overdueTotalMinor)}
+                <strong className="text-sm font-black text-slate-900 block mt-0.5">
+                  {openOrders.length}
                 </strong>
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-2xs">

@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, GraduationCap, LogOut, Menu, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
+import { RouteContentBoundary } from "../../../shared/ui/route-content-boundary";
 import { useSession } from "../../session/model/session-provider";
 import {
   SelectedAcademicYearProvider,
@@ -168,11 +169,12 @@ function TeacherWorkspaceShell() {
   const localPart = userEmail.split("@")[0] ?? "";
   const userName =
     workspace?.teacher.fullName ??
-    (localPart
-      .split(/[._-]/)
-      .map((part) => (part ? part[0]!.toUpperCase() + part.slice(1) : ""))
-      .join(" ") ||
-      "Faculty Member");
+    (workspaceLoading
+      ? "Loading profile"
+      : localPart
+          .split(/[._-]/)
+          .map((part) => (part ? part[0]!.toUpperCase() + part.slice(1) : ""))
+          .join(" ") || "Faculty Member");
 
   const operatingContext = {
     campusId: selectedWorkspaceCampus?.id ?? null,
@@ -197,18 +199,36 @@ function TeacherWorkspaceShell() {
 
   const responsibilityLabels = [...responsibilityTypes].map(readableResponsibility);
   const accessLabel =
-    [
-      workspace?.assignments.length ? "Teaching" : null,
-      ...responsibilityLabels,
-      roleCodes.has("PRINCIPAL") ? "Principal" : null,
-      roleCodes.has("VICE_PRINCIPAL") ? "Vice Principal" : null,
-      roleCodes.has("DEAN") ? "Dean" : null,
-    ]
-      .filter(
-        (value, index, values): value is string =>
-          Boolean(value) && values.indexOf(value) === index,
-      )
-      .join(" · ") || readableResponsibility(workspace?.teacher.staffType ?? "ACADEMIC_STAFF");
+    workspaceLoading && !workspace
+      ? "Loading access"
+      : [
+          workspace?.assignments.length ? "Teaching" : null,
+          ...responsibilityLabels,
+          roleCodes.has("PRINCIPAL") ? "Principal" : null,
+          roleCodes.has("VICE_PRINCIPAL") ? "Vice Principal" : null,
+          roleCodes.has("DEAN") ? "Dean" : null,
+        ]
+          .filter(
+            (value, index, values): value is string =>
+              Boolean(value) && values.indexOf(value) === index,
+          )
+          .join(" · ") || readableResponsibility(workspace?.teacher.staffType ?? "ACADEMIC_STAFF");
+  const primaryAccessLabel =
+    workspaceLoading && !workspace
+      ? "Loading access"
+      : roleCodes.has("PRINCIPAL")
+        ? "Principal"
+        : roleCodes.has("VICE_PRINCIPAL")
+          ? "Vice Principal"
+          : roleCodes.has("DEAN")
+            ? "Dean"
+            : responsibilityTypes.has("HOD")
+              ? "HOD"
+              : responsibilityTypes.has("PROGRAM_COORDINATOR")
+                ? "Program Coordinator"
+                : responsibilityTypes.has("CLASS_TEACHER")
+                  ? "Class Teacher"
+                  : "Teaching";
 
   const searchPages = visibleNavigation.flatMap((group) =>
     group.pages.map((item) => ({ group, page: item })),
@@ -299,7 +319,7 @@ function TeacherWorkspaceShell() {
           className={cn(
             "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-800 bg-[#0f172a] text-slate-200 shadow-xl transition-all lg:relative lg:translate-x-0",
             mobileOpen ? "translate-x-0" : "-translate-x-full",
-            collapsed ? "w-[76px]" : "w-[260px]",
+            collapsed ? "w-[80px]" : "w-[280px]",
           )}
         >
           {/* Sidebar Header Brand */}
@@ -312,7 +332,7 @@ function TeacherWorkspaceShell() {
                 <strong className="block truncate text-sm font-bold text-white tracking-tight">
                   {session?.tenant?.displayName ?? "Vebgenix ERP"}
                 </strong>
-                <span className="block truncate text-[10px] font-medium text-slate-400">
+                <span className="block truncate text-xs font-medium text-slate-400">
                   Teacher Workspace
                 </span>
               </div>
@@ -341,7 +361,7 @@ function TeacherWorkspaceShell() {
             {visibleNavigation.map((group) => (
               <div key={group.label}>
                 {!collapsed ? (
-                  <div className="mb-1.5 px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                  <div className="mb-1.5 px-3 text-[14px] font-semibold leading-5 text-slate-300">
                     {group.label}
                   </div>
                 ) : null}
@@ -355,9 +375,9 @@ function TeacherWorkspaceShell() {
                         key={item.id}
                         onClick={() => navigate(teacherPagePath(item))}
                         className={cn(
-                          "flex min-h-9 w-full items-center gap-3 rounded-xl px-2.5 text-left text-xs font-semibold transition-all",
+                          "flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-[14px] font-medium leading-5 transition-colors",
                           active
-                            ? "bg-brand-600 text-white shadow-sm font-bold"
+                            ? "bg-brand-600 text-white shadow-sm font-semibold"
                             : "text-slate-300 hover:bg-slate-800/70 hover:text-white",
                           collapsed && "justify-center px-0",
                         )}
@@ -387,10 +407,10 @@ function TeacherWorkspaceShell() {
               </span>
               {!collapsed ? (
                 <div className="min-w-0 flex-1">
-                  <strong className="block truncate text-xs font-bold text-white">
+                  <strong className="block truncate text-sm font-bold text-white">
                     {userName}
                   </strong>
-                  <span className="block truncate text-[10px] text-slate-400 font-medium">
+                  <span className="block truncate text-xs text-slate-400 font-medium">
                     {accessLabel}
                   </span>
                 </div>
@@ -431,7 +451,7 @@ function TeacherWorkspaceShell() {
                   <PageIcon size={16} />
                 </span>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
                     {activeNavigationGroup.label}
                   </span>
                   <h1 className="truncate text-sm font-bold text-slate-900 leading-tight">
@@ -492,7 +512,7 @@ function TeacherWorkspaceShell() {
               <button
                 aria-label="Search Teacher workspace"
                 onClick={() => setSearchOpen(true)}
-                className="hidden min-h-9 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors sm:flex"
+                className="hidden min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors sm:flex"
               >
                 <Search size={14} className="text-slate-400" />
                 <span>Search</span>
@@ -511,11 +531,11 @@ function TeacherWorkspaceShell() {
                     .join("")}
                 </span>
                 <div className="text-left hidden lg:block">
-                  <strong className="block max-w-[120px] truncate text-xs font-bold text-slate-900 leading-tight">
+                  <strong className="block max-w-[120px] truncate text-sm font-bold text-slate-900 leading-tight">
                     {userName}
                   </strong>
-                  <span className="block max-w-[120px] truncate text-[10px] font-semibold text-brand-600">
-                    {accessLabel.split(" · ")[0] ?? "Teacher"}
+                  <span className="block max-w-[120px] truncate text-xs font-semibold text-brand-600">
+                    {primaryAccessLabel}
                   </span>
                 </div>
               </div>
@@ -524,7 +544,9 @@ function TeacherWorkspaceShell() {
 
           {/* Page Content Body */}
           <div className="flex-1 overflow-y-auto">
-            <Outlet />
+            <RouteContentBoundary resetKey={`${location.pathname}${location.search}`}>
+              <Outlet />
+            </RouteContentBoundary>
           </div>
         </main>
       </div>
@@ -540,6 +562,7 @@ function inferInstitutionMode(label: string | undefined): TeacherInstitutionMode
 }
 
 function readableResponsibility(value: string) {
+  if (value === "HOD") return "HOD";
   return value
     .replaceAll("_", " ")
     .toLowerCase()

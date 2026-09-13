@@ -218,7 +218,7 @@ export function StudentDirectory() {
     [sections],
   );
   const availableSections = useMemo(
-    () => sections.filter((item) => !classId || item.classId === classId),
+    () => (classId ? sections.filter((item) => item.classId === classId) : []),
     [classId, sections],
   );
   const columnDefinitions = useMemo<StudentColumn[]>(
@@ -569,10 +569,11 @@ export function StudentDirectory() {
             aria-label="Section"
             value={sectionId}
             onValueChange={(val) => updateQuery({ sectionId: val })}
-            placeholder="All Sections"
+            placeholder={classId ? "All Sections" : "Select class first"}
             className="w-[130px]"
+            disabled={!classId}
             options={[
-              { label: "All Sections", value: "" },
+              { label: classId ? "All Sections" : "Select class first", value: "" },
               ...availableSections.map((item) => ({ label: item.name, value: item.id })),
             ]}
           />

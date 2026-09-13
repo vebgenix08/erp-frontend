@@ -20,6 +20,13 @@ export default defineConfig(({ command, mode }) => {
   }
   return {
     plugins: [tailwindcss(), react()],
+    resolve: {
+      // Lazy route chunks must share the same React runtime during local HMR.
+      dedupe: ["react", "react-dom"],
+    },
+    optimizeDeps: {
+      include: ["react", "react-dom", "react-router-dom"],
+    },
     build: {
       // ExcelJS is an isolated, on-demand export engine. Route and initial app chunks
       // remain below 500 kB; this budget prevents a false warning for that lazy tool.

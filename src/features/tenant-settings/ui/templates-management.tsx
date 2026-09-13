@@ -54,29 +54,7 @@ export interface FormSectionItem {
 
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
 const NATIONALITY_OPTIONS = ["Indian", "NRI", "Foreign National"];
-const CLASS_OPTIONS = [
-  "Nursery",
-  "LKG",
-  "UKG",
-  "Grade 1",
-  "Grade 2",
-  "Grade 3",
-  "Grade 4",
-  "Grade 5",
-  "Grade 6",
-  "Grade 7",
-  "Grade 8",
-  "Grade 9",
-  "Grade 10",
-  "Grade 11 (Science)",
-  "Grade 11 (Commerce)",
-  "Grade 11 (Arts)",
-  "Grade 12 (Science)",
-  "Grade 12 (Commerce)",
-  "Grade 12 (Arts)",
-];
 const MEDIUM_OPTIONS = ["English", "Kannada", "Hindi"];
-const ACADEMIC_YEAR_OPTIONS = ["2026 - 2027", "2027 - 2028"];
 const LANGUAGE_OPTIONS = ["Kannada", "Hindi", "Sanskrit", "French"];
 const YES_NO_OPTIONS = ["Yes", "No"];
 const SOURCE_OPTIONS = [
@@ -191,11 +169,10 @@ const INITIAL_ENQUIRY_SECTIONS: FormSectionItem[] = [
       {
         id: "f6",
         label: "Current Class / Grade",
-        type: "Dropdown",
+        type: "Text",
         required: true,
         visible: true,
         order: 6,
-        options: CLASS_OPTIONS,
       },
       {
         id: "f7",
@@ -261,7 +238,6 @@ const INITIAL_ENQUIRY_SECTIONS: FormSectionItem[] = [
         required: true,
         visible: true,
         order: 1,
-        options: CLASS_OPTIONS,
       },
       {
         id: "f14",
@@ -383,7 +359,6 @@ const INITIAL_APPLICATION_SECTIONS: FormSectionItem[] = [
         required: true,
         visible: true,
         order: 7,
-        options: CLASS_OPTIONS,
       },
       {
         id: "af10_ay",
@@ -392,7 +367,6 @@ const INITIAL_APPLICATION_SECTIONS: FormSectionItem[] = [
         required: true,
         visible: true,
         order: 8,
-        options: ACADEMIC_YEAR_OPTIONS,
       },
     ],
   },
@@ -438,11 +412,10 @@ const INITIAL_APPLICATION_SECTIONS: FormSectionItem[] = [
       {
         id: "af14",
         label: "Last Grade Attended",
-        type: "Dropdown",
+        type: "Text",
         required: false,
         visible: true,
         order: 2,
-        options: CLASS_OPTIONS,
       },
       { id: "af15", label: "TC Number", type: "Text", required: false, visible: true, order: 3 },
     ],
@@ -1066,6 +1039,7 @@ export function TemplatesManagement() {
             ["primary contact", "phone"],
             ["father name", "parentName"],
             ["applying for class", "academicTargetId"],
+            ["academic year", "academicYearId"],
           ],
           STAFF_ONBOARDING: [
             ["full name", "fullName"],

@@ -21,7 +21,7 @@ const groupLabel = (item: {
     .join(" - ") || "Assigned Group";
 
 export function TeacherClassesPage() {
-  const { workspace, workspaceLoading, workspaceError } = useTeacherWorkspace();
+  const { operatingContext, workspace, workspaceLoading, workspaceError } = useTeacherWorkspace();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"ALL" | "COMPLETE" | "INCOMPLETE">("ALL");
@@ -29,6 +29,8 @@ export function TeacherClassesPage() {
   const assignments = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return (workspace?.assignments ?? []).filter((item) => {
+      const matchesCampus =
+        !operatingContext.campusId || item.campusId === operatingContext.campusId;
       const matchesSearch =
         !needle ||
         [
@@ -42,9 +44,9 @@ export function TeacherClassesPage() {
           .filter(Boolean)
           .some((value) => value!.toLowerCase().includes(needle));
       const matchesStatus = status === "ALL" || item.status === status;
-      return matchesSearch && matchesStatus;
+      return matchesCampus && matchesSearch && matchesStatus;
     });
-  }, [search, status, workspace?.assignments]);
+  }, [operatingContext.campusId, search, status, workspace?.assignments]);
 
   if (workspaceLoading && !workspace) return <LoadingState label="Loading assigned classes" />;
   if (workspaceError) return <ErrorState message={workspaceError} />;

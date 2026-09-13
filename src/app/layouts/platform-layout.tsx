@@ -26,6 +26,7 @@ import { cn } from "../../shared/ui/utils";
 import { Avatar, AvatarFallback } from "../../shared/ui/avatar";
 import { Button } from "../../shared/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../shared/ui/tooltip";
+import { RouteContentBoundary } from "../../shared/ui/route-content-boundary";
 
 export function PlatformLayout() {
   const { session, clearSession } = useSession();
@@ -88,7 +89,7 @@ export function PlatformLayout() {
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1.5 overflow-y-auto p-3">
-            <p className="mb-2 px-3 pt-2 text-sm font-bold uppercase tracking-wide text-slate-300">
+            <p className="mb-2 px-3 pt-2 text-[14px] font-semibold text-slate-300">
               Platform Controls
             </p>
             <div className="space-y-0.5">
@@ -98,9 +99,9 @@ export function PlatformLayout() {
                   to={to}
                   className={({ isActive }: NavLinkRenderProps) =>
                     cn(
-                      "flex min-h-11 items-center gap-3 rounded px-3 py-2.5 text-sm font-semibold transition-colors",
+                      "flex min-h-10 items-center gap-3 rounded-lg px-3 text-[14px] font-medium leading-5 transition-colors",
                       isActive
-                        ? "bg-accent-600 text-white font-bold"
+                        ? "bg-accent-600 text-white font-semibold"
                         : "text-slate-300 hover:bg-slate-800 hover:text-white",
                     )
                   }
@@ -180,7 +181,9 @@ export function PlatformLayout() {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4 md:p-5">
-            <Outlet />
+            <RouteContentBoundary resetKey={`${location.pathname}${location.search}`}>
+              <Outlet />
+            </RouteContentBoundary>
           </div>
         </main>
       </div>

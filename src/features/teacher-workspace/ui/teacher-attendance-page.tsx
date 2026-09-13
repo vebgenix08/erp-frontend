@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock3, Save, Send, UserCheck, UserX, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   getTeacherAttendanceWorkspace,
   saveTeacherAttendance,
@@ -33,8 +34,10 @@ const groupLabel = (value?: { className?: string; sectionName?: string }) =>
 
 export function TeacherAttendancePage() {
   const { operatingContext, workspace: teacherWorkspace } = useTeacherWorkspace();
+  const [params, setParams] = useSearchParams();
+  const requestedOfferingId = params.get("offering") ?? "";
   const [date, setDate] = useState(localDateValue);
-  const [selectedClassOfferingId, setSelectedClassOfferingId] = useState<string>("");
+  const [selectedClassOfferingId, setSelectedClassOfferingId] = useState(requestedOfferingId);
   const [lessonId, setLessonId] = useState("");
   const [workspace, setWorkspace] = useState<TeacherAttendanceWorkspace | null>(null);
   const [attendance, setAttendance] = useState<Record<string, StudentAttendanceValue>>({});
@@ -44,8 +47,11 @@ export function TeacherAttendancePage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const assignments = useMemo(
-    () => teacherWorkspace?.assignments ?? [],
-    [teacherWorkspace?.assignments],
+    () =>
+      (teacherWorkspace?.assignments ?? []).filter(
+        (item) => !operatingContext.campusId || item.campusId === operatingContext.campusId,
+      ),
+    [operatingContext.campusId, teacherWorkspace?.assignments],
   );
 
   // Options for all assigned classes
@@ -57,21 +63,49 @@ export function TeacherAttendancePage() {
   }, [assignments]);
 
   const load = useCallback(
-    async (selectedLessonId?: string) => {
+    async (selection?: { lessonId?: string; offeringId?: string }) => {
       setLoading(true);
       setError(null);
       try {
-        const result = await getTeacherAttendanceWorkspace({
+        let result = await getTeacherAttendanceWorkspace({
           date,
           ...(operatingContext.academicYearId
             ? { academicYearId: operatingContext.academicYearId }
             : {}),
-          ...(selectedLessonId ? { lessonId: selectedLessonId } : {}),
+          ...(operatingContext.campusId ? { campusId: operatingContext.campusId } : {}),
+          ...(selection?.lessonId ? { lessonId: selection.lessonId } : {}),
         });
+        if (selection?.offeringId && !selection.lessonId) {
+          const matchingSession = result.sessions.find(
+            (session) => session.subjectOfferingId === selection.offeringId,
+          );
+          if (matchingSession && result.selectedSession?.id !== matchingSession.id) {
+            result = await getTeacherAttendanceWorkspace({
+              date,
+              ...(operatingContext.academicYearId
+                ? { academicYearId: operatingContext.academicYearId }
+                : {}),
+              ...(operatingContext.campusId ? { campusId: operatingContext.campusId } : {}),
+              lessonId: matchingSession.id,
+            });
+          } else if (!matchingSession) {
+            result = {
+              date: result.date,
+              teacherId: result.teacherId,
+              teacherName: result.teacherName,
+              academicYear: result.academicYear,
+              sessions: result.sessions,
+              students: [],
+              canEdit: false,
+            };
+          }
+        }
         setWorkspace(result);
         setLessonId(result.selectedSession?.id ?? "");
         if (result.selectedSession?.subjectOfferingId) {
           setSelectedClassOfferingId(result.selectedSession.subjectOfferingId);
+        } else if (selection?.offeringId) {
+          setSelectedClassOfferingId(selection.offeringId);
         }
         setAttendance(
           Object.fromEntries(result.students.map((student) => [student.studentId, student.status])),
@@ -83,12 +117,12 @@ export function TeacherAttendancePage() {
         setLoading(false);
       }
     },
-    [date, operatingContext.academicYearId],
+    [date, operatingContext.academicYearId, operatingContext.campusId],
   );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(requestedOfferingId ? { offeringId: requestedOfferingId } : undefined);
+  }, [load, requestedOfferingId]);
 
   const absent = useMemo(
     () => Object.values(attendance).filter((status) => status === "ABSENT").length,
@@ -104,6 +138,7 @@ export function TeacherAttendancePage() {
       await saveTeacherAttendance({
         date,
         academicYearId: workspace.academicYear.id,
+        ...(operatingContext.campusId ? { campusId: operatingContext.campusId } : {}),
         lessonId: workspace.selectedSession.id,
         ...(workspace.attendance ? { expectedVersion: workspace.attendance.version } : {}),
         submit,
@@ -113,7 +148,10 @@ export function TeacherAttendancePage() {
         })),
       });
       setNotice(submit ? "Attendance submitted and locked." : "Attendance draft saved.");
-      await load(workspace.selectedSession.id);
+      await load({
+        lessonId: workspace.selectedSession.id,
+        offeringId: workspace.selectedSession.subjectOfferingId,
+      });
     } catch (value) {
       setError(value instanceof Error ? value.message : "Unable to save attendance");
     } finally {
@@ -132,16 +170,23 @@ export function TeacherAttendancePage() {
 
   const onClassSelect = (offeringId: string) => {
     setSelectedClassOfferingId(offeringId);
-    // Find matching session for this offering on the current date
-    const matchingSession = workspace?.sessions.find((s) => s.subjectOfferingId === offeringId);
-    if (matchingSession) {
-      setLessonId(matchingSession.id);
-      void load(matchingSession.id);
-    }
+    setParams({ offering: offeringId }, { replace: true });
+    setLessonId("");
   };
 
   if (loading && !workspace) return <LoadingState label="Loading assigned attendance sessions" />;
-  if (error && !workspace) return <ErrorState message={error} retry={() => void load(lessonId)} />;
+  if (error && !workspace)
+    return (
+      <ErrorState
+        message={error}
+        retry={() =>
+          void load({
+            ...(lessonId ? { lessonId } : {}),
+            ...(selectedClassOfferingId ? { offeringId: selectedClassOfferingId } : {}),
+          })
+        }
+      />
+    );
 
   const selected = workspace?.selectedSession;
   const students = workspace?.students ?? [];
@@ -257,7 +302,7 @@ export function TeacherAttendancePage() {
               disabled={!sessionOptions.length}
               onValueChange={(val) => {
                 setLessonId(val);
-                void load(val);
+                void load({ lessonId: val, offeringId: selectedClassOfferingId });
               }}
               placeholder={
                 sessionOptions.length ? "Select a teaching session" : "No sessions on this date"

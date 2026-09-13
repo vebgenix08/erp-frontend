@@ -116,6 +116,12 @@ function FinanceOperationsContent({ mode }: { mode: Mode }) {
   const [search, setSearch] = useState("");
   const [classId, setClassId] = useState("");
   const [orderStatus, setOrderStatus] = useState<FeeOrder["status"] | "">("");
+  const [sourceType, setSourceType] = useState<FeeOrder["sourceType"] | "">(() => {
+    const value = new URLSearchParams(window.location.search).get("sourceType");
+    return value === "ANNUAL" || value === "GENERAL" || value === "TRANSFER_ADJUSTMENT"
+      ? value
+      : "";
+  });
   const [receiptStatus, setReceiptStatus] = useState<FinancePayment["status"] | "">("");
   const [receiptMethod, setReceiptMethod] = useState<PaymentMethod | "">("");
   const [paidFrom, setPaidFrom] = useState("");
@@ -181,6 +187,8 @@ function FinanceOperationsContent({ mode }: { mode: Mode }) {
           academicYearId: selectedAcademicYear.id,
           ...(classId ? { classId } : {}),
           ...(orderStatus ? { status: orderStatus } : {}),
+          ...(sourceType ? { sourceType } : {}),
+          ...(!orderStatus ? { payableOnly: true } : {}),
           ...(search ? { search } : {}),
           limit: pageSize,
           offset: (page - 1) * pageSize,
@@ -197,6 +205,7 @@ function FinanceOperationsContent({ mode }: { mode: Mode }) {
     classId,
     mode,
     orderStatus,
+    sourceType,
     page,
     pageSize,
     paidFrom,
@@ -229,6 +238,7 @@ function FinanceOperationsContent({ mode }: { mode: Mode }) {
     classId,
     mode,
     orderStatus,
+    sourceType,
     paidFrom,
     paidTo,
     receiptMethod,
@@ -266,6 +276,8 @@ function FinanceOperationsContent({ mode }: { mode: Mode }) {
         academicYearId: selectedAcademicYear.id,
         ...(classId ? { classId } : {}),
         ...(orderStatus ? { status: orderStatus } : {}),
+        ...(sourceType ? { sourceType } : {}),
+        ...(!orderStatus ? { payableOnly: true } : {}),
         ...(search ? { search } : {}),
         limit: 100,
         offset,
@@ -633,6 +645,19 @@ function FinanceOperationsContent({ mode }: { mode: Mode }) {
                   {item.name}
                 </option>
               ))}
+            </select>
+            <select
+              aria-label="Filter fee type"
+              value={sourceType}
+              onChange={(event) =>
+                setSourceType(event.target.value as FeeOrder["sourceType"] | "")
+              }
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-600"
+            >
+              <option value="">All fee types</option>
+              <option value="ANNUAL">Annual fees</option>
+              <option value="GENERAL">Additional fees</option>
+              <option value="TRANSFER_ADJUSTMENT">Transfer adjustments</option>
             </select>
             <select
               aria-label="Filter order status"

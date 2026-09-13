@@ -2,9 +2,25 @@ import { ApiError, isApiError } from "./api-error";
 
 const pending = new Map<string, Promise<unknown>>();
 const cache = new Map<string, { expiresAt: number; value: unknown }>();
+const MAX_CONCURRENT_REQUESTS = 6;
+let activeRequestCount = 0;
+const requestQueue: Array<() => void> = [];
 
 const wait = (milliseconds: number) =>
   new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+
+async function runWithRequestSlot<T>(operation: () => Promise<T>): Promise<T> {
+  if (activeRequestCount >= MAX_CONCURRENT_REQUESTS) {
+    await new Promise<void>((resolve) => requestQueue.push(resolve));
+  }
+  activeRequestCount += 1;
+  try {
+    return await operation();
+  } finally {
+    activeRequestCount -= 1;
+    requestQueue.shift()?.();
+  }
+}
 
 export interface CoordinatedRequestOptions {
   key: string;
@@ -27,7 +43,7 @@ export async function coordinatedRequest<T>(
     for (;;) {
       if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
       try {
-        const value = await operation();
+        const value = await runWithRequestSlot(operation);
         if ((options.cacheTimeMs ?? 0) > 0) {
           cache.set(options.key, {
             expiresAt: Date.now() + (options.cacheTimeMs ?? 0),

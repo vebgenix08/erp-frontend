@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  ArrowRight,
   ArrowUpRight,
   Banknote,
   ChevronRight,
@@ -17,17 +16,13 @@ import {
   Shield,
   ShieldAlert,
   ShieldCheck,
-  Sparkles,
   UserCheck,
   UserPlus,
   UserRound,
   UsersRound,
-  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { listStudents } from "../../students/api/students.api";
-import type { Student } from "../../students/model/student.types";
 import { getTenantAdminDashboard } from "../api/settings.api";
 import type { TenantAdminDashboard } from "../model/settings.types";
 import { useSelectedAcademicYear } from "../model/selected-academic-year-provider";
@@ -59,30 +54,20 @@ export function OperationalAdminDashboard() {
   const { selectedAcademicYear } = useSelectedAcademicYear();
 
   const [data, setData] = useState<TenantAdminDashboard | null>(null);
-  const [students, setStudents] = useState<Student[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [birthdayModalOpen, setBirthdayModalOpen] = useState(false);
 
   const loadData = useCallback(() => {
     if (!selectedCampus || !selectedAcademicYear) return;
     setRefreshing(true);
     setError(null);
 
-    Promise.all([
-      getTenantAdminDashboard({
-        campusId: selectedCampus.id,
-        academicYearId: selectedAcademicYear.id,
-      }),
-      listStudents({
-        campusId: selectedCampus.id,
-        academicYearId: selectedAcademicYear.id,
-        status: "ACTIVE",
-      }).catch(() => [] as Student[]),
-    ])
-      .then(([dash, studentList]) => {
+    getTenantAdminDashboard({
+      campusId: selectedCampus.id,
+      academicYearId: selectedAcademicYear.id,
+    })
+      .then((dash) => {
         setData(dash);
-        setStudents(studentList);
       })
       .catch((value) =>
         setError(value instanceof Error ? value.message : "Unable to load operational dashboard"),
@@ -93,20 +78,6 @@ export function OperationalAdminDashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // Today's Birthdays
-  const todayBirthdayStudents = useMemo(() => {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentDate = today.getDate();
-
-    return students.filter((s) => {
-      if (!s.dateOfBirth) return false;
-      const dob = new Date(s.dateOfBirth);
-      if (isNaN(dob.getTime())) return false;
-      return dob.getMonth() === currentMonth && dob.getDate() === currentDate;
-    });
-  }, [students]);
 
   const studentsByClassData = useMemo(() => {
     const colors = [
@@ -141,18 +112,18 @@ export function OperationalAdminDashboard() {
 
   // Total exception count
   const totalExceptions =
-    (data.studentsMissingFeeOrders || 0) +
-    (data.unpaidStudents || 0) +
-    (data.studentsMissingSections || 0) +
-    (data.failedStaffInvites || 0) +
-    (data.failedFinanceEvents || 0) +
-    (data.failedAdmissionEvents || 0);
+    data.studentsMissingFeeOrders +
+    data.unpaidStudents +
+    data.studentsMissingSections +
+    data.failedStaffInvites +
+    data.failedFinanceEvents +
+    data.failedAdmissionEvents;
 
   // 10 Sleek RO-Style Top Stat Cards
   const kpiCards = [
     {
       title: "Active Students",
-      value: (data.activeStudents || 0).toLocaleString("en-IN"),
+      value: data.activeStudents.toLocaleString("en-IN"),
       subtext: `${selectedCampus.name} enrolled`,
       badge: "Enrolled",
       badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
@@ -162,7 +133,7 @@ export function OperationalAdminDashboard() {
     },
     {
       title: "Active Staff & Faculty",
-      value: (data.activeStaff || 0).toLocaleString("en-IN"),
+      value: data.activeStaff.toLocaleString("en-IN"),
       subtext: "Teaching & operations staff",
       badge: "Active",
       badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -172,8 +143,8 @@ export function OperationalAdminDashboard() {
     },
     {
       title: "Today's Fee Collection",
-      value: money(data.collectedTodayMinor || 0),
-      subtext: `${data.paymentsToday || 0} valid payments today`,
+      value: money(data.collectedTodayMinor),
+      subtext: `${data.paymentsToday} valid payments today`,
       badge: "Real-time",
       badgeClass: "bg-teal-50 text-teal-700 border-teal-200",
       icon: Banknote,
@@ -182,8 +153,8 @@ export function OperationalAdminDashboard() {
     },
     {
       title: "Outstanding Balance",
-      value: money(data.outstandingMinor || 0),
-      subtext: `${data.unpaidStudents || 0} students with dues`,
+      value: money(data.outstandingMinor),
+      subtext: `${data.unpaidStudents} students with dues`,
       badge: "Collectible",
       badgeClass: "bg-rose-50 text-rose-700 border-rose-200",
       icon: ShieldAlert,
@@ -191,26 +162,9 @@ export function OperationalAdminDashboard() {
       to: "/admin/finance/outstanding",
     },
     {
-      title: "Today's Birthdays",
-      value: `${todayBirthdayStudents.length} ${todayBirthdayStudents.length === 1 ? "Student" : "Students"}`,
-      subtext:
-        todayBirthdayStudents.length > 0 ? "Click to view celebrations 🎉" : "No birthdays today",
-      badge: "🎂 Birthday",
-      badgeClass:
-        todayBirthdayStudents.length > 0
-          ? "bg-pink-50 text-pink-700 border-pink-200 animate-pulse"
-          : "bg-slate-50 text-slate-600 border-slate-200",
-      icon: Sparkles,
-      iconClass:
-        todayBirthdayStudents.length > 0
-          ? "text-pink-600 bg-pink-50 border-pink-200"
-          : "text-slate-500 bg-slate-50 border-slate-200",
-      onClick: () => setBirthdayModalOpen(true),
-    },
-    {
       title: "New Enquiries Today",
-      value: (data.enquiriesToday || 0).toLocaleString("en-IN"),
-      subtext: `${data.pendingEnquiryFollowUps || 0} follow-ups pending`,
+      value: data.enquiriesToday.toLocaleString("en-IN"),
+      subtext: `${data.pendingEnquiryFollowUps} follow-ups pending`,
       badge: "Intake Leads",
       badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
       icon: UserPlus,
@@ -219,7 +173,7 @@ export function OperationalAdminDashboard() {
     },
     {
       title: "Pending Applications",
-      value: (data.applicationsAwaitingAction || 0).toLocaleString("en-IN"),
+      value: data.applicationsAwaitingAction.toLocaleString("en-IN"),
       subtext: "Awaiting review or action",
       badge: "Review Needed",
       badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -229,7 +183,7 @@ export function OperationalAdminDashboard() {
     },
     {
       title: "Confirmed Admissions",
-      value: (data.admissionsConfirmed || 0).toLocaleString("en-IN"),
+      value: data.admissionsConfirmed.toLocaleString("en-IN"),
       subtext: "Confirmed in active session",
       badge: "Intake",
       badgeClass: "bg-purple-50 text-purple-700 border-purple-200",
@@ -239,7 +193,7 @@ export function OperationalAdminDashboard() {
     },
     {
       title: "Missing Section Links",
-      value: (data.studentsMissingSections || 0).toLocaleString("en-IN"),
+      value: data.studentsMissingSections.toLocaleString("en-IN"),
       subtext: "Enrolled without section",
       badge: "Unassigned",
       badgeClass: "bg-sky-50 text-sky-700 border-sky-200",
@@ -250,7 +204,7 @@ export function OperationalAdminDashboard() {
     {
       title: "Actionable Exceptions",
       value: totalExceptions.toLocaleString("en-IN"),
-      subtext: `${data.openWorkItems || 0} open workflow items`,
+      subtext: `${data.openWorkItems} setup/workflow · ${data.unpaidStudents} unpaid`,
       badge: totalExceptions > 0 ? "Attention" : "Clean",
       badgeClass:
         totalExceptions > 0
@@ -273,6 +227,15 @@ export function OperationalAdminDashboard() {
       values: data.collectionTrend.map((item) => item.value / 100),
     },
   ];
+  const hasCollectionTrend = data.collectionTrend.some((item) => item.value > 0);
+  const failedOperationalEvents = data.failedFinanceEvents + data.failedAdmissionEvents;
+  const paymentMethodChartItems = data.collectionByPaymentMethod
+    .filter((item) => item.amountMinor > 0)
+    .map((item) => ({
+      label: item.method.replaceAll("_", " "),
+      value: item.amountMinor / 100,
+      color: "#1d4ed8",
+    }));
 
   return (
     <section className="space-y-5 pb-10">
@@ -353,20 +316,8 @@ export function OperationalAdminDashboard() {
             </Card>
           );
 
-          if (card.onClick) {
-            return (
-              <button
-                key={card.title}
-                onClick={card.onClick}
-                className="block text-left transition-all w-full"
-              >
-                {CardInner}
-              </button>
-            );
-          }
-
           return (
-            <Link key={card.title} to={card.to!} className="block transition-all">
+            <Link key={card.title} to={card.to} className="block transition-all">
               {CardInner}
             </Link>
           );
@@ -401,7 +352,7 @@ export function OperationalAdminDashboard() {
                   <UserPlus size={15} className="text-blue-600" />
                 </div>
                 <p className="text-lg font-extrabold text-slate-900">
-                  {Number(data.enquiriesToday || 0).toLocaleString("en-IN")}
+                  {data.enquiriesToday.toLocaleString("en-IN")}
                 </p>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">
                   Enquiries
@@ -415,7 +366,7 @@ export function OperationalAdminDashboard() {
                   <Clock size={15} className="text-amber-600" />
                 </div>
                 <p className="text-lg font-extrabold text-slate-900">
-                  {Number(data.pendingEnquiryFollowUps || 0).toLocaleString("en-IN")}
+                  {data.pendingEnquiryFollowUps.toLocaleString("en-IN")}
                 </p>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">
                   Follow-ups
@@ -429,7 +380,7 @@ export function OperationalAdminDashboard() {
                   <FileText size={15} className="text-emerald-600" />
                 </div>
                 <p className="text-lg font-extrabold text-slate-900">
-                  {Number(data.applicationsSubmittedToday || 0).toLocaleString("en-IN")}
+                  {data.applicationsSubmittedToday.toLocaleString("en-IN")}
                 </p>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">
                   Applications
@@ -471,32 +422,36 @@ export function OperationalAdminDashboard() {
             </Badge>
           </CardHeader>
           <CardContent className="p-3.5 space-y-2.5">
-            <SvgLineChart
-              labels={collectionLabels}
-              series={collectionSeries}
-              height={145}
-              unit="₹"
-            />
+            {hasCollectionTrend ? (
+              <SvgLineChart
+                labels={collectionLabels}
+                series={collectionSeries}
+                height={145}
+                unit="₹"
+              />
+            ) : (
+              <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
+                No fee collections recorded for this period.
+              </div>
+            )}
 
             {/* 3-Column Velocity Summary Ribbon */}
             <div className="grid grid-cols-3 gap-2 border-t border-slate-100 pt-2 text-center">
               <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
                 <p className="text-[9px] font-bold uppercase text-slate-400">Today's Realized</p>
                 <p className="text-xs font-extrabold text-emerald-700 mt-0.5">
-                  {money(data.collectedTodayMinor || 0)}
+                  {money(data.collectedTodayMinor)}
                 </p>
               </div>
               <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
                 <p className="text-[9px] font-bold uppercase text-slate-400">Pending Dues</p>
                 <p className="text-xs font-extrabold text-rose-700 mt-0.5">
-                  {money(data.outstandingMinor || 0)}
+                  {money(data.outstandingMinor)}
                 </p>
               </div>
               <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
                 <p className="text-[9px] font-bold uppercase text-slate-400">Active Receipts</p>
-                <p className="text-xs font-extrabold text-brand-700 mt-0.5">
-                  {data.paymentsToday || 0}
-                </p>
+                <p className="text-xs font-extrabold text-brand-700 mt-0.5">{data.paymentsToday}</p>
               </div>
             </div>
           </CardContent>
@@ -597,10 +552,10 @@ export function OperationalAdminDashboard() {
                   Collected Today
                 </span>
                 <p className="text-lg font-extrabold text-emerald-800">
-                  {money(data.collectedTodayMinor || 0)}
+                  {money(data.collectedTodayMinor)}
                 </p>
                 <p className="text-[9px] text-emerald-600 font-medium">
-                  {data.paymentsToday || 0} payments received
+                  {data.paymentsToday} payments received
                 </p>
               </div>
               <div className="p-2.5 rounded-xl bg-rose-50/60 border border-rose-100 text-center space-y-0.5">
@@ -608,10 +563,10 @@ export function OperationalAdminDashboard() {
                   Outstanding Balance
                 </span>
                 <p className="text-base font-extrabold text-rose-800">
-                  {money(data.outstandingMinor || 0)}
+                  {money(data.outstandingMinor)}
                 </p>
                 <p className="text-[9px] text-rose-600 font-medium">
-                  {data.unpaidStudents || 0} students with dues
+                  {data.unpaidStudents} students with dues
                 </p>
               </div>
             </div>
@@ -619,7 +574,7 @@ export function OperationalAdminDashboard() {
             {/* Stacked Payment Breakdown */}
             <PaymentMethodsBreakdown
               items={data.collectionByPaymentMethod}
-              totalAmountMinor={data.collectedTodayMinor || 0}
+              totalAmountMinor={data.collectedTodayMinor}
             />
 
             {/* Quick Action Link */}
@@ -652,14 +607,18 @@ export function OperationalAdminDashboard() {
             <ShieldCheck size={16} className="text-emerald-600" />
           </CardHeader>
           <CardContent className="p-3.5 space-y-2 text-xs">
-            {/* Diagnostic Health Score Bar */}
+            {/* Operational status derived from persisted workflow failures. */}
             <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5 space-y-1">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="font-bold text-slate-800">System Integrity</span>
-                <span className="font-extrabold text-emerald-700">98.5% Optimal</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                <div style={{ width: "98.5%" }} className="h-full bg-emerald-500 rounded-full" />
+                <span className="font-bold text-slate-800">Failed operational events</span>
+                <span
+                  className={cn(
+                    "font-extrabold",
+                    failedOperationalEvents > 0 ? "text-rose-700" : "text-emerald-700",
+                  )}
+                >
+                  {failedOperationalEvents.toLocaleString("en-IN")}
+                </span>
               </div>
             </div>
 
@@ -671,9 +630,7 @@ export function OperationalAdminDashboard() {
                 </span>
                 <div className="flex items-center gap-1.5">
                   <strong className="text-slate-900 font-extrabold">{data.activeStudents}</strong>
-                  <Badge variant="success" className="text-[9px] px-1 py-0 font-bold">
-                    Optimal
-                  </Badge>
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0 font-bold">Current</Badge>
                 </div>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/80 border border-slate-100">
@@ -682,9 +639,7 @@ export function OperationalAdminDashboard() {
                 </span>
                 <div className="flex items-center gap-1.5">
                   <strong className="text-slate-900 font-extrabold">{data.activeStaff}</strong>
-                  <Badge variant="success" className="text-[9px] px-1 py-0 font-bold">
-                    100%
-                  </Badge>
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0 font-bold">Current</Badge>
                 </div>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/80 border border-slate-100">
@@ -695,8 +650,11 @@ export function OperationalAdminDashboard() {
                   <strong className="text-slate-900 font-extrabold">
                     {data.applicationsAwaitingAction}
                   </strong>
-                  <Badge variant="secondary" className="text-[9px] px-1 py-0 font-bold">
-                    Cleared
+                  <Badge
+                    variant={data.applicationsAwaitingAction > 0 ? "warning" : "success"}
+                    className="text-[9px] px-1 py-0 font-bold"
+                  >
+                    {data.applicationsAwaitingAction > 0 ? "Review" : "Cleared"}
                   </Badge>
                 </div>
               </div>
@@ -1066,23 +1024,20 @@ export function OperationalAdminDashboard() {
             {/* Left: SVG Bar Chart Comparison */}
             <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-slate-100 pb-4 lg:pb-0 lg:pr-6">
               <p className="text-[11px] font-bold text-slate-700 mb-2">Volume by Channel (₹)</p>
-              <SvgBarChart
-                items={[
-                  { label: "UPI", value: 0, color: "#6366f1" },
-                  { label: "CASH", value: 0, color: "#10b981" },
-                  { label: "NET BANK", value: 0, color: "#0ea5e9" },
-                  { label: "CARD", value: 0, color: "#ec4899" },
-                ]}
-                height={140}
-                unit="₹"
-              />
+              {paymentMethodChartItems.length ? (
+                <SvgBarChart items={paymentMethodChartItems} height={140} unit="₹" />
+              ) : (
+                <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-xs font-semibold text-slate-500">
+                  No payment-channel activity recorded today.
+                </div>
+              )}
             </div>
 
             {/* Right: Detailed Payment Mode Breakdown */}
             <div className="lg:col-span-7 space-y-2">
               <PaymentMethodsBreakdown
                 items={data.collectionByPaymentMethod}
-                totalAmountMinor={data.collectedTodayMinor || 0}
+                totalAmountMinor={data.collectedTodayMinor}
               />
             </div>
           </div>
@@ -1343,80 +1298,6 @@ export function OperationalAdminDashboard() {
           </div>
         </div>
       </Card>
-
-      {/* 9. TODAY'S BIRTHDAYS MODAL */}
-      {birthdayModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-pink-100 text-pink-600 border border-pink-200">
-                  <Sparkles size={18} />
-                </span>
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Today's Birthdays 🎂</h3>
-                  <p className="text-xs text-slate-500 font-medium">
-                    {new Date().toLocaleDateString("en-IN", { month: "long", day: "numeric" })} ·{" "}
-                    {selectedCampus.name}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setBirthdayModalOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-2.5 pr-1">
-              {todayBirthdayStudents.length > 0 ? (
-                todayBirthdayStudents.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-pink-100 bg-pink-50/40 hover:bg-pink-50/80 transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 truncate">{s.name}</p>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        Adm No: {s.admissionNumber || s.registrationNumber} · Phone:{" "}
-                        {s.phone || "-"}
-                      </p>
-                    </div>
-                    <Link
-                      to={`/admin/students/${s.id}`}
-                      onClick={() => setBirthdayModalOpen(false)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-pink-700 border border-pink-200 shadow-xs hover:bg-pink-100"
-                    >
-                      Profile <ArrowRight size={12} />
-                    </Link>
-                  </div>
-                ))
-              ) : (
-                <div className="py-8 text-center">
-                  <p className="text-xs font-bold text-slate-700">
-                    No birthdays recorded for today
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Student birthdays will appear here when their date of birth matches today.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 border-t border-slate-100 pt-3 flex justify-end">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setBirthdayModalOpen(false)}
-                className="h-8 text-xs font-bold"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

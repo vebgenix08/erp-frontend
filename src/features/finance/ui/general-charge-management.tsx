@@ -1,11 +1,16 @@
-import { CheckSquare, Plus, Search } from "lucide-react";
+import { CheckSquare, ExternalLink, Plus, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { listClasses, listSections } from "../../academic-structure/api/academic-structure.api";
 import { listStudentPage } from "../../students/api/students.api";
 import { useSelectedAcademicYear } from "../../tenant-settings/model/selected-academic-year-provider";
 import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
 import { getFeeConfiguration } from "../api/fee-configuration.api";
-import { createGeneralCharge, listGeneralCharges } from "../api/finance-operations.api";
+import {
+  createGeneralCharge,
+  listGeneralCharges,
+  retryGeneralCharge,
+} from "../api/finance-operations.api";
 import type { FeeHead } from "../model/fee-configuration.types";
 import type { GeneralCharge } from "../model/finance-operations.types";
 import type {
@@ -54,6 +59,7 @@ export function GeneralChargeManagement() {
   const [targetType, setTargetType] = useState<GeneralCharge["target"]["type"]>("CLASS");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  const [requestId, setRequestId] = useState("");
 
   const load = useCallback(async () => {
     if (!selectedCampus || !selectedAcademicYear) {
@@ -150,6 +156,7 @@ export function GeneralChargeManagement() {
     setTargetType("CLASS");
     setSelectedIds([]);
     setSearch("");
+    setRequestId(crypto.randomUUID());
     setError(null);
     setOpen(true);
   }
@@ -183,12 +190,25 @@ export function GeneralChargeManagement() {
         amountMinor,
         collectionPolicy: policy,
         target: { type: targetType, ids: selectedIds },
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: requestId,
       });
       setOpen(false);
       await load();
     } catch (value) {
       setError(value instanceof Error ? value.message : "Unable to assign general charge");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function retry(charge: GeneralCharge) {
+    try {
+      setSaving(true);
+      setError(null);
+      await retryGeneralCharge(charge.id);
+      await load();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "Unable to retry fee assignment");
     } finally {
       setSaving(false);
     }
@@ -234,6 +254,7 @@ export function GeneralChargeManagement() {
                 <TableHead>Target</TableHead>
                 <TableHead>Students</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -251,7 +272,12 @@ export function GeneralChargeManagement() {
                     </div>
                   </TableCell>
                   <TableCell className="text-slate-650 font-semibold text-sm">
-                    {charge.feeHeadCode}
+                    <span className="block">
+                      {heads.find((head) => head.id === charge.feeHeadId)?.name ?? "Fee head"}
+                    </span>
+                    <span className="block text-xs font-normal text-slate-400">
+                      {charge.feeHeadCode}
+                    </span>
                   </TableCell>
                   <TableCell className="text-slate-900 font-semibold">
                     {money(charge.amountMinor)}
@@ -271,6 +297,25 @@ export function GeneralChargeManagement() {
                         </span>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {charge.status === "FAILED" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={saving}
+                        onClick={() => void retry(charge)}
+                      >
+                        <RefreshCw size={14} /> Retry
+                      </Button>
+                    ) : (
+                      <Button asChild variant="outline" size="sm">
+                        <Link to="/admin/finance/collections?sourceType=GENERAL">
+                          <ExternalLink size={14} /> Collect
+                        </Link>
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

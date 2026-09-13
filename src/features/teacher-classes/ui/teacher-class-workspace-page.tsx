@@ -155,6 +155,8 @@ export function TeacherClassWorkspacePage() {
     ]
       .filter(Boolean)
       .join(" - ") || "Assigned Group";
+  const offeringId = currentAssignment.subjectOfferingId || currentAssignment.id;
+  const contextualPath = (path: string) => `${path}?offering=${encodeURIComponent(offeringId)}`;
 
   const totalStudents = rawStudents.length;
   const activeStudents = rawStudents.filter((s) => s.status === "ACTIVE").length;
@@ -200,14 +202,14 @@ export function TeacherClassWorkspacePage() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={() => navigate("/teacher/attendance")}
+              onClick={() => navigate(contextualPath("/teacher/attendance"))}
               className="rounded-xl shadow-2xs text-xs font-bold"
             >
               <CalendarCheck className="mr-1.5 h-4 w-4 text-blue-950" /> Mark Attendance
             </Button>
             <Button
               variant="default"
-              onClick={() => navigate("/teacher/marks-entry")}
+              onClick={() => navigate(contextualPath("/teacher/marks-entry"))}
               className="rounded-xl shadow-2xs text-xs font-bold bg-brand-600 hover:bg-brand-700"
             >
               <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Enter Marks
@@ -531,7 +533,7 @@ export function TeacherClassWorkspacePage() {
                 </p>
               </div>
               <Button
-                onClick={() => navigate("/teacher/attendance")}
+                onClick={() => navigate(contextualPath("/teacher/attendance"))}
                 className="rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 shadow-2xs"
               >
                 <CalendarCheck className="mr-1.5 h-4 w-4" /> Open Roll-Call Register
@@ -556,7 +558,7 @@ export function TeacherClassWorkspacePage() {
                 </p>
               </div>
               <Button
-                onClick={() => navigate("/teacher/marks-entry")}
+                onClick={() => navigate(contextualPath("/teacher/marks-entry"))}
                 className="rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 shadow-2xs"
               >
                 <Award className="mr-1.5 h-4 w-4" /> Enter / Update Exam Marks
@@ -581,7 +583,7 @@ export function TeacherClassWorkspacePage() {
                 </p>
               </div>
               <Button
-                onClick={() => navigate("/teacher/teaching-resources")}
+                onClick={() => navigate(contextualPath("/teacher/teaching-resources"))}
                 className="rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 shadow-2xs"
               >
                 <Upload className="mr-1.5 h-4 w-4" /> Upload Study Material

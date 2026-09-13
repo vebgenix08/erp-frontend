@@ -18,10 +18,21 @@ interface GraphqlResponse<T> {
 
 const REQUEST_TIMEOUT_MS = 12000;
 
+export interface GraphqlClientOptions {
+  cacheTimeMs?: number;
+  cacheKey?: string;
+  timeoutMs?: number;
+}
+
 export async function graphqlClient<
   TData,
   TVariables extends Record<string, unknown> = Record<string, never>,
->(query: string, variables?: TVariables, signal?: AbortSignal): Promise<TData> {
+>(
+  query: string,
+  variables?: TVariables,
+  signal?: AbortSignal,
+  options: GraphqlClientOptions = {},
+): Promise<TData> {
   const endpoint =
     env.graphqlUrl.trim() ||
     "https://cvhvlqs5bjdp3hu4e5dfusigx4.appsync-api.ap-south-1.amazonaws.com/graphql";
@@ -38,7 +49,8 @@ export async function graphqlClient<
 
   return coordinatedRequest(
     async () => {
-      const requestSignal = createRequestSignal(REQUEST_TIMEOUT_MS, signal);
+      const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
+      const requestSignal = createRequestSignal(timeoutMs, signal);
       try {
         const response = await fetch(endpoint, {
           method: "POST",
@@ -87,7 +99,7 @@ export async function graphqlClient<
         if (requestSignal.didTimeout()) {
           throw new ApiError({
             code: "REQUEST_TIMEOUT",
-            message: `The request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds.`,
+            message: `The request timed out after ${timeoutMs / 1000} seconds.`,
             retryable: true,
           });
         }
@@ -104,8 +116,8 @@ export async function graphqlClient<
       }
     },
     {
-      key: `graphql:${endpoint}:${query}:${JSON.stringify(variables ?? {})}`,
-      cacheTimeMs: 1_500,
+      key: `graphql:${endpoint}:${token}:${options.cacheKey ?? `${query}:${JSON.stringify(variables ?? {})}`}`,
+      cacheTimeMs: options.cacheTimeMs ?? 1_500,
       ...(signal ? { signal } : {}),
     },
   );

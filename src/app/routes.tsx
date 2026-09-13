@@ -9,10 +9,15 @@ import { LoginPage } from "../pages/auth/login-page";
 import { TeacherWorkspaceLayout } from "../features/teacher-workspace/ui/teacher-workspace-layout";
 import { recoverFromAssetLoadFailure } from "../shared/lib/frontend-asset-recovery";
 
-const lazyPage = (loader: () => Promise<Record<string, unknown>>, exportName: string) =>
+const lazyPage = <TModule extends Record<string, unknown>, TKey extends keyof TModule>(
+  loader: () => Promise<TModule>,
+  exportName: TKey,
+) =>
   lazy(async () => {
     try {
-      return { default: (await loader())[exportName] as ComponentType };
+      const page = (await loader())[exportName];
+      if (!page) throw new Error(`Page module is missing export ${String(exportName)}`);
+      return { default: page as ComponentType };
     } catch (error) {
       if (recoverFromAssetLoadFailure(error)) {
         return await new Promise<{ default: ComponentType }>(() => undefined);

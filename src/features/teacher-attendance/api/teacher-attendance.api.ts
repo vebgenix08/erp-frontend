@@ -13,6 +13,7 @@ const attendanceFields = `id status version updatedAt submittedAt students{${stu
 export async function getTeacherAttendanceWorkspace(input: {
   date: string;
   academicYearId?: string;
+  campusId?: string;
   lessonId?: string;
 }) {
   const result = await graphqlClient<
@@ -28,6 +29,7 @@ export async function getTeacherAttendanceWorkspace(input: {
 export async function saveTeacherAttendance(input: {
   date: string;
   academicYearId?: string;
+  campusId?: string;
   lessonId: string;
   expectedVersion?: number;
   submit: boolean;

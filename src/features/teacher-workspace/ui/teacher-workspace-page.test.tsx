@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   findTeacherNavigationGroup,
@@ -31,6 +31,7 @@ import {
   getTeacherDepartmentWorkspace,
   getTeacherLeadershipWorkspace,
 } from "../../teacher-department/api/teacher-department.api";
+import { getTeacherSectionWorkspace } from "../../teacher-section/api/teacher-section.api";
 
 vi.mock("../../teacher-attendance/api/teacher-attendance.api", () => ({
   getTeacherAttendanceWorkspace: vi.fn(),
@@ -78,6 +79,12 @@ vi.mock("../../teacher-department/api/teacher-department.api", () => ({
   getTeacherCoordinationWorkspace: vi.fn(),
   getTeacherDepartmentWorkspace: vi.fn(),
   getTeacherLeadershipWorkspace: vi.fn(),
+}));
+
+vi.mock("../../teacher-section/api/teacher-section.api", () => ({
+  getTeacherSectionWorkspace: vi.fn(),
+  saveTeacherSectionFollowUp: vi.fn(),
+  resolveTeacherSectionFollowUp: vi.fn(),
 }));
 
 const operatingContext = {
@@ -140,6 +147,11 @@ const emptyTeacherWorkspace: TeacherWorkloadWorkspace = {
   responsibilities: [],
   issues: [],
 };
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname + location.search}</output>;
+}
 
 const assignedTeacherWorkspace: TeacherWorkloadWorkspace = {
   ...emptyTeacherWorkspace,
@@ -229,7 +241,15 @@ function renderPage(
         }}
       >
         <Routes>
-          <Route path="/teacher/:pageSlug" element={<TeacherWorkspacePage />} />
+          <Route
+            path="/teacher/:pageSlug"
+            element={
+              <>
+                <TeacherWorkspacePage />
+                <LocationProbe />
+              </>
+            }
+          />
         </Routes>
       </TeacherWorkspaceContextProvider>
     </MemoryRouter>,
@@ -289,6 +309,7 @@ describe("teacher workspace pages", () => {
           department: "Science",
           designation: "Teacher",
           status: "ACTIVE",
+          loginStatus: "ACTIVE",
           assignmentCount: 1,
           requiredPeriods: 5,
           scheduledPeriods: 5,
@@ -383,6 +404,41 @@ describe("teacher workspace pages", () => {
     vi.mocked(getTeacherLeadershipWorkspace).mockImplementation((input) =>
       getTeacherDepartmentWorkspace(input),
     );
+    vi.mocked(getTeacherSectionWorkspace).mockResolvedValue({
+      section: {
+        id: "section-1",
+        name: "Section A",
+        classId: "class-8",
+        className: "Grade 8",
+        campusId: "campus-1",
+      },
+      availableSections: [
+        {
+          id: "empty-section",
+          name: "Section A",
+          className: "LKG",
+          campusId: "campus-1",
+        },
+        {
+          id: "section-1",
+          name: "Section A",
+          className: "Grade 8",
+          campusId: "campus-1",
+        },
+      ],
+      summary: {
+        totalStudents: 1,
+        presentToday: 0,
+        absentToday: 0,
+        attendanceSessionsToday: 0,
+        openFollowUps: 0,
+        marksSheetsSubmitted: 0,
+        marksSheetsPending: 0,
+      },
+      students: [],
+      timetable: [],
+      followUps: [],
+    });
     vi.mocked(getTeacherClassWorkspace).mockResolvedValue({
       teacher: assignedTeacherWorkspace.teacher,
       academicYear: assignedTeacherWorkspace.academicYear,
@@ -515,6 +571,7 @@ describe("teacher workspace pages", () => {
           studentId: "student-1",
           enrollmentId: "enrollment-1",
           studentName: "Aarav Sharma",
+          registrationNumber: "REG/2026/000001",
           rollNumber: "01",
           status: "NOT_RECORDED",
           attendanceAttended: 17,
@@ -525,7 +582,7 @@ describe("teacher workspace pages", () => {
           studentId: "student-2",
           enrollmentId: "enrollment-2",
           studentName: "Ananya Verma",
-          rollNumber: "02",
+          registrationNumber: "REG/2026/000002",
           status: "NOT_RECORDED",
           marks: null,
           attendanceAttended: 0,
@@ -560,6 +617,60 @@ describe("teacher workspace pages", () => {
     expect(screen.queryByText("Academic year workload")).not.toBeInTheDocument();
   });
 
+  it("opens workload details for an issue without a backend action path", () => {
+    renderPage("/teacher/dashboard", {
+      ...assignedTeacherWorkspace,
+      issues: [
+        {
+          code: "WEEKLY_WORKLOAD_EXCEEDED",
+          severity: "WARNING",
+          reason: "32 periods exceeds the weekly maximum of 30.",
+          recommendedAction: "Review workload limit",
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /32 periods exceeds/i }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/teacher/workload");
+  });
+
+  it("prefers the class-teacher section in the active campus", async () => {
+    vi.mocked(getTeacherSectionWorkspace).mockClear();
+    renderPage("/teacher/section-workspace", {
+      ...assignedTeacherWorkspace,
+      responsibilities: [
+        {
+          id: "responsibility-empty",
+          responsibilityType: "SECTION_INCHARGE",
+          campusId: "campus-1",
+          campusName: "Vidyapeetha Campus",
+          classId: "class-lkg",
+          className: "LKG",
+          sectionId: "empty-section",
+          sectionName: "Section A",
+          effectiveFrom: "2026-06-01",
+        },
+        {
+          id: "responsibility-primary",
+          responsibilityType: "CLASS_TEACHER",
+          campusId: "campus-1",
+          campusName: "Vidyapeetha Campus",
+          classId: "class-8",
+          className: "Grade 8",
+          sectionId: "section-1",
+          sectionName: "Section A",
+          effectiveFrom: "2026-06-01",
+        },
+      ],
+    });
+
+    await waitFor(() =>
+      expect(getTeacherSectionWorkspace).toHaveBeenCalledWith(
+        expect.objectContaining({ sectionId: "section-1" }),
+      ),
+    );
+  });
+
   it("renders assessment entry with the configured attendance interval", async () => {
     renderPage("/teacher/marks-entry", assignedTeacherWorkspace);
     expect(await screen.findByRole("heading", { name: "Marks Register" })).toBeInTheDocument();
@@ -567,6 +678,8 @@ describe("teacher workspace pages", () => {
     expect(screen.getByRole("combobox", { name: "Assessment" })).toBeInTheDocument();
     expect(screen.getByText(/Final Examination · 120 marks/i)).toBeInTheDocument();
     expect(screen.getByText("17 / 18")).toBeInTheDocument();
+    expect(screen.getByText("Roll pending")).toBeInTheDocument();
+    expect(screen.getByText("REG/2026/000002")).toBeInTheDocument();
     expect(screen.getByText("No submitted classes")).toBeInTheDocument();
     expect(screen.queryByText("null%")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("null")).not.toBeInTheDocument();
@@ -639,6 +752,49 @@ describe("teacher workspace pages", () => {
     });
   });
 
+  it("keeps the selected class context when opening attendance", async () => {
+    renderPage("/teacher/class-workspace?offering=offering-1", assignedTeacherWorkspace);
+
+    fireEvent.click(await screen.findByRole("button", { name: /mark attendance/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        "/teacher/attendance?offering=offering-1",
+      ),
+    );
+  });
+
+  it("keeps the selected class context when opening marks", async () => {
+    renderPage("/teacher/class-workspace?offering=offering-1", assignedTeacherWorkspace);
+
+    fireEvent.click(await screen.findByRole("button", { name: /enter marks/i }));
+
+    await waitFor(() =>
+      expect(getTeacherMarksWorkspace).toHaveBeenCalledWith({
+        academicYearId: "year-1",
+        campusId: "campus-1",
+        subjectOfferingId: "offering-1",
+      }),
+    );
+  });
+
+  it("keeps the selected class context when opening teaching resources", async () => {
+    renderPage("/teacher/class-workspace?offering=offering-1", assignedTeacherWorkspace);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Study Resources" }));
+    fireEvent.click(screen.getByRole("button", { name: /upload study material/i }));
+
+    await waitFor(() =>
+      expect(listTeacherResources).toHaveBeenCalledWith({
+        academicYearId: "year-1",
+        subjectOfferingId: "offering-1",
+        status: "ACTIVE",
+        page: 1,
+        pageSize: 10,
+      }),
+    );
+  });
+
   it("opens the canonical class workspace from the assigned classes list", async () => {
     renderPage("/teacher/classes", assignedTeacherWorkspace);
 
@@ -649,6 +805,30 @@ describe("teacher workspace pages", () => {
       academicYearId: "year-1",
       subjectOfferingId: "offering-1",
     });
+  });
+
+  it("keeps My Classes inside the selected operating campus", async () => {
+    renderPage("/teacher/classes", {
+      ...assignedTeacherWorkspace,
+      assignments: [
+        ...assignedTeacherWorkspace.assignments,
+        {
+          ...assignedTeacherWorkspace.assignments[0]!,
+          id: "assignment-2",
+          campusId: "campus-2",
+          campusName: "Another Campus",
+          classId: "class-9",
+          className: "Grade 9",
+          sectionId: "section-2",
+          sectionName: "Section B",
+          subjectOfferingId: "offering-2",
+        },
+      ],
+    });
+
+    expect(await screen.findByText("Grade 8 - Section A")).toBeInTheDocument();
+    expect(screen.queryByText("Grade 9 - Section B")).not.toBeInTheDocument();
+    expect(screen.queryByText("Another Campus")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -683,6 +863,25 @@ describe("teacher workspace pages", () => {
     });
   });
 
+  it("redirects an HOD dashboard to department oversight", async () => {
+    const hodWorkspace: TeacherWorkloadWorkspace = {
+      ...emptyTeacherWorkspace,
+      responsibilities: [
+        {
+          id: "hod-1",
+          responsibilityType: "HOD",
+          campusId: "campus-1",
+          campusName: "Vidyapeetha Campus",
+          programId: "program-1",
+          programName: "High School",
+          effectiveFrom: "2026-06-01T00:00:00.000Z",
+        },
+      ],
+    };
+    renderPage("/teacher/dashboard", hodWorkspace);
+    expect(await screen.findByRole("heading", { name: "Department Overview" })).toBeInTheDocument();
+  });
+
   it("shows the required faculty directory columns and opens scoped faculty details", async () => {
     const hodWorkspace: TeacherWorkloadWorkspace = {
       ...emptyTeacherWorkspace,
@@ -707,6 +906,7 @@ describe("teacher workspace pages", () => {
       "Faculty ID",
       "Faculty Name",
       "Status",
+      "Portal Access",
       "Email",
       "Phone Number",
       "Department",
@@ -786,6 +986,26 @@ describe("teacher workspace pages", () => {
     });
   });
 
+  it("redirects a coordinator dashboard to academic operations", async () => {
+    renderPage("/teacher/dashboard", {
+      ...emptyTeacherWorkspace,
+      responsibilities: [
+        {
+          id: "coordinator-1",
+          responsibilityType: "PROGRAM_COORDINATOR",
+          campusId: "campus-1",
+          campusName: "Vidyapeetha Campus",
+          programId: "program-1",
+          programName: "High School",
+          effectiveFrom: "2026-06-01T00:00:00.000Z",
+        },
+      ],
+    });
+    expect(
+      await screen.findByRole("heading", { name: "Academic Operations Overview" }),
+    ).toBeInTheDocument();
+  });
+
   it("dispatches academic leadership through a campus-scoped operation", async () => {
     renderPage("/teacher/leadership-dashboard", emptyTeacherWorkspace, ["PRINCIPAL"]);
     expect(
@@ -795,6 +1015,25 @@ describe("teacher workspace pages", () => {
       academicYearId: "year-1",
       date: expect.any(String),
     });
+  });
+
+  it("redirects a principal dashboard to academic leadership", async () => {
+    renderPage("/teacher/dashboard", emptyTeacherWorkspace, ["PRINCIPAL"]);
+    expect(
+      await screen.findByRole("heading", { name: "Academic Leadership Dashboard" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders academic overview from section completion instead of repeating exceptions", async () => {
+    renderPage("/teacher/academic-overview", emptyTeacherWorkspace, ["PRINCIPAL"]);
+
+    expect(await screen.findByRole("heading", { name: "Academic Overview" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Class / Program" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Subject Coverage" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Attendance Today" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Grade 8" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "1 / 1 ready" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Next Action" })).not.toBeInTheDocument();
   });
 
   it("gives academic leadership a campus-scoped faculty directory", async () => {

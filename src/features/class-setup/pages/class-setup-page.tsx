@@ -6,7 +6,6 @@ import {
   CalendarDays,
   Clock3,
   GripVertical,
-  LayoutGrid,
   List,
   Pencil,
   Plus,
@@ -22,6 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "../../../shared/ui/button";
+import { ErrorState } from "../../../shared/ui/page-state";
 import {
   Dialog,
   DialogBody,
@@ -80,25 +80,19 @@ const weekDays = [
 
 type DayKey = (typeof weekDays)[number]["key"];
 
-const getSubjectStyle = (subj: string) => {
-  const s = subj.toLowerCase();
-  if (s.includes("math")) return "bg-emerald-50 text-emerald-900 border-l-4 border-l-emerald-500";
-  if (s.includes("eng")) return "bg-blue-50 text-blue-900 border-l-4 border-l-blue-500";
-  if (s.includes("sci")) return "bg-emerald-50 text-emerald-900 border-l-4 border-l-emerald-500";
-  if (s.includes("soc")) return "bg-amber-50 text-amber-900 border-l-4 border-l-amber-500";
-  if (s.includes("hin")) return "bg-purple-50 text-purple-900 border-l-4 border-l-purple-500";
-  if (s.includes("comp")) return "bg-amber-100/80 text-amber-950 border-l-4 border-l-amber-600";
-  if (s.includes("art")) return "bg-rose-50 text-rose-900 border-l-4 border-l-rose-500";
-  if (s.includes("kan")) return "bg-sky-50 text-sky-900 border-l-4 border-l-sky-500";
-  return "bg-slate-50 text-slate-900 border-l-4 border-l-slate-400";
-};
+const getSubjectStyle = () => "bg-blue-50 text-slate-900 border-l-4 border-l-blue-700";
 
 export function ClassSetupPage() {
   const setup = useClassSetup();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() =>
-    searchParams.get("tab") === "subjects" ? "Subjects & Teachers" : "Overview",
-  );
+  const [activeTab, setActiveTab] = useState(() => {
+    const requestedTab = searchParams.get("tab");
+    if (requestedTab === "students") return "Students";
+    if (requestedTab === "daily-classes") return "Daily Classes";
+    if (requestedTab === "timetable") return "Timetable";
+    if (requestedTab === "incharge") return "Incharge";
+    return "Subjects & Teachers";
+  });
   const [timetableView, setTimetableView] = useState<"TABLE" | "LIST">("TABLE");
   const [studentSearch, setStudentSearch] = useState("");
   const [confirmRollRegeneration, setConfirmRollRegeneration] = useState(false);
@@ -133,18 +127,14 @@ export function ClassSetupPage() {
     );
   }
 
+  if (setup.error && !setup.workspace) {
+    return <ErrorState message={setup.error} retry={() => void setup.refresh()} />;
+  }
+
   if (!setup.workspace || !setup.selectedClass) {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-bold text-slate-900">Class Setup</h1>
-        {setup.error && (
-          <div
-            role="alert"
-            className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700"
-          >
-            {setup.error}
-          </div>
-        )}
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-xs text-slate-500 font-medium">
           No active class is available in the selected campus.
         </div>
@@ -176,13 +166,11 @@ export function ClassSetupPage() {
 
   const classTeacherEmployee = setup.employees.find((item) => item.id === classTeacher?.employeeId);
   const classTeacherName = classTeacherEmployee?.fullName ?? "Not assigned";
-  const classTeacherEmail = classTeacherEmployee?.email ?? "No email available";
 
   const sectionInchargeEmployee = setup.employees.find(
     (item) => item.id === sectionIncharge?.employeeId,
   );
   const sectionInchargeName = sectionInchargeEmployee?.fullName ?? "Not assigned";
-  const sectionInchargeEmail = sectionInchargeEmployee?.email ?? "No email available";
 
   const totalSubjectCount = workspace.subjects.length;
   const optionalSubjectCount = workspace.subjects.filter((item) =>
@@ -247,7 +235,7 @@ export function ClassSetupPage() {
         offeringId: entry.subjectOfferingId,
         subject,
         teacher: employee?.fullName ?? "Teacher not assigned",
-        style: getSubjectStyle(subject),
+        style: getSubjectStyle(),
       };
     }
     return {
@@ -309,7 +297,6 @@ export function ClassSetupPage() {
   };
 
   const TABS = [
-    { name: "Overview", icon: LayoutGrid },
     { name: "Subjects & Teachers", icon: BookOpen },
     { name: "Students", icon: Users },
     { name: "Daily Classes", icon: Clock3 },
@@ -520,7 +507,7 @@ export function ClassSetupPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Class Setup</h1>
           <p className="mt-0.5 text-xs text-slate-500 leading-tight">
-            Manage class details, subjects, teachers, students and timetable
+            Configure the selected class and section for the active campus and academic year.
           </p>
         </div>
       </div>
@@ -528,15 +515,6 @@ export function ClassSetupPage() {
       {/* Top Filter Bar Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
         <div className="flex flex-wrap items-center gap-4 min-w-0 flex-1">
-          <div className="w-52 min-w-44">
-            <label className="text-[11px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider leading-none">
-              Campus / Branch
-            </label>
-            <select className={selectClass} value={setup.selectedCampus.id} disabled>
-              <option value={setup.selectedCampus.id}>{setup.selectedCampus.name}</option>
-            </select>
-          </div>
-
           <div className="w-52 min-w-44">
             <label className="text-[11px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider leading-none">
               Class / Program
@@ -606,8 +584,8 @@ export function ClassSetupPage() {
         </div>
       )}
 
-      {/* 5 KPI Summary Cards Row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {/* Section summary */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[104px]">
           <div className="h-5 flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-none">
@@ -626,37 +604,20 @@ export function ClassSetupPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[104px]">
           <div className="h-5 flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-              Class Teacher
+              Section Ownership
             </span>
-            <div className="h-7 w-7 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+            <div className="h-7 w-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-700 shrink-0">
               <UserCheck2 className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="min-w-0">
-            <div className="text-sm font-extrabold text-slate-900 truncate leading-tight">
-              {classTeacherName}
+          <div className="min-w-0 space-y-1 text-[11px] leading-tight">
+            <div className="truncate text-slate-700">
+              <span className="font-semibold text-slate-500">Teacher:</span>{" "}
+              <span className="font-bold text-slate-900">{classTeacherName}</span>
             </div>
-            <div className="text-[10px] text-slate-500 font-medium truncate leading-tight mt-0.5">
-              {classTeacherEmail}
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between h-[104px]">
-          <div className="h-5 flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-              Section Incharge
-            </span>
-            <div className="h-7 w-7 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-              <ShieldCheck className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-extrabold text-slate-900 truncate leading-tight">
-              {sectionInchargeName}
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium truncate leading-tight mt-0.5">
-              {sectionInchargeEmail}
+            <div className="truncate text-slate-700">
+              <span className="font-semibold text-slate-500">Incharge:</span>{" "}
+              <span className="font-bold text-slate-900">{sectionInchargeName}</span>
             </div>
           </div>
         </div>
@@ -666,7 +627,7 @@ export function ClassSetupPage() {
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-none">
               Total Subjects
             </span>
-            <div className="h-7 w-7 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+            <div className="h-7 w-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-700 shrink-0">
               <BookOpen className="h-3.5 w-3.5" />
             </div>
           </div>
@@ -681,7 +642,7 @@ export function ClassSetupPage() {
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-none">
               Weekly Periods
             </span>
-            <div className="h-7 w-7 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+            <div className="h-7 w-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-700 shrink-0">
               <Clock3 className="h-3.5 w-3.5" />
             </div>
           </div>

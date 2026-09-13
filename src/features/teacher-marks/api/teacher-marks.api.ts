@@ -10,10 +10,11 @@ const offeringFields =
 const assessmentFields =
   "id campusId academicYearId classId name assessmentDate attendanceWindowStart attendanceWindowEnd maximumMarks sequence status version";
 const studentFields =
-  "studentId enrollmentId studentName rollNumber status marks attendanceAttended attendanceHeld attendancePercentage";
+  "studentId enrollmentId studentName registrationNumber rollNumber status marks attendanceAttended attendanceHeld attendancePercentage";
 
 export async function getTeacherMarksWorkspace(input: {
   academicYearId?: string;
+  campusId?: string;
   subjectOfferingId?: string;
   assessmentId?: string;
 }) {

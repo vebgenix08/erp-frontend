@@ -34,6 +34,12 @@ export async function getTeacherWorkloadWorkspace(input: {
   >(
     `query TeacherWorkloadWorkspace($input:TeacherWorkloadWorkspaceInput!){teacherWorkloadWorkspace(input:$input){${workspaceFields}}}`,
     { input },
+    undefined,
+    {
+      cacheKey: `teacher-workload:${JSON.stringify(input)}`,
+      cacheTimeMs: 60_000,
+      timeoutMs: 30_000,
+    },
   );
   return result.teacherWorkloadWorkspace;
 }

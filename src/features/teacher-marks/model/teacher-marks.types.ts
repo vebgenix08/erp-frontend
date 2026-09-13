@@ -20,6 +20,7 @@ export interface TeacherMarksStudent {
   studentId: string;
   enrollmentId: string;
   studentName: string;
+  registrationNumber: string;
   rollNumber?: string;
   status: StudentMarkStatus;
   marks?: number | null;

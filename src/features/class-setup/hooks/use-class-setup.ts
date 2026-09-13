@@ -142,6 +142,7 @@ export function useClassSetup() {
   const loadWorkspace = useCallback(
     async (nextClassId: string, requestedSectionId?: string) => {
       if (!selectedCampus || !selectedAcademicYear || !nextClassId) return;
+      setClassIdState(nextClassId);
       setLoading(true);
       setError(null);
       try {
@@ -201,7 +202,6 @@ export function useClassSetup() {
           nextWorkspace.sections.some((item) => item.id === requestedSectionId)
             ? requestedSectionId
             : (nextWorkspace.sections[0]?.id ?? "");
-        setClassIdState(nextClassId);
         setSectionIdState(validSection);
         updateUrl(nextClassId, validSection);
       } catch (value) {

@@ -628,7 +628,18 @@ export function EnquiryWorkspace() {
               systemKeys={SYSTEM_KEYS}
               scope="ENQUIRY"
               onChange={updateTemplateValue}
-              renderSystemField={(field) => {
+              renderField={(field) => {
+                if (field.label.toLowerCase().includes("current class")) {
+                  return (
+                    <Input
+                      required={field.required}
+                      value={String(customFields[field.key] ?? "")}
+                      placeholder="Enter current class, grade, year or semester"
+                      onChange={(event) => updateTemplateValue(field.key, event.target.value)}
+                      className="h-9 text-xs"
+                    />
+                  );
+                }
                 if (field.key === "academicTargetId") {
                   return (
                     <select

@@ -14,12 +14,17 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { listStudents } from "../../students/api/students.api";
 import type { Student } from "../../students/model/student.types";
+import { listClasses, listSections } from "../../academic-structure/api/academic-structure.api";
+import type {
+  AcademicClass,
+  Section,
+} from "../../academic-structure/model/academic-structure.types";
 import { useSelectedCampus } from "../../tenant-settings/model/selected-campus-provider";
 import { useSelectedAcademicYear } from "../../tenant-settings/model/selected-academic-year-provider";
 import {
   downloadStudentDocument,
   issueStudentDocument,
-  listStudentDocuments,
+  listStudentDocumentPage,
   revokeStudentDocument,
 } from "../api/student-documents.api";
 import type { StudentDocument, StudentDocumentType } from "../model/student-document.types";
@@ -39,6 +44,7 @@ import {
   TableRow,
 } from "../../../shared/ui/table";
 import { Separator } from "../../../shared/ui/separator";
+import { ServerPagination } from "../../../shared/ui/server-pagination";
 
 const types: Array<[StudentDocumentType, string, LucideIcon]> = [
   ["BONAFIDE_CERTIFICATE", "Bonafide Certificate", Award],
@@ -52,6 +58,8 @@ export function StudentDocumentsManagement() {
   const { selectedAcademicYear } = useSelectedAcademicYear();
   const [rows, setRows] = useState<StudentDocument[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<AcademicClass[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +67,15 @@ export function StudentDocumentsManagement() {
   const [search, setSearch] = useState("");
   const [selectedTypeTab, setSelectedTypeTab] = useState<StudentDocumentType | "ALL">("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [pageData, setPageData] = useState({
+    total: 0,
+    totalPages: 1,
+    summary: { total: 0, certificates: 0, idCards: 0, revoked: 0 },
+  });
+  const [studentSearch, setStudentSearch] = useState("");
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   const [studentId, setStudentId] = useState("");
   const [documentType, setDocumentType] = useState<StudentDocumentType>("BONAFIDE_CERTIFICATE");
@@ -73,30 +90,53 @@ export function StudentDocumentsManagement() {
     setLoading(true);
     setError(null);
     try {
-      const [data, studentRows] = await Promise.all([
-        listStudentDocuments({
+      const [data, classRows, sectionRows] = await Promise.all([
+        listStudentDocumentPage({
           campusId: selectedCampus.id,
           academicYearId: selectedAcademicYear.id,
+          ...(selectedTypeTab !== "ALL" ? { documentType: selectedTypeTab } : {}),
+          ...(statusFilter !== "ALL" ? { status: statusFilter as "ISSUED" | "REVOKED" } : {}),
+          ...(search.trim() ? { search: search.trim() } : {}),
+          page,
+          pageSize,
         }),
-        listStudents({
-          campusId: selectedCampus.id,
-          academicYearId: selectedAcademicYear.id,
-          status: "ACTIVE",
-          limit: 100,
-        }),
+        listClasses(selectedCampus.id),
+        listSections(selectedCampus.id),
       ]);
-      setRows(data);
-      setStudents(studentRows);
+      setRows(data.items);
+      setPageData({ total: data.total, totalPages: data.totalPages, summary: data.summary });
+      setClasses(classRows);
+      setSections(sectionRows);
     } catch (value) {
       setError(value instanceof Error ? value.message : "Unable to load certificates and ID cards");
     } finally {
       setLoading(false);
     }
-  }, [selectedAcademicYear, selectedCampus]);
+  }, [page, pageSize, search, selectedAcademicYear, selectedCampus, selectedTypeTab, statusFilter]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!open || !selectedCampus || !selectedAcademicYear) return;
+    const timeout = window.setTimeout(() => {
+      setLoadingStudents(true);
+      void listStudents({
+        campusId: selectedCampus.id,
+        academicYearId: selectedAcademicYear.id,
+        status: "ACTIVE",
+        ...(studentSearch.trim() ? { search: studentSearch.trim() } : {}),
+        limit: 50,
+      })
+        .then(setStudents)
+        .catch((value) =>
+          setError(value instanceof Error ? value.message : "Unable to search students"),
+        )
+        .finally(() => setLoadingStudents(false));
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [open, selectedAcademicYear, selectedCampus, studentSearch]);
 
   const issue = async () => {
     if (!studentId) return;
@@ -138,23 +178,10 @@ export function StudentDocumentsManagement() {
 
   if (loading) return <LoadingState label="Loading certificates and ID cards" />;
 
-  const totalCount = rows.length;
-  const certificatesCount = rows.filter((r) => r.documentType !== "STUDENT_ID_CARD").length;
-  const idCardsCount = rows.filter((r) => r.documentType === "STUDENT_ID_CARD").length;
-  const revokedCount = rows.filter((r) => r.status === "REVOKED").length;
-
-  const filteredRows = rows.filter((r) => {
-    const matchesSearch =
-      !search.trim() ||
-      r.studentName.toLowerCase().includes(search.toLowerCase()) ||
-      r.admissionNumber.toLowerCase().includes(search.toLowerCase()) ||
-      r.documentNumber.toLowerCase().includes(search.toLowerCase());
-
-    const matchesType = selectedTypeTab === "ALL" || r.documentType === selectedTypeTab;
-    const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
-
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  const totalCount = pageData.summary.total;
+  const certificatesCount = pageData.summary.certificates;
+  const idCardsCount = pageData.summary.idCards;
+  const revokedCount = pageData.summary.revoked;
 
   const selectedStudentObj = students.find((s) => s.id === studentId);
 
@@ -257,7 +284,10 @@ export function StudentDocumentsManagement() {
       <nav className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xs">
         <button
           type="button"
-          onClick={() => setSelectedTypeTab("ALL")}
+          onClick={() => {
+            setSelectedTypeTab("ALL");
+            setPage(1);
+          }}
           className={`px-3.5 py-2 text-xs font-semibold rounded-lg shrink-0 transition-all ${
             selectedTypeTab === "ALL"
               ? "bg-blue-50 text-blue-700 border border-blue-100 shadow-2xs"
@@ -272,7 +302,10 @@ export function StudentDocumentsManagement() {
             <button
               key={type}
               type="button"
-              onClick={() => setSelectedTypeTab(type)}
+              onClick={() => {
+                setSelectedTypeTab(type);
+                setPage(1);
+              }}
               className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg shrink-0 transition-all ${
                 isActive
                   ? "bg-blue-50 text-blue-700 border border-blue-100 shadow-2xs"
@@ -297,7 +330,10 @@ export function StudentDocumentsManagement() {
             aria-label="Search documents"
             placeholder="Search student name, admission #, or document #"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-9 h-9 text-xs"
           />
         </div>
@@ -305,7 +341,10 @@ export function StudentDocumentsManagement() {
         <div className="flex items-center gap-2">
           <ModernSelect
             value={statusFilter}
-            onValueChange={(val) => setStatusFilter(val)}
+            onValueChange={(val) => {
+              setStatusFilter(val);
+              setPage(1);
+            }}
             className="w-[150px]"
             options={[
               { label: "All Statuses", value: "ALL" },
@@ -314,13 +353,13 @@ export function StudentDocumentsManagement() {
             ]}
           />
           <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 whitespace-nowrap">
-            {filteredRows.length} Document{filteredRows.length === 1 ? "" : "s"}
+            {pageData.total} Document{pageData.total === 1 ? "" : "s"}
           </span>
         </div>
       </div>
 
       {/* Data Table Container */}
-      {filteredRows.length ? (
+      {rows.length ? (
         <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <Table>
             <TableHeader className="bg-slate-50">
@@ -338,7 +377,7 @@ export function StudentDocumentsManagement() {
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100">
-              {filteredRows.map((row) => {
+              {rows.map((row) => {
                 const typeObj = types.find(([t]) => t === row.documentType);
                 const IconComponent = typeObj?.[2] ?? FileText;
 
@@ -420,6 +459,16 @@ export function StudentDocumentsManagement() {
               })}
             </TableBody>
           </Table>
+          <ServerPagination
+            page={page}
+            pageSize={pageSize}
+            total={pageData.total}
+            onPageChange={setPage}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setPage(1);
+            }}
+          />
         </div>
       ) : (
         <EmptyState
@@ -438,16 +487,32 @@ export function StudentDocumentsManagement() {
         <div className="space-y-4 font-sans text-xs">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">Select Student</Label>
+            <Input
+              aria-label="Search active students"
+              value={studentSearch}
+              onChange={(event) => setStudentSearch(event.target.value)}
+              placeholder="Search by student name or admission number"
+              className="mb-2 h-9 text-xs"
+            />
             <select
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
               className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
             >
-              <option value="">Select active student</option>
+              <option value="">
+                {loadingStudents ? "Searching active students..." : "Select active student"}
+              </option>
               {students.map((student) => (
                 <option key={student.id} value={student.id}>
-                  {student.name} • Adm: {student.admissionNumber} (
-                  {student.enrollment?.classId || "Class"})
+                  {student.name} • Adm: {student.admissionNumber} •{" "}
+                  {classes.find((item) => item.id === student.enrollment?.classId)?.name ??
+                    "Class not assigned"}
+                  {student.enrollment?.sectionId
+                    ? ` · ${
+                        sections.find((item) => item.id === student.enrollment?.sectionId)?.name ??
+                        "Section not assigned"
+                      }`
+                    : ""}
                 </option>
               ))}
             </select>

@@ -1,5 +1,6 @@
 import { Archive, Download, Edit3, ExternalLink, FileUp, Link2, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   archiveTeacherResource,
   listTeacherResources,
@@ -42,6 +43,8 @@ const emptyForm = (subjectOfferingId = ""): ResourceForm => ({
 
 export function TeacherResourcesPage() {
   const { workspace, workspaceLoading, workspaceError, operatingContext } = useTeacherWorkspace();
+  const [params, setParams] = useSearchParams();
+  const requestedOfferingId = params.get("offering") ?? "";
   const assignments = useMemo(
     () =>
       workspace?.assignments.filter(
@@ -54,7 +57,7 @@ export function TeacherResourcesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState<"ALL" | TeachingResourceStatus>("ACTIVE");
-  const [subjectOfferingId, setSubjectOfferingId] = useState("");
+  const [subjectOfferingId, setSubjectOfferingId] = useState(requestedOfferingId);
   const [form, setForm] = useState<ResourceForm>(() => emptyForm());
   const [file, setFile] = useState<File | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -242,6 +245,7 @@ export function TeacherResourcesPage() {
           ]}
           onAssignment={(value) => {
             setSubjectOfferingId(value);
+            setParams(value ? { offering: value } : {}, { replace: true });
             setPage(1);
           }}
           onStatus={(value) => {

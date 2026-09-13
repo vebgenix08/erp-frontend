@@ -30,6 +30,7 @@ interface DepartmentRow {
   facultyId?: string;
   facultyName?: string;
   facultyStatus?: string;
+  loginStatus?: string;
   email?: string;
   phoneNumber?: string;
   department?: string;
@@ -44,11 +45,29 @@ interface DepartmentRow {
   allocation?: string;
   status?: string;
   action?: string;
+  className?: string;
+  sectionName?: string;
+  subjectCoverage?: string;
+  timetableStatus?: string;
+  attendanceStatus?: string;
+  attendanceSessions?: number;
+  marksStatus?: string;
+  timetableEntries?: number;
+  conflicts?: number;
 }
 
 type FacultyDetailTab = "PROFILE" | "WORKLOAD" | "COUNSELLING";
 
 const facultyPageIds = new Set(["dept_faculty", "coord_allocation", "leadership_faculty"]);
+const academicOverviewPageIds = new Set(["academic_overview"]);
+const completionPageIds = new Set([
+  "coord_attendance",
+  "coord_marks",
+  "attendance_timetable_mon",
+  "dept_reports",
+  "coord_reports",
+  "leadership_reports",
+]);
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -122,6 +141,7 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
         facultyId: item.employeeCode,
         facultyName: item.fullName,
         facultyStatus: item.status,
+        loginStatus: item.loginStatus,
         email: item.email ?? "Not recorded",
         phoneNumber: item.phone ?? "Not recorded",
         department: item.department ?? "Not assigned",
@@ -187,6 +207,32 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
           : "Teaching Assignment",
       }));
     }
+    if (academicOverviewPageIds.has(page.id) || completionPageIds.has(page.id)) {
+      return data.completion.map((item) => {
+        const sectionCoverage = data.coverage.filter(
+          (coverage) =>
+            coverage.className === item.className && coverage.sectionName === item.sectionName,
+        );
+        const readyOfferings = sectionCoverage.filter(
+          (coverage) => coverage.status === "READY",
+        ).length;
+        const timetable = data.timetables.find(
+          (candidate) => candidate.sectionId === item.sectionId,
+        );
+        return {
+          id: item.sectionId,
+          className: item.className,
+          sectionName: item.sectionName,
+          subjectCoverage: `${readyOfferings} / ${sectionCoverage.length} ready`,
+          timetableStatus: timetable?.status.replaceAll("_", " ") ?? "NOT CREATED",
+          attendanceStatus: item.attendanceStatus,
+          attendanceSessions: item.submittedAttendanceSessions,
+          marksStatus: `${item.marksSubmitted} submitted · ${item.marksPending} pending`,
+          timetableEntries: timetable?.entryCount ?? 0,
+          conflicts: timetable?.conflictCount ?? 0,
+        };
+      });
+    }
     return data.issues.map((item, index) => ({
       id: `${item.code}-${index}`,
       record: item.title,
@@ -221,6 +267,27 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
           ),
         },
         { key: "email", label: "Email" },
+        {
+          key: "loginStatus",
+          label: "Portal Access",
+          render: (row) => (
+            <WorkspaceStatus
+              tone={
+                row.loginStatus === "ACTIVE"
+                  ? "success"
+                  : row.loginStatus === "FAILED"
+                    ? "danger"
+                    : row.loginStatus === "INVITED"
+                      ? "warning"
+                      : "neutral"
+              }
+            >
+              {row.loginStatus === "NONE"
+                ? "No account"
+                : (row.loginStatus ?? "UNKNOWN").replaceAll("_", " ")}
+            </WorkspaceStatus>
+          ),
+        },
         { key: "phoneNumber", label: "Phone Number" },
         { key: "department", label: "Department" },
         { key: "designation", label: "Designation" },
@@ -235,6 +302,52 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
         { key: "required", label: "Required Periods" },
         { key: "scheduled", label: "Scheduled Periods" },
         { key: "status", label: "Allocation Status" },
+      ];
+    }
+    if (academicOverviewPageIds.has(page.id)) {
+      return [
+        { key: "className", label: "Class / Program" },
+        { key: "sectionName", label: "Section / Batch" },
+        { key: "subjectCoverage", label: "Subject Coverage" },
+        {
+          key: "timetableStatus",
+          label: "Timetable",
+          render: (row) => (
+            <WorkspaceStatus tone={row.timetableStatus === "PUBLISHED" ? "success" : "warning"}>
+              {row.timetableStatus ?? "NOT CREATED"}
+            </WorkspaceStatus>
+          ),
+        },
+        {
+          key: "attendanceStatus",
+          label: "Attendance Today",
+          render: (row) => (
+            <WorkspaceStatus tone={row.attendanceStatus === "SUBMITTED" ? "success" : "warning"}>
+              {row.attendanceStatus ?? "PENDING"}
+            </WorkspaceStatus>
+          ),
+        },
+        { key: "marksStatus", label: "Marks Completion" },
+      ];
+    }
+    if (completionPageIds.has(page.id)) {
+      return [
+        { key: "className", label: "Class / Program" },
+        { key: "sectionName", label: "Section / Batch" },
+        {
+          key: "attendanceStatus",
+          label: "Attendance Today",
+          render: (row) => (
+            <WorkspaceStatus tone={row.attendanceStatus === "SUBMITTED" ? "success" : "warning"}>
+              {row.attendanceStatus ?? "PENDING"}
+            </WorkspaceStatus>
+          ),
+        },
+        { key: "attendanceSessions", label: "Submitted Sessions" },
+        { key: "marksStatus", label: "Marks Completion" },
+        { key: "timetableStatus", label: "Timetable" },
+        { key: "timetableEntries", label: "Periods" },
+        { key: "conflicts", label: "Conflicts" },
       ];
     }
     return [

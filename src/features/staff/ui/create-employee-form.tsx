@@ -435,7 +435,7 @@ export function CreateEmployeeForm() {
                   }
                   setCustomFields((current) => ({ ...current, [key]: value }));
                 }}
-                renderSystemField={(field) => {
+                renderField={(field) => {
                   if (field.key === "staffCategory") {
                     return (
                       <select

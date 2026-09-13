@@ -851,7 +851,18 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                 systemKeys={SYSTEM_KEYS}
                 scope="APPLICATION"
                 onChange={updateTemplateValue}
-                renderSystemField={(field) => {
+                renderField={(field) => {
+                  if (field.label.toLowerCase().includes("last grade attended")) {
+                    return (
+                      <Input
+                        required={field.required}
+                        value={String(customFields[field.key] ?? "")}
+                        placeholder="Enter previous class, grade, year or semester"
+                        onChange={(event) => updateTemplateValue(field.key, event.target.value)}
+                        className="h-9 text-xs"
+                      />
+                    );
+                  }
                   if (field.key === "academicTargetId") {
                     return (
                       <select
@@ -908,6 +919,15 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
                             : (selectedAcademicYear?.name ?? "")
                         }
                         disabled
+                      />
+                    );
+                  }
+                  if (field.label.toLowerCase() === "academic year") {
+                    return (
+                      <Input
+                        value={selectedAcademicYear?.name ?? ""}
+                        disabled
+                        className="h-9 text-xs"
                       />
                     );
                   }

@@ -49,4 +49,31 @@ describe("coordinatedRequest", () => {
     );
     expect(permanent).toHaveBeenCalledTimes(1);
   });
+
+  it("bounds concurrent requests so one page cannot exhaust Lambda concurrency", async () => {
+    let active = 0;
+    let peak = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const requests = Array.from({ length: 10 }, (_, index) =>
+      coordinatedRequest(
+        async () => {
+          active += 1;
+          peak = Math.max(peak, active);
+          if (index < 6) await gate;
+          active -= 1;
+          return index;
+        },
+        { key: `parallel:${index}` },
+      ),
+    );
+
+    await vi.waitFor(() => expect(peak).toBe(6));
+    release();
+    await expect(Promise.all(requests)).resolves.toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(peak).toBe(6);
+  });
 });

@@ -38,7 +38,7 @@ const dateLabel = (value?: string) =>
     : "Not scheduled";
 
 export function TeacherSectionWorkspacePage() {
-  const { workspace, workspaceLoading, workspaceError } = useTeacherWorkspace();
+  const { operatingContext, workspace, workspaceLoading, workspaceError } = useTeacherWorkspace();
   const [data, setData] = useState<TeacherSectionWorkspaceResult | null>(null);
   const [sectionId, setSectionId] = useState("");
   const [tab, setTab] = useState<Tab>("OVERVIEW");
@@ -46,6 +46,26 @@ export function TeacherSectionWorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [followUpStudent, setFollowUpStudent] = useState<SectionStudent | null>(null);
+  const scopedResponsibilities = useMemo(() => {
+    const eligible =
+      workspace?.responsibilities.filter(
+        (item) =>
+          ["CLASS_TEACHER", "SECTION_INCHARGE"].includes(item.responsibilityType) && item.sectionId,
+      ) ?? [];
+    const inCampus = operatingContext.campusId
+      ? eligible.filter((item) => item.campusId === operatingContext.campusId)
+      : eligible;
+    return (inCampus.length ? inCampus : eligible).sort((left, right) => {
+      const priority = (value: string) => (value === "CLASS_TEACHER" ? 0 : 1);
+      return priority(left.responsibilityType) - priority(right.responsibilityType);
+    });
+  }, [operatingContext.campusId, workspace?.responsibilities]);
+  const scopedSectionIds = useMemo(
+    () => new Set(scopedResponsibilities.map((item) => item.sectionId).filter(Boolean)),
+    [scopedResponsibilities],
+  );
+  const preferredSectionId = scopedResponsibilities[0]?.sectionId ?? "";
+  const effectiveSectionId = scopedSectionIds.has(sectionId) ? sectionId : preferredSectionId;
   const load = useCallback(async () => {
     if (!workspace) return;
     setLoading(true);
@@ -53,17 +73,17 @@ export function TeacherSectionWorkspacePage() {
     try {
       const result = await getTeacherSectionWorkspace({
         academicYearId: workspace.academicYear.id,
-        ...(sectionId ? { sectionId } : {}),
+        ...(effectiveSectionId ? { sectionId: effectiveSectionId } : {}),
         date: today(),
       });
       setData(result);
-      if (!sectionId) setSectionId(result.section.id);
+      setSectionId(result.section.id);
     } catch (value) {
       setError(value instanceof Error ? value.message : "Unable to load assigned section");
     } finally {
       setLoading(false);
     }
-  }, [sectionId, workspace]);
+  }, [effectiveSectionId, workspace]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -78,6 +98,13 @@ export function TeacherSectionWorkspacePage() {
       ) ?? [],
     [data?.students, search],
   );
+  const availableSections = useMemo(() => {
+    const sections = data?.availableSections ?? [];
+    const inCampus = operatingContext.campusId
+      ? sections.filter((item) => item.campusId === operatingContext.campusId)
+      : sections;
+    return inCampus.length ? inCampus : sections;
+  }, [data?.availableSections, operatingContext.campusId]);
   if (workspaceLoading && !workspace) return <LoadingState label="Loading section workspace" />;
   if (workspaceError) return <ErrorState message={workspaceError} />;
   if (error && !data) return <ErrorState message={error} />;
@@ -91,14 +118,14 @@ export function TeacherSectionWorkspacePage() {
         title="Section Workspace"
         description="Whole-section students, attendance completion, timetable and academic follow-ups within the assigned responsibility."
         actions={
-          data?.availableSections.length ? (
+          availableSections.length ? (
             <select
               aria-label="Assigned section"
-              value={sectionId || data.section.id}
+              value={effectiveSectionId || data?.section.id || ""}
               onChange={(event) => setSectionId(event.target.value)}
               className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm font-bold"
             >
-              {data.availableSections.map((item) => (
+              {availableSections.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.className} · {item.name}
                 </option>

@@ -12,6 +12,8 @@ function memoryStorage() {
 describe("frontend asset recovery", () => {
   it("recognizes stale lazy-page asset failures", () => {
     expect(isAssetLoadFailure(new Error("Failed to fetch dynamically imported module"))).toBe(true);
+    expect(isAssetLoadFailure(new Error("error loading dynamically imported module"))).toBe(true);
+    expect(isAssetLoadFailure(new Error("Failed to load module script"))).toBe(true);
     expect(isAssetLoadFailure(new Error("Validation failed"))).toBe(false);
   });
 

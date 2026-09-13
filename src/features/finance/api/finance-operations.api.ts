@@ -26,6 +26,8 @@ export async function listFeeOrders(filter: {
   classId?: string;
   sectionId?: string;
   status?: FeeOrder["status"];
+  sourceType?: FeeOrder["sourceType"];
+  payableOnly?: boolean;
   search?: string;
   limit?: number;
   offset?: number;
@@ -230,4 +232,12 @@ export async function createGeneralCharge(input: {
       { input },
     )
   ).createGeneralCharge;
+}
+export async function retryGeneralCharge(id: string) {
+  return (
+    await graphqlClient<{ retryGeneralCharge: GeneralCharge }, { id: string }>(
+      `mutation RetryGeneralCharge($id: ID!) { retryGeneralCharge(id:$id) { ${generalChargeFields} } }`,
+      { id },
+    )
+  ).retryGeneralCharge;
 }

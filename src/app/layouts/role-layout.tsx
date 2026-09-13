@@ -28,6 +28,7 @@ import { cn } from "../../shared/ui/utils";
 import { Avatar, AvatarFallback } from "../../shared/ui/avatar";
 import { Button } from "../../shared/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../shared/ui/tooltip";
+import { RouteContentBoundary } from "../../shared/ui/route-content-boundary";
 
 const portalDefinitions = {
   accountant: {
@@ -192,7 +193,7 @@ function RoleWorkspace() {
                   to={to}
                   className={({ isActive }: NavLinkRenderProps) =>
                     cn(
-                      "flex min-h-11 items-center gap-3 rounded px-3.5 py-2.5 text-sm font-semibold transition-colors",
+                      "flex min-h-10 items-center gap-3 rounded-lg px-3 text-[14px] font-medium leading-5 transition-colors",
                       isActive
                         ? cn(portal.accentOpen, "font-semibold")
                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
@@ -262,7 +263,9 @@ function RoleWorkspace() {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-5">
-            <Outlet />
+            <RouteContentBoundary resetKey={`${location.pathname}${location.search}`}>
+              <Outlet />
+            </RouteContentBoundary>
           </div>
         </main>
       </div>

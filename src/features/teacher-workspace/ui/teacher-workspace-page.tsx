@@ -48,6 +48,21 @@ export function TeacherWorkspacePage() {
   if (!workspaceLoading && !workspaceUnavailable && !canAccessTeacherPage(page, capabilities)) {
     return <Navigate to="/teacher/dashboard" replace />;
   }
+  if (page.id === "dashboard" && !workspaceUnavailable) {
+    if (
+      capabilities.roleCodes.has("PRINCIPAL") ||
+      capabilities.roleCodes.has("VICE_PRINCIPAL") ||
+      capabilities.roleCodes.has("DEAN")
+    ) {
+      return <Navigate to="/teacher/leadership-dashboard" replace />;
+    }
+    if (capabilities.responsibilityTypes.has("HOD")) {
+      return <Navigate to="/teacher/dept-overview" replace />;
+    }
+    if (capabilities.responsibilityTypes.has("PROGRAM_COORDINATOR")) {
+      return <Navigate to="/teacher/coord-overview" replace />;
+    }
+  }
   if (page.id.startsWith("dept_")) return <TeacherDepartmentPage page={page} />;
   if (page.id.startsWith("coord_")) return <TeacherDepartmentPage page={page} />;
   if (

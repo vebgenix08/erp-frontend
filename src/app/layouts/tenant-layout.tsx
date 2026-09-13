@@ -46,6 +46,7 @@ import { Avatar, AvatarFallback } from "../../shared/ui/avatar";
 import { Button } from "../../shared/ui/button";
 import { Input } from "../../shared/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../shared/ui/tooltip";
+import { RouteContentBoundary } from "../../shared/ui/route-content-boundary";
 
 import { NetworkStatusProvider } from "../../shared/ui/offline-screen";
 
@@ -264,7 +265,7 @@ function TenantWorkspace() {
         {/* Clean Slate 900 Dark Sidebar */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 flex w-56 flex-col bg-[#0f172a] text-slate-300 shadow-xl transition-transform duration-200 border-r border-slate-800",
+            "fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-[#0f172a] text-slate-300 shadow-xl transition-transform duration-200 border-r border-slate-800",
             "md:relative md:translate-x-0",
             mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
@@ -283,8 +284,8 @@ function TenantWorkspace() {
               )}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold text-white leading-tight">{tenantLabel}</p>
-              <p className="truncate text-[10px] font-medium text-slate-400">Enterprise ERP</p>
+              <p className="truncate text-sm font-bold text-white leading-tight">{tenantLabel}</p>
+              <p className="truncate text-xs font-medium text-slate-400">Enterprise ERP</p>
             </div>
             <button
               className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white md:hidden"
@@ -303,9 +304,9 @@ function TenantWorkspace() {
                 to={dashboardLink[0]}
                 className={({ isActive }: NavLinkRenderProps) =>
                   cn(
-                    "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors",
+                    "flex min-h-10 items-center gap-3 rounded-lg px-3 text-[14px] font-medium leading-5 transition-colors",
                     isActive
-                      ? "bg-brand-600 text-white font-bold shadow-xs"
+                      ? "bg-brand-600 text-white font-semibold shadow-xs"
                       : "text-slate-300 hover:bg-slate-800 hover:text-white",
                   )
                 }
@@ -381,8 +382,8 @@ function TenantWorkspace() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-bold text-white leading-none">Tenant Admin</p>
-                <p className="truncate text-[10px] text-slate-400 font-mono mt-0.5">{userEmail}</p>
+                <p className="truncate text-sm font-bold text-white leading-none">Tenant Admin</p>
+                <p className="truncate text-xs text-slate-400 font-mono mt-0.5">{userEmail}</p>
               </div>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -419,8 +420,8 @@ function TenantWorkspace() {
               </button>
 
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-500 truncate">{tenantLabel}</p>
-                <p className="text-sm font-bold text-slate-900 truncate">
+                <p className="text-sm font-semibold text-slate-500 truncate">{tenantLabel}</p>
+                <p className="text-base font-bold text-slate-900 truncate">
                   Enterprise Administration
                 </p>
               </div>
@@ -463,7 +464,11 @@ function TenantWorkspace() {
           </header>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto p-5 md:p-6">{<Outlet />}</div>
+          <div className="flex-1 overflow-y-auto p-5 md:p-6">
+            <RouteContentBoundary resetKey={`${location.pathname}${location.search}`}>
+              <Outlet />
+            </RouteContentBoundary>
+          </div>
         </main>
       </div>
     </TooltipProvider>
@@ -488,7 +493,7 @@ function SidebarGroup({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+        className="flex min-h-10 w-full items-center justify-between rounded-lg px-3 text-[14px] font-medium leading-5 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
       >
         <span>{categoryLabel}</span>
         {open ? (
@@ -506,9 +511,9 @@ function SidebarGroup({
               to={to}
               className={({ isActive }: NavLinkRenderProps) =>
                 cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors",
+                  "flex min-h-10 items-center gap-3 rounded-lg px-3 text-[14px] font-medium leading-5 transition-colors",
                   isActive
-                    ? "bg-brand-600 text-white font-bold shadow-xs"
+                    ? "bg-brand-600 text-white font-semibold shadow-xs"
                     : "text-slate-300 hover:bg-slate-800 hover:text-white",
                 )
               }

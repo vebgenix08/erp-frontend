@@ -366,22 +366,25 @@ export function TeacherDashboardPage() {
                 description="Allocation issues that need correction."
               />
               <div className="divide-y divide-slate-100">
-                {visibleIssues.slice(0, 4).map((item, index) => (
-                  <button
-                    key={`${item.code}-${index}`}
-                    onClick={() => item.actionPath && navigate(item.actionPath)}
-                    disabled={!item.actionPath}
-                    className="flex w-full items-start gap-3 px-4 py-3.5 text-left enabled:hover:bg-slate-50"
-                  >
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-700" />
-                    <span className="min-w-0 flex-1">
-                      <strong className="block text-xs text-slate-900">{item.reason}</strong>
-                      <small className="mt-1 block text-[11px] font-medium text-slate-500">
-                        {item.recommendedAction}
-                      </small>
-                    </span>
-                  </button>
-                ))}
+                {visibleIssues.slice(0, 4).map((item, index) => {
+                  const actionPath = item.actionPath ?? pagePath("workload");
+                  return (
+                    <button
+                      key={`${item.code}-${index}`}
+                      onClick={() => actionPath && navigate(actionPath)}
+                      disabled={!actionPath}
+                      className="flex w-full items-start gap-3 px-4 py-3.5 text-left enabled:hover:bg-slate-50"
+                    >
+                      <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-700" />
+                      <span className="min-w-0 flex-1">
+                        <strong className="block text-xs text-slate-900">{item.reason}</strong>
+                        <small className="mt-1 block text-[11px] font-medium text-slate-500">
+                          {item.recommendedAction}
+                        </small>
+                      </span>
+                    </button>
+                  );
+                })}
                 {!visibleIssues.length &&
                   incompleteAssignments.slice(0, 4).map((item) => (
                     <div key={item.id} className="flex items-start gap-3 px-4 py-3.5">

@@ -70,6 +70,69 @@ describe("graphql client reliability", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps expensive read models warm for their configured cache window", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: { ready: true } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const options = { cacheKey: "teacher-workspace", cacheTimeMs: 60_000 };
+    await graphqlClient<{ ready: boolean }>(
+      "query Workspace { ready }",
+      undefined,
+      undefined,
+      options,
+    );
+    await vi.advanceTimersByTimeAsync(2_000);
+    await graphqlClient<{ ready: boolean }>(
+      "query Workspace { ready }",
+      undefined,
+      undefined,
+      options,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never reuses a cached response after the signed-in account changes", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { viewer: "first" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { viewer: "second" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const options = { cacheKey: "viewer", cacheTimeMs: 60_000 };
+    await graphqlClient<{ viewer: string }>(
+      "query Viewer { viewer }",
+      undefined,
+      undefined,
+      options,
+    );
+    sessionStorage.setItem("erp.cognito.idToken", "different.header.signature");
+    await graphqlClient<{ viewer: string }>(
+      "query Viewer { viewer }",
+      undefined,
+      undefined,
+      options,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("expires the local session when AppSync reports an expired token", async () => {
     const expired = vi.fn();
     window.addEventListener(SESSION_EXPIRED_EVENT, expired);

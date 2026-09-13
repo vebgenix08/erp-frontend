@@ -13,7 +13,7 @@ const fields = `
   availableScopes{responsibilityId campusId campusName academicUnitId programId programName}
   academicYear{id name} date
   summary{faculty classes sections subjectOfferings unassignedOfferings incompleteAllocations publishedTimetables pendingAttendanceSections pendingMarksSheets}
-  faculty{employeeId employeeCode fullName email phone department designation staffType employmentType joiningDate status assignmentCount requiredPeriods scheduledPeriods responsibilityTypes menteeCount allocations{teachingAssignmentId subjectOfferingId subjectName className sectionName requiredPeriods scheduledPeriods} schedule{id dayOfWeek startTime endTime periodLabel subjectName className sectionName}}
+  faculty{employeeId employeeCode fullName email phone department designation staffType employmentType joiningDate status loginStatus assignmentCount requiredPeriods scheduledPeriods responsibilityTypes menteeCount allocations{teachingAssignmentId subjectOfferingId subjectName className sectionName requiredPeriods scheduledPeriods} schedule{id dayOfWeek startTime endTime periodLabel subjectName className sectionName}}
   coverage{subjectOfferingId subjectName className sectionName requiredPeriods scheduledPeriods teacherNames status}
   timetables{sectionId className sectionName versionId versionName status entryCount conflictCount workingDays slots{id sequence label startTime endTime slotType applicableDays} entries{id dayOfWeek periodSlotIds subjectName teacherNames teacherEmployeeIds}}
   completion{sectionId className sectionName attendanceStatus submittedAttendanceSessions marksSubmitted marksPending}
@@ -34,6 +34,12 @@ async function getWorkspace(
   >(
     `query ${operation}($input:TeacherDepartmentWorkspaceInput!){${field}(input:$input){${fields}}}`,
     { input },
+    undefined,
+    {
+      cacheKey: `${field}:${JSON.stringify(input)}`,
+      cacheTimeMs: 60_000,
+      timeoutMs: 30_000,
+    },
   );
   return result[field];
 }

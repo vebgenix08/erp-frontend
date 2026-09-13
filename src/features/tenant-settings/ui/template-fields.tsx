@@ -8,7 +8,7 @@ interface TemplateFieldsProps {
   systemKeys: string[];
   scope?: "ENQUIRY" | "APPLICATION" | "BOTH";
   onChange: (key: string, value: unknown) => void;
-  renderSystemField?: (field: TenantTemplateField) => ReactNode;
+  renderField?: (field: TenantTemplateField) => ReactNode;
 }
 
 function fieldValue(value: unknown): string {
@@ -131,14 +131,14 @@ export function TemplateFields({
   systemKeys,
   scope = "BOTH",
   onChange,
-  renderSystemField,
+  renderField,
 }: TemplateFieldsProps) {
   const fields = template.fields.filter(
     (field) =>
       field.visible &&
       (!systemKeys.includes(field.key) ||
         Object.prototype.hasOwnProperty.call(values, field.key) ||
-        Boolean(renderSystemField)) &&
+        Boolean(renderField)) &&
       (scope === "BOTH" || field.scope === "BOTH" || field.scope === scope),
   );
 
@@ -175,9 +175,7 @@ export function TemplateFields({
                 {sectionFields
                   .sort((left, right) => left.order - right.order)
                   .map((field) => {
-                    const systemControl = systemKeys.includes(field.key)
-                      ? renderSystemField?.(field)
-                      : null;
+                    const resolvedControl = renderField?.(field);
                     const isWide = field.type === "textarea" || field.type === "document";
                     return (
                       <div
@@ -188,7 +186,7 @@ export function TemplateFields({
                           {field.label}
                           {field.required && <span className="text-red-500 ml-0.5">*</span>}
                         </Label>
-                        {systemControl ?? (
+                        {resolvedControl ?? (
                           <TemplateInput
                             field={field}
                             value={values[field.key]}

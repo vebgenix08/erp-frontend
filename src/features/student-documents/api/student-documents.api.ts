@@ -18,6 +18,31 @@ export async function listStudentDocuments(filter: {
     )
   ).studentDocuments;
 }
+export interface StudentDocumentPage {
+  items: StudentDocument[];
+  summary: { total: number; certificates: number; idCards: number; revoked: number };
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+export async function listStudentDocumentPage(filter: {
+  campusId?: string;
+  academicYearId?: string;
+  studentId?: string;
+  documentType?: StudentDocumentType;
+  status?: "ISSUED" | "REVOKED";
+  search?: string;
+  page: number;
+  pageSize: number;
+}) {
+  return (
+    await graphqlClient<{ studentDocumentPage: StudentDocumentPage }, { filter: typeof filter }>(
+      `query StudentDocumentPage($filter:StudentDocumentFilter){studentDocumentPage(filter:$filter){items{${fields}} summary{total certificates idCards revoked} page pageSize total totalPages}}`,
+      { filter },
+    )
+  ).studentDocumentPage;
+}
 export async function issueStudentDocument(input: {
   studentId: string;
   documentType: StudentDocumentType;

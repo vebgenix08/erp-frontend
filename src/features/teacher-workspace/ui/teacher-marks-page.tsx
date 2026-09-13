@@ -1,5 +1,6 @@
 import { Save, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   getTeacherMarksWorkspace,
   saveTeacherMarks,
@@ -34,8 +35,10 @@ const groupName = (workspace: TeacherMarksWorkspace) =>
 
 export function TeacherMarksPage() {
   const { operatingContext } = useTeacherWorkspace();
+  const [params, setParams] = useSearchParams();
+  const requestedOfferingId = params.get("offering") ?? "";
   const [workspace, setWorkspace] = useState<TeacherMarksWorkspace | null>(null);
-  const [offeringId, setOfferingId] = useState("");
+  const [offeringId, setOfferingId] = useState(requestedOfferingId);
   const [assessmentId, setAssessmentId] = useState("");
   const [draft, setDraft] = useState<Record<string, DraftMark>>({});
   const [loading, setLoading] = useState(true);
@@ -52,6 +55,7 @@ export function TeacherMarksPage() {
           ...(operatingContext.academicYearId
             ? { academicYearId: operatingContext.academicYearId }
             : {}),
+          ...(operatingContext.campusId ? { campusId: operatingContext.campusId } : {}),
           ...(selection?.offeringId ? { subjectOfferingId: selection.offeringId } : {}),
           ...(selection?.assessmentId ? { assessmentId: selection.assessmentId } : {}),
         });
@@ -76,12 +80,12 @@ export function TeacherMarksPage() {
         setLoading(false);
       }
     },
-    [operatingContext.academicYearId],
+    [operatingContext.academicYearId, operatingContext.campusId],
   );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(requestedOfferingId ? { offeringId: requestedOfferingId } : undefined);
+  }, [load, requestedOfferingId]);
 
   const recorded = useMemo(
     () => Object.values(draft).filter((entry) => entry.status !== "NOT_RECORDED").length,
@@ -181,7 +185,7 @@ export function TeacherMarksPage() {
               onValueChange={(value) => {
                 setOfferingId(value);
                 setAssessmentId("");
-                void load({ offeringId: value });
+                setParams({ offering: value }, { replace: true });
               }}
               placeholder={
                 workspace?.offerings.length ? "Select a subject offering" : "No assigned subjects"
@@ -278,7 +282,7 @@ export function TeacherMarksPage() {
             <table className="min-w-[900px] w-full text-left">
               <thead>
                 <tr className="bg-slate-50 text-[10px] font-extrabold uppercase text-slate-500">
-                  <th className="px-4 py-3">Roll no.</th>
+                  <th className="px-4 py-3">Roll / Registration</th>
                   <th className="px-4 py-3">Student</th>
                   <th className="px-4 py-3">Classes attended / held</th>
                   <th className="px-4 py-3">Attendance</th>
@@ -295,7 +299,12 @@ export function TeacherMarksPage() {
                   return (
                     <tr key={student.studentId}>
                       <td className="px-4 py-3 text-xs font-bold text-slate-600">
-                        {student.rollNumber ?? "Not assigned"}
+                        <span className="block">
+                          {student.rollNumber ? `Roll ${student.rollNumber}` : "Roll pending"}
+                        </span>
+                        <span className="mt-0.5 block font-medium text-slate-400">
+                          {student.registrationNumber}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <strong className="text-xs text-slate-950">{student.studentName}</strong>

@@ -1,5 +1,6 @@
-import { Building2, CheckCircle2, Lock, ShieldCheck, UserCheck, UserRound } from "lucide-react";
+import { Building2, KeyRound, ShieldCheck, UserCheck, UserRound } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useSession } from "../../features/session/model/session-provider";
 import { InstitutionProfileSettings } from "../../features/tenant-settings/ui/institution-profile";
 import { Badge } from "../../shared/ui/badge";
@@ -16,42 +17,11 @@ export function AdminProfilePage() {
   const [activeTab, setActiveTab] = useState<ProfileTab>("institution");
 
   // User Profile details from session
-  const email = session?.user.email ?? "admin@institution.edu";
-  const role = (session?.user.role ?? "TENANT_ADMIN").replaceAll("_", " ");
+  const email = session?.user.email ?? "Email unavailable";
+  const assignedRole =
+    session?.user.role ?? session?.user.roles[0]?.name ?? session?.user.roles[0]?.code;
+  const role = assignedRole?.replaceAll("_", " ") ?? "No role assigned";
   const userInitials = email.split("@")[0]?.slice(0, 2).toUpperCase() || "AD";
-
-  // Password update form state
-  const [passwords, setPasswords] = useState({
-    current: "",
-    next: "",
-    confirm: "",
-  });
-  const [pwSuccess, setPwSuccess] = useState(false);
-  const [pwError, setPwError] = useState<string | null>(null);
-  const [pwSaving, setPwSaving] = useState(false);
-
-  const handlePasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPwError(null);
-    setPwSuccess(false);
-
-    if (passwords.next.length < 8) {
-      setPwError("New password must be at least 8 characters long.");
-      return;
-    }
-    if (passwords.next !== passwords.confirm) {
-      setPwError("New password and confirm password do not match.");
-      return;
-    }
-
-    setPwSaving(true);
-    // Simulate updating Cognito password securely
-    setTimeout(() => {
-      setPwSaving(false);
-      setPwSuccess(true);
-      setPasswords({ current: "", next: "", confirm: "" });
-    }, 600);
-  };
 
   return (
     <section className="space-y-6 max-w-6xl mx-auto pb-12">
@@ -206,75 +176,18 @@ export function AdminProfilePage() {
                   Update your authentication credentials
                 </p>
               </CardHeader>
-              <CardContent className="p-5">
-                <form onSubmit={handlePasswordSubmit} className="space-y-3.5">
-                  {pwError && (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-700">
-                      {pwError}
-                    </div>
-                  )}
-                  {pwSuccess && (
-                    <div className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs font-bold text-emerald-800">
-                      <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                      Password updated successfully!
-                    </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="current-pw" className="text-xs font-bold text-slate-700">
-                      Current Password
-                    </Label>
-                    <Input
-                      id="current-pw"
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={passwords.current}
-                      onChange={(e) => setPasswords((v) => ({ ...v, current: e.target.value }))}
-                      className="h-10 rounded-xl text-xs font-semibold"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="next-pw" className="text-xs font-bold text-slate-700">
-                      New Password (Min 8 characters)
-                    </Label>
-                    <Input
-                      id="next-pw"
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={passwords.next}
-                      onChange={(e) => setPasswords((v) => ({ ...v, next: e.target.value }))}
-                      className="h-10 rounded-xl text-xs font-semibold"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="confirm-pw" className="text-xs font-bold text-slate-700">
-                      Confirm New Password
-                    </Label>
-                    <Input
-                      id="confirm-pw"
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={passwords.confirm}
-                      onChange={(e) => setPasswords((v) => ({ ...v, confirm: e.target.value }))}
-                      className="h-10 rounded-xl text-xs font-semibold"
-                    />
-                  </div>
-
-                  <div className="pt-2 flex justify-end">
-                    <Button
-                      type="submit"
-                      disabled={pwSaving}
-                      className="h-9 px-4 text-xs font-bold gap-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-xs"
-                    >
-                      <Lock size={13} /> {pwSaving ? "Updating…" : "Update Password"}
-                    </Button>
-                  </div>
-                </form>
+              <CardContent className="p-5 space-y-4">
+                <p className="text-xs leading-5 text-slate-600">
+                  Password changes are completed through Cognito verification. A verification code
+                  is sent to the authenticated email address before the new password is accepted.
+                </p>
+                <Button asChild className="h-9 px-4 text-xs font-bold gap-1.5 rounded-xl">
+                  <Link
+                    to={`/forgot-password?username=${encodeURIComponent(session?.user.email ?? "")}`}
+                  >
+                    <KeyRound size={14} /> Reset password securely
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           </div>
