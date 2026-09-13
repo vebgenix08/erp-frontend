@@ -1,6 +1,7 @@
-import { Download, List, Table2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Download, List, Maximize2, Minimize2, Table2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
+import { cn } from "../../../shared/ui/utils";
 import { useTeacherWorkspace } from "../model/teacher-workspace-context";
 import { WorkspaceButton, WorkspaceStatus, WorkspaceSurface } from "./teacher-workspace-primitives";
 
@@ -25,6 +26,21 @@ function groupLabel(item: { className?: string; sectionName?: string; subjectBat
 export function TeacherSchedulePage() {
   const { operatingContext, workspace, workspaceLoading, workspaceError } = useTeacherWorkspace();
   const [view, setView] = useState<"table" | "list">("table");
+  const [focusMode, setFocusMode] = useState(false);
+
+  useEffect(() => {
+    if (!focusMode) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFocusMode(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [focusMode]);
 
   const entries = useMemo(
     () =>
@@ -87,8 +103,21 @@ export function TeacherSchedulePage() {
   };
 
   return (
-    <div className="mx-auto w-full space-y-4 p-3 sm:p-4 lg:p-5">
-      <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+    <div
+      data-testid="teacher-timetable-shell"
+      className={cn(
+        "w-full",
+        focusMode
+          ? "fixed inset-0 z-[80] flex flex-col gap-4 overflow-hidden bg-slate-100 p-3 sm:p-5"
+          : "mx-auto space-y-4 p-3 sm:p-4 lg:p-5",
+      )}
+    >
+      <div
+        className={cn(
+          "flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between",
+          focusMode && "z-40 shrink-0",
+        )}
+      >
         <div>
           <h1 className="text-lg font-bold leading-tight text-slate-950">My Teaching Timetable</h1>
           <p className="mt-1 text-sm font-medium text-slate-600">
@@ -104,6 +133,7 @@ export function TeacherSchedulePage() {
           <div className="flex h-9 rounded-lg border border-slate-200 bg-slate-50 p-0.5 shadow-2xs">
             <button
               type="button"
+              aria-pressed={view === "table"}
               onClick={() => setView("table")}
               className={`flex items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors ${view === "table" ? "bg-white text-brand-800 shadow-xs" : "text-slate-500 hover:text-slate-900"}`}
             >
@@ -111,30 +141,39 @@ export function TeacherSchedulePage() {
             </button>
             <button
               type="button"
+              aria-pressed={view === "list"}
               onClick={() => setView("list")}
               className={`flex items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors ${view === "list" ? "bg-white text-brand-800 shadow-xs" : "text-slate-500 hover:text-slate-900"}`}
             >
               <List size={14} /> List
             </button>
           </div>
+          <WorkspaceButton
+            icon={focusMode ? Minimize2 : Maximize2}
+            onClick={() => setFocusMode((current) => !current)}
+          >
+            {focusMode ? "Exit full screen" : "Full screen"}
+          </WorkspaceButton>
           <WorkspaceButton icon={Download} onClick={downloadSchedule} disabled={!entries.length}>
             Export
           </WorkspaceButton>
         </div>
       </div>
 
-      <WorkspaceSurface className="overflow-hidden">
+      <WorkspaceSurface className={cn("overflow-hidden", focusMode && "min-h-0 flex-1")}>
         {!entries.length ? (
           <EmptyState
             title="No published teaching periods"
             description="Published periods assigned to this teacher for the selected campus will appear here."
           />
         ) : view === "table" ? (
-          <div className="w-full overflow-x-auto">
+          <div className={cn("w-full overflow-auto", focusMode && "h-full")}>
             <table className="w-full min-w-[1050px] table-fixed border-collapse text-left">
-              <thead>
+              <thead className="sticky top-0 z-20">
                 <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-extrabold uppercase text-slate-600">
-                  <th className="w-28 border-r border-slate-200 px-3 py-2.5 text-center">Time</th>
+                  <th className="sticky left-0 z-30 w-28 border-r border-slate-200 bg-slate-50 px-3 py-2.5 text-center">
+                    Time
+                  </th>
                   {days.map(([key, label]) => (
                     <th
                       key={key}
@@ -148,7 +187,7 @@ export function TeacherSchedulePage() {
               <tbody className="divide-y divide-slate-200">
                 {slots.map((slot) => (
                   <tr key={`${slot.startTime}-${slot.endTime}`}>
-                    <th className="border-r border-slate-200 bg-slate-50/70 px-2 py-3 text-center align-top font-normal">
+                    <th className="sticky left-0 z-10 border-r border-slate-200 bg-slate-50 px-2 py-3 text-center align-top font-normal">
                       <strong className="block text-xs font-bold text-slate-950">
                         {slot.startTime}
                       </strong>
@@ -201,7 +240,7 @@ export function TeacherSchedulePage() {
             </table>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 p-2">
+          <div className={cn("divide-y divide-slate-100 p-2", focusMode && "h-full overflow-auto")}>
             {entries.map((item) => (
               <div
                 key={item.id}

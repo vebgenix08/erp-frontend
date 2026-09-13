@@ -617,6 +617,26 @@ describe("teacher workspace pages", () => {
     expect(screen.queryByText("Academic year workload")).not.toBeInTheDocument();
   });
 
+  it("switches timetable views and supports a full-screen focus mode", () => {
+    renderPage("/teacher/schedule", assignedTeacherWorkspace);
+
+    expect(screen.getByRole("heading", { name: "My Teaching Timetable" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("columnheader", { name: "Monday" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    expect(screen.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("09:00 - 09:45")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    expect(screen.getByTestId("teacher-timetable-shell")).toHaveClass("fixed", "inset-0");
+    expect(screen.getByRole("button", { name: "Exit full screen" })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByRole("button", { name: "Full screen" })).toBeInTheDocument();
+    expect(screen.getByTestId("teacher-timetable-shell")).not.toHaveClass("fixed");
+  });
+
   it("opens workload details for an issue without a backend action path", () => {
     renderPage("/teacher/dashboard", {
       ...assignedTeacherWorkspace,
