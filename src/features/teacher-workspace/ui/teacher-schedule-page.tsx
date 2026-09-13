@@ -1,6 +1,7 @@
 import { Download, List, Maximize2, Minimize2, Table2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
+import { formatClockTime } from "../../../shared/lib/time-format";
 import { cn } from "../../../shared/ui/utils";
 import { useTeacherWorkspace } from "../model/teacher-workspace-context";
 import { WorkspaceButton, WorkspaceStatus, WorkspaceSurface } from "./teacher-workspace-primitives";
@@ -83,8 +84,8 @@ export function TeacherSchedulePage() {
       ["Day", "Start", "End", "Subject", "Class / section", "Campus", "State"],
       ...entries.map((item) => [
         item.dayOfWeek,
-        item.startTime,
-        item.endTime,
+        formatClockTime(item.startTime),
+        formatClockTime(item.endTime),
         item.subjectName,
         groupLabel(item),
         item.campusName,
@@ -189,10 +190,10 @@ export function TeacherSchedulePage() {
                   <tr key={`${slot.startTime}-${slot.endTime}`}>
                     <th className="sticky left-0 z-10 border-r border-slate-200 bg-slate-50 px-2 py-3 text-center align-top font-normal">
                       <strong className="block text-xs font-bold text-slate-950">
-                        {slot.startTime}
+                        {formatClockTime(slot.startTime)}
                       </strong>
                       <span className="mt-0.5 block text-[11px] font-medium text-slate-500">
-                        to {slot.endTime}
+                        to {formatClockTime(slot.endTime)}
                       </span>
                     </th>
                     {days.map(([day]) => {
@@ -250,7 +251,7 @@ export function TeacherSchedulePage() {
                   {days.find(([key]) => key === item.dayOfWeek)?.[1] ?? item.dayOfWeek}
                 </span>
                 <strong className="text-xs font-bold text-slate-950">
-                  {item.startTime} - {item.endTime}
+                  {formatClockTime(item.startTime)} - {formatClockTime(item.endTime)}
                 </strong>
                 <div>
                   <strong className="block text-sm font-bold text-slate-950">

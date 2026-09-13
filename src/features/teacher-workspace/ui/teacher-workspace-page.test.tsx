@@ -626,7 +626,7 @@ describe("teacher workspace pages", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "List" }));
     expect(screen.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("09:00 - 09:45")).toBeInTheDocument();
+    expect(screen.getByText("9:00 AM - 9:45 AM")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
     expect(screen.getByTestId("teacher-timetable-shell")).toHaveClass("fixed", "inset-0");
@@ -958,7 +958,7 @@ describe("teacher workspace pages", () => {
     fireEvent.click(screen.getByRole("button", { name: "List" }));
     expect(screen.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("cell", { name: "Grade 8 - Section A" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "09:00 - 09:45" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "9:00 AM - 9:45 AM" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Counselling" }));
     expect(screen.getAllByText("Assigned mentees")).toHaveLength(2);

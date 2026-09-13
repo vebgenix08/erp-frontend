@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowLeft, List, Table2 } from "lucide-react";
 import { DepartmentTimetableGrid } from "./department-timetable-grid";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
+import { formatClockTime } from "../../../shared/lib/time-format";
 import type { TeacherPageDefinition } from "../../teacher-workspace/model/teacher-workspace.types";
 import { useTeacherWorkspace } from "../../teacher-workspace/model/teacher-workspace-context";
 import { ModernSelect } from "../../../shared/ui/select";
@@ -824,10 +825,10 @@ function FacultyDetailsWorkspace({
                             <tr key={`${slot.startTime}-${slot.endTime}`}>
                               <th className="sticky left-0 z-10 border-r border-slate-200 bg-slate-50 px-2 py-3 text-center font-normal">
                                 <strong className="block text-xs text-slate-950">
-                                  {slot.startTime}
+                                  {formatClockTime(slot.startTime)}
                                 </strong>
                                 <span className="text-[10px] text-slate-500">
-                                  to {slot.endTime}
+                                  to {formatClockTime(slot.endTime)}
                                 </span>
                               </th>
                               {teachingDays.map(([day]) => {
@@ -893,7 +894,8 @@ function FacultyDetailsWorkspace({
                                   {lesson.dayOfWeek[0] + lesson.dayOfWeek.slice(1).toLowerCase()}
                                 </td>
                                 <td className="px-3 py-2">
-                                  {lesson.startTime} - {lesson.endTime}
+                                  {formatClockTime(lesson.startTime)} -{" "}
+                                  {formatClockTime(lesson.endTime)}
                                 </td>
                                 <td className="px-3 py-2">{lesson.periodLabel}</td>
                                 <td className="px-3 py-2 font-semibold text-slate-900">
