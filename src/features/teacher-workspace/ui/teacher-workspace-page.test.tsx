@@ -942,19 +942,30 @@ describe("teacher workspace pages", () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "View details" }));
-    expect(screen.getByRole("dialog", { name: "Anitha Rao" })).toBeInTheDocument();
-    expect(screen.getAllByText("+91 9876543210")).toHaveLength(2);
+    expect(screen.getByTestId("faculty-details-workspace")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Anitha Rao" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to faculty list" })).toBeInTheDocument();
+    expect(screen.getByText("+91 9876543210")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workload" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Workload" }));
     expect(screen.getByText("Allocation balanced")).toBeInTheDocument();
-    expect(screen.getAllByRole("cell", { name: "Mathematics" })).toHaveLength(2);
+    expect(screen.getByRole("cell", { name: "Mathematics" })).toBeInTheDocument();
     expect(screen.getByText("Teacher Timetable")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("columnheader", { name: "Monday" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    expect(screen.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("cell", { name: "Grade 8 - Section A" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "09:00 - 09:45" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Counselling" }));
-    expect(screen.getByText("Assigned mentees")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Counselling" }));
+    expect(screen.getAllByText("Assigned mentees")).toHaveLength(2);
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to faculty list" }));
+    expect(screen.getByRole("heading", { name: "Faculty & Allocation" })).toBeInTheDocument();
   });
 
   it("shows variable required and scheduled periods with subjects and classes on workload", async () => {

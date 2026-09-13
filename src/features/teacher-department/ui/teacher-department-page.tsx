@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, List, Table2 } from "lucide-react";
 import { DepartmentTimetableGrid } from "./department-timetable-grid";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
@@ -6,10 +6,8 @@ import type { TeacherPageDefinition } from "../../teacher-workspace/model/teache
 import { useTeacherWorkspace } from "../../teacher-workspace/model/teacher-workspace-context";
 import { ModernSelect } from "../../../shared/ui/select";
 import {
-  WorkspaceButton,
   WorkspaceDataTable,
   WorkspaceDetails,
-  WorkspaceDialog,
   WorkspacePageHeader,
   WorkspaceStatus,
   WorkspaceSurface,
@@ -57,6 +55,16 @@ interface DepartmentRow {
 }
 
 type FacultyDetailTab = "PROFILE" | "WORKLOAD" | "COUNSELLING";
+type FacultyScheduleView = "TABLE" | "LIST";
+
+const teachingDays = [
+  ["MONDAY", "Monday"],
+  ["TUESDAY", "Tuesday"],
+  ["WEDNESDAY", "Wednesday"],
+  ["THURSDAY", "Thursday"],
+  ["FRIDAY", "Friday"],
+  ["SATURDAY", "Saturday"],
+] as const;
 
 const facultyPageIds = new Set(["dept_faculty", "coord_allocation", "leadership_faculty"]);
 const academicOverviewPageIds = new Set(["academic_overview"]);
@@ -399,6 +407,18 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
     value: item.sectionId,
   }));
 
+  if (selectedFaculty) {
+    return (
+      <FacultyDetailsWorkspace
+        faculty={selectedFaculty}
+        academicYearName={data?.academicYear.name ?? workspace.academicYear.name}
+        tab={facultyDetailTab}
+        onTabChange={setFacultyDetailTab}
+        onClose={() => setSelectedFacultyId(null)}
+      />
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-5 p-4 sm:p-5 lg:p-6">
       {/* Header */}
@@ -509,13 +529,6 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
             </WorkspaceSurface>
           )}
 
-          <FacultyDetailsDialog
-            faculty={selectedFaculty}
-            tab={facultyDetailTab}
-            onTabChange={setFacultyDetailTab}
-            onClose={() => setSelectedFacultyId(null)}
-          />
-
           {/* Exceptions Box for Overview */}
           {page.id === "dept_overview" && data.issues.length > 0 && (
             <WorkspaceSurface>
@@ -549,226 +562,383 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
   );
 }
 
-function FacultyDetailsDialog({
+function FacultyDetailsWorkspace({
   faculty,
+  academicYearName,
   tab,
   onTabChange,
   onClose,
 }: {
-  faculty: DepartmentFaculty | null;
+  faculty: DepartmentFaculty;
+  academicYearName: string;
   tab: FacultyDetailTab;
   onTabChange: (tab: FacultyDetailTab) => void;
   onClose: () => void;
 }) {
-  const workloadBalance = faculty ? faculty.requiredPeriods - faculty.scheduledPeriods : 0;
-  const workloadState = !faculty
-    ? "Not available"
-    : workloadBalance < 0
+  const [scheduleView, setScheduleView] = useState<FacultyScheduleView>("TABLE");
+  const workloadBalance = faculty.requiredPeriods - faculty.scheduledPeriods;
+  const workloadState =
+    workloadBalance < 0
       ? `${Math.abs(workloadBalance)} periods over allocation`
       : workloadBalance > 0
         ? `${workloadBalance} periods available`
         : "Allocation balanced";
-  const teacherSchedule = faculty?.schedule ?? [];
+  const teacherSchedule = faculty.schedule;
+  const scheduleSlots = useMemo(() => {
+    const unique = new Map<string, { startTime: string; endTime: string }>();
+    for (const lesson of teacherSchedule) {
+      unique.set(`${lesson.startTime}|${lesson.endTime}`, {
+        startTime: lesson.startTime,
+        endTime: lesson.endTime,
+      });
+    }
+    return [...unique.values()].sort((left, right) =>
+      left.startTime.localeCompare(right.startTime),
+    );
+  }, [teacherSchedule]);
 
   return (
-    <WorkspaceDialog
-      open={Boolean(faculty)}
-      title={faculty ? faculty.fullName : "Faculty details"}
-      onClose={onClose}
+    <main
+      data-testid="faculty-details-workspace"
+      className="mx-auto w-full max-w-[1600px] space-y-5 p-4 sm:p-5 lg:p-6"
     >
-      {faculty ? (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <span className="text-xs font-bold text-slate-500">{faculty.employeeCode}</span>
-              <p className="mt-1 text-sm font-semibold text-slate-700">
-                {[faculty.designation, faculty.department].filter(Boolean).join(" · ") ||
-                  "Faculty details"}
-              </p>
-            </div>
-            <WorkspaceStatus tone={faculty.status === "ACTIVE" ? "success" : "warning"}>
-              {faculty.status.replaceAll("_", " ")}
-            </WorkspaceStatus>
-          </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+      >
+        <ArrowLeft size={15} aria-hidden="true" /> Back to faculty list
+      </button>
 
+      <WorkspaceSurface className="overflow-hidden">
+        <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50/70 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Faculty workspace · {academicYearName}
+            </span>
+            <h1 className="mt-1 text-2xl font-extrabold text-slate-950">{faculty.fullName}</h1>
+            <p className="mt-1 text-sm font-semibold text-slate-600">
+              {faculty.employeeCode} ·{" "}
+              {[faculty.designation, faculty.department].filter(Boolean).join(" · ") ||
+                "Faculty details"}
+            </p>
+          </div>
+          <WorkspaceStatus tone={faculty.status === "ACTIVE" ? "success" : "warning"}>
+            {faculty.status.replaceAll("_", " ")}
+          </WorkspaceStatus>
+        </div>
+
+        <dl className="grid border-b border-slate-200 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ["Teaching groups", faculty.assignmentCount],
+            ["Required periods", faculty.requiredPeriods],
+            ["Scheduled periods", faculty.scheduledPeriods],
+            ["Assigned mentees", faculty.menteeCount],
+          ].map(([label, value]) => (
+            <div key={label} className="border-b border-slate-100 p-4 sm:border-r lg:border-b-0">
+              <dt className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
+                {label}
+              </dt>
+              <dd className="mt-1 text-xl font-extrabold text-slate-950">{value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="p-4 sm:p-5">
           <div
             role="tablist"
             aria-label="Faculty details"
-            className="flex flex-wrap gap-1 border-b border-slate-200"
+            className="flex gap-1 border-b border-slate-200"
           >
             {(["PROFILE", "WORKLOAD", "COUNSELLING"] as const).map((item) => (
-              <WorkspaceButton
+              <button
+                type="button"
                 key={item}
-                variant={tab === item ? "primary" : "secondary"}
+                role="tab"
+                aria-selected={tab === item}
                 onClick={() => onTabChange(item)}
+                className={`border-b-2 px-4 py-3 text-xs font-extrabold transition-colors ${
+                  tab === item
+                    ? "border-brand-700 text-brand-800"
+                    : "border-transparent text-slate-500 hover:text-slate-900"
+                }`}
               >
                 {item[0] + item.slice(1).toLowerCase()}
-              </WorkspaceButton>
+              </button>
             ))}
           </div>
 
-          {tab === "PROFILE" ? (
-            <WorkspaceDetails
-              rows={[
-                ["Faculty ID", faculty.employeeCode],
-                ["Faculty Name", faculty.fullName],
-                ["Status", faculty.status.replaceAll("_", " ")],
-                ["Email", faculty.email ?? "Not recorded"],
-                ["Phone Number", faculty.phone ?? "Not recorded"],
-                ["Department", faculty.department ?? "Not assigned"],
-                ["Designation", faculty.designation ?? "Not assigned"],
-                ["Staff Type", faculty.staffType?.replaceAll("_", " ") ?? "Not recorded"],
-                ["Employment Type", faculty.employmentType?.replaceAll("_", " ") ?? "Not recorded"],
-                [
-                  "Joining Date",
-                  faculty.joiningDate
-                    ? new Date(faculty.joiningDate).toLocaleDateString("en-IN")
-                    : "Not recorded",
-                ],
-              ]}
-            />
-          ) : null}
-
-          {tab === "WORKLOAD" ? (
-            <div className="space-y-4">
+          <div className="pt-5">
+            {tab === "PROFILE" ? (
               <WorkspaceDetails
                 rows={[
-                  ["Teaching groups", faculty.assignmentCount],
-                  ["Required weekly periods", faculty.requiredPeriods],
-                  ["Scheduled weekly periods", faculty.scheduledPeriods],
-                  ["Allocation state", workloadState],
+                  ["Faculty ID", faculty.employeeCode],
+                  ["Faculty Name", faculty.fullName],
+                  ["Status", faculty.status.replaceAll("_", " ")],
+                  ["Email", faculty.email ?? "Not recorded"],
+                  ["Phone Number", faculty.phone ?? "Not recorded"],
+                  ["Department", faculty.department ?? "Not assigned"],
+                  ["Designation", faculty.designation ?? "Not assigned"],
+                  ["Staff Type", faculty.staffType?.replaceAll("_", " ") ?? "Not recorded"],
+                  [
+                    "Employment Type",
+                    faculty.employmentType?.replaceAll("_", " ") ?? "Not recorded",
+                  ],
+                  [
+                    "Joining Date",
+                    faculty.joiningDate
+                      ? new Date(faculty.joiningDate).toLocaleDateString("en-IN")
+                      : "Not recorded",
+                  ],
                 ]}
               />
-              <div className="overflow-x-auto rounded-md border border-slate-200">
-                <table className="w-full min-w-[620px] border-collapse text-left">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50">
-                      {[
-                        "Subject",
-                        "Class",
-                        "Section",
-                        "Required Periods",
-                        "Scheduled Periods",
-                        "Difference",
-                      ].map((label) => (
-                        <th
-                          key={label}
-                          className="px-3 py-3 text-[10px] font-extrabold uppercase text-slate-500"
-                        >
-                          {label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {faculty.allocations.length ? (
-                      faculty.allocations.map((allocation) => (
-                        <tr
-                          key={allocation.teachingAssignmentId}
-                          className="border-b border-slate-100 last:border-0"
-                        >
-                          <td className="px-3 py-3 text-xs font-bold text-slate-900">
-                            {allocation.subjectName}
-                          </td>
-                          <td className="px-3 py-3 text-xs font-semibold text-slate-700">
-                            {allocation.className}
-                          </td>
-                          <td className="px-3 py-3 text-xs font-semibold text-slate-700">
-                            {allocation.sectionName ?? "Not assigned"}
-                          </td>
-                          <td className="px-3 py-3 text-xs font-semibold text-slate-700">
-                            {allocation.requiredPeriods}
-                          </td>
-                          <td className="px-3 py-3 text-xs font-semibold text-slate-700">
-                            {allocation.scheduledPeriods}
-                          </td>
-                          <td className="px-3 py-3 text-xs font-semibold text-slate-700">
-                            {allocation.scheduledPeriods === allocation.requiredPeriods
-                              ? "Balanced"
-                              : allocation.scheduledPeriods < allocation.requiredPeriods
-                                ? `${allocation.requiredPeriods - allocation.scheduledPeriods} short`
-                                : `${allocation.scheduledPeriods - allocation.requiredPeriods} over`}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="px-4 py-8 text-center text-xs font-semibold text-slate-500"
-                        >
-                          No active teaching allocation in this academic scope.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div>
-                <h3 className="mb-2 text-sm font-bold text-slate-900">Teacher Timetable</h3>
-                <div className="max-h-72 overflow-auto rounded-md border border-slate-200">
-                  <table className="w-full min-w-[680px] border-collapse text-left text-xs">
-                    <thead className="sticky top-0 bg-slate-50 text-slate-600">
-                      <tr>
-                        {["Day", "Time", "Period", "Subject", "Class & Section"].map((label) => (
-                          <th key={label} className="px-3 py-2 font-bold">
+            ) : null}
+
+            {tab === "WORKLOAD" ? (
+              <div className="space-y-4">
+                <WorkspaceDetails
+                  rows={[
+                    ["Teaching groups", faculty.assignmentCount],
+                    ["Required weekly periods", faculty.requiredPeriods],
+                    ["Scheduled weekly periods", faculty.scheduledPeriods],
+                    ["Allocation state", workloadState],
+                  ]}
+                />
+                <div className="overflow-x-auto rounded-md border border-slate-200">
+                  <table className="w-full min-w-[620px] border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50">
+                        {[
+                          "Subject",
+                          "Class",
+                          "Section",
+                          "Required Periods",
+                          "Scheduled Periods",
+                          "Difference",
+                        ].map((label) => (
+                          <th
+                            key={label}
+                            className="px-3 py-3 text-[10px] font-extrabold uppercase text-slate-500"
+                          >
                             {label}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {teacherSchedule.length ? (
-                        teacherSchedule.map((lesson) => (
-                          <tr key={lesson.id} className="border-t border-slate-100">
-                            <td className="px-3 py-2 font-semibold">
-                              {lesson.dayOfWeek[0] + lesson.dayOfWeek.slice(1).toLowerCase()}
+                      {faculty.allocations.length ? (
+                        faculty.allocations.map((allocation) => (
+                          <tr
+                            key={allocation.teachingAssignmentId}
+                            className="border-b border-slate-100 last:border-0"
+                          >
+                            <td className="px-3 py-3 text-xs font-bold text-slate-900">
+                              {allocation.subjectName}
                             </td>
-                            <td className="px-3 py-2">
-                              {lesson.startTime} - {lesson.endTime}
+                            <td className="px-3 py-3 text-xs font-semibold text-slate-700">
+                              {allocation.className}
                             </td>
-                            <td className="px-3 py-2">{lesson.periodLabel}</td>
-                            <td className="px-3 py-2 font-semibold text-slate-900">
-                              {lesson.subjectName}
+                            <td className="px-3 py-3 text-xs font-semibold text-slate-700">
+                              {allocation.sectionName ?? "Not assigned"}
                             </td>
-                            <td className="px-3 py-2">
-                              {lesson.className} - {lesson.sectionName}
+                            <td className="px-3 py-3 text-xs font-semibold text-slate-700">
+                              {allocation.requiredPeriods}
+                            </td>
+                            <td className="px-3 py-3 text-xs font-semibold text-slate-700">
+                              {allocation.scheduledPeriods}
+                            </td>
+                            <td className="px-3 py-3 text-xs font-semibold text-slate-700">
+                              {allocation.scheduledPeriods === allocation.requiredPeriods
+                                ? "Balanced"
+                                : allocation.scheduledPeriods < allocation.requiredPeriods
+                                  ? `${allocation.requiredPeriods - allocation.scheduledPeriods} short`
+                                  : `${allocation.scheduledPeriods - allocation.requiredPeriods} over`}
                             </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                            No published lessons are assigned to this teacher.
+                          <td
+                            colSpan={6}
+                            className="px-4 py-8 text-center text-xs font-semibold text-slate-500"
+                          >
+                            No active teaching allocation in this academic scope.
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
-              </div>
-            </div>
-          ) : null}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Teacher Timetable</h3>
+                      <p className="mt-0.5 text-xs font-medium text-slate-500">
+                        {teacherSchedule.length} published teaching periods
+                      </p>
+                    </div>
+                    <div className="flex rounded-md border border-slate-200 bg-slate-50 p-0.5">
+                      {(
+                        [
+                          ["TABLE", "Table", Table2],
+                          ["LIST", "List", List],
+                        ] as const
+                      ).map(([value, label, Icon]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-pressed={scheduleView === value}
+                          onClick={() => setScheduleView(value)}
+                          className={`inline-flex min-h-9 items-center gap-1.5 rounded px-3 text-xs font-bold ${
+                            scheduleView === value
+                              ? "bg-white text-brand-800 shadow-xs"
+                              : "text-slate-500 hover:text-slate-900"
+                          }`}
+                        >
+                          <Icon size={14} aria-hidden="true" /> {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-          {tab === "COUNSELLING" ? (
-            <div className="space-y-3">
-              <WorkspaceDetails
-                rows={[
-                  ["Assigned mentees", faculty.menteeCount],
-                  [
-                    "Mentor responsibility",
-                    faculty.responsibilityTypes.includes("MENTOR") ? "Active" : "Not assigned",
-                  ],
-                ]}
-              />
-              <p className="text-xs font-medium leading-5 text-slate-500">
-                Private counselling notes remain visible only to the assigned mentor. Academic
-                leadership sees assignment coverage, not confidential interaction content.
-              </p>
-            </div>
-          ) : null}
+                  {scheduleView === "TABLE" ? (
+                    <div className="max-h-[520px] overflow-auto rounded-md border border-slate-200">
+                      <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-xs">
+                        <thead className="sticky top-0 z-20">
+                          <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-extrabold uppercase text-slate-600">
+                            <th className="sticky left-0 z-30 w-28 border-r border-slate-200 bg-slate-50 px-3 py-3 text-center">
+                              Time
+                            </th>
+                            {teachingDays.map(([day, label]) => (
+                              <th
+                                key={day}
+                                className="border-r border-slate-200 px-3 py-3 text-center last:border-r-0"
+                              >
+                                {label}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {scheduleSlots.map((slot) => (
+                            <tr key={`${slot.startTime}-${slot.endTime}`}>
+                              <th className="sticky left-0 z-10 border-r border-slate-200 bg-slate-50 px-2 py-3 text-center font-normal">
+                                <strong className="block text-xs text-slate-950">
+                                  {slot.startTime}
+                                </strong>
+                                <span className="text-[10px] text-slate-500">
+                                  to {slot.endTime}
+                                </span>
+                              </th>
+                              {teachingDays.map(([day]) => {
+                                const lessons = teacherSchedule.filter(
+                                  (lesson) =>
+                                    lesson.dayOfWeek === day &&
+                                    lesson.startTime === slot.startTime &&
+                                    lesson.endTime === slot.endTime,
+                                );
+                                return (
+                                  <td
+                                    key={day}
+                                    className="border-r border-slate-200 p-1.5 align-top last:border-r-0"
+                                  >
+                                    {lessons.map((lesson) => (
+                                      <div
+                                        key={lesson.id}
+                                        className="min-h-20 rounded-md border border-brand-200 bg-brand-50/70 p-2"
+                                      >
+                                        <strong className="block leading-snug text-slate-950">
+                                          {lesson.subjectName}
+                                        </strong>
+                                        <span className="mt-1 block text-[11px] font-semibold text-brand-800">
+                                          {lesson.className} - {lesson.sectionName}
+                                        </span>
+                                        <span className="mt-1 block text-[10px] text-slate-500">
+                                          {lesson.periodLabel}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {!scheduleSlots.length ? (
+                        <p className="px-4 py-10 text-center text-xs font-semibold text-slate-500">
+                          No published lessons are assigned to this teacher.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="max-h-[520px] overflow-auto rounded-md border border-slate-200">
+                      <table className="w-full min-w-[680px] border-collapse text-left text-xs">
+                        <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                          <tr>
+                            {["Day", "Time", "Period", "Subject", "Class & Section"].map(
+                              (label) => (
+                                <th key={label} className="px-3 py-2 font-bold">
+                                  {label}
+                                </th>
+                              ),
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {teacherSchedule.length ? (
+                            teacherSchedule.map((lesson) => (
+                              <tr key={lesson.id} className="border-t border-slate-100">
+                                <td className="px-3 py-2 font-semibold">
+                                  {lesson.dayOfWeek[0] + lesson.dayOfWeek.slice(1).toLowerCase()}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {lesson.startTime} - {lesson.endTime}
+                                </td>
+                                <td className="px-3 py-2">{lesson.periodLabel}</td>
+                                <td className="px-3 py-2 font-semibold text-slate-900">
+                                  {lesson.subjectName}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {lesson.className} - {lesson.sectionName}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                                No published lessons are assigned to this teacher.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {tab === "COUNSELLING" ? (
+              <div className="space-y-3">
+                <WorkspaceDetails
+                  rows={[
+                    ["Assigned mentees", faculty.menteeCount],
+                    [
+                      "Mentor responsibility",
+                      faculty.responsibilityTypes.includes("MENTOR") ? "Active" : "Not assigned",
+                    ],
+                  ]}
+                />
+                <p className="text-xs font-medium leading-5 text-slate-500">
+                  Private counselling notes remain visible only to the assigned mentor. Academic
+                  leadership sees assignment coverage, not confidential interaction content.
+                </p>
+              </div>
+            ) : null}
+          </div>
         </div>
-      ) : null}
-    </WorkspaceDialog>
+      </WorkspaceSurface>
+    </main>
   );
 }
