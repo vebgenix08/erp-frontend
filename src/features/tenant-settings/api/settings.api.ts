@@ -33,6 +33,18 @@ export async function getInstitutionProfile() {
     )
   ).institutionProfile;
 }
+export async function getInstitutionBranding() {
+  return (
+    await graphqlClient<{
+      institutionBranding: {
+        name: string;
+        shortName?: string;
+        logoUrl?: string;
+        logoFileId?: string;
+      } | null;
+    }>("query InstitutionBranding { institutionBranding { name shortName logoUrl logoFileId } }")
+  ).institutionBranding;
+}
 export async function saveInstitutionProfile(input: InstitutionProfileInput) {
   return (
     await graphqlClient<

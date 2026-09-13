@@ -25,6 +25,8 @@ import type { TeacherInstitutionMode } from "../model/teacher-workspace.types";
 import { getTeacherWorkloadWorkspace } from "../../teacher-workload/api/teacher-workload.api";
 import type { TeacherWorkloadWorkspace } from "../../teacher-workload/model/teacher-workload.types";
 import { getSessionDashboardPath } from "../../session/api/session.api";
+import { useMemberProfilePhoto } from "../../session/model/use-member-profile-photo";
+import { useInstitutionBranding } from "../../tenant-settings/model/use-institution-branding";
 
 export function TeacherWorkspaceLayout() {
   return (
@@ -56,6 +58,11 @@ function TeacherWorkspaceShell() {
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [workspaceCampusId, setWorkspaceCampusId] = useState("");
+  const tenantId = session?.selectedTenant?.tenantId ?? session?.tenant?.tenantId;
+  const { name: institutionName, logoUrl: institutionLogo } = useInstitutionBranding(tenantId);
+  const memberPhoto = useMemberProfilePhoto(
+    workspace?.teacher.profilePhotoFileId ?? session?.user.profilePhotoFileId,
+  );
   const resolvedPageSlug = pageSlug ?? location.pathname.split("/")[2];
 
   const roleCodes = useMemo(
@@ -324,13 +331,21 @@ function TeacherWorkspaceShell() {
         >
           {/* Sidebar Header Brand */}
           <div className="flex min-h-16 items-center gap-3 border-b border-slate-800/80 px-4">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-600 text-white shadow-xs">
-              <GraduationCap size={20} />
+            <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-brand-600 text-white shadow-xs">
+              {institutionLogo ? (
+                <img
+                  src={institutionLogo}
+                  alt={`${institutionName ?? "Institution"} logo`}
+                  className="h-full w-full bg-white object-contain p-0.5"
+                />
+              ) : (
+                <GraduationCap size={20} />
+              )}
             </span>
             {!collapsed ? (
               <div className="min-w-0 flex-1">
                 <strong className="block truncate text-sm font-bold text-white tracking-tight">
-                  {session?.tenant?.displayName ?? "Vebgenix ERP"}
+                  {institutionName ?? session?.tenant?.displayName ?? "Vebgenix ERP"}
                 </strong>
                 <span className="block truncate text-xs font-medium text-slate-400">
                   Teacher Workspace
@@ -398,12 +413,20 @@ function TeacherWorkspaceShell() {
           {/* Sidebar Footer User Info */}
           <div className="border-t border-slate-800/80 p-3 bg-slate-950/40">
             <div className={cn("flex items-center gap-2.5", collapsed && "justify-center")}>
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-xs font-extrabold text-white shadow-xs">
-                {userName
-                  .split(" ")
-                  .map((part) => part[0])
-                  .slice(0, 2)
-                  .join("")}
+              <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-brand-600 text-xs font-extrabold text-white shadow-xs">
+                {memberPhoto ? (
+                  <img
+                    src={memberPhoto}
+                    alt={`${userName} profile`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  userName
+                    .split(" ")
+                    .map((part) => part[0])
+                    .slice(0, 2)
+                    .join("")
+                )}
               </span>
               {!collapsed ? (
                 <div className="min-w-0 flex-1">
@@ -523,12 +546,20 @@ function TeacherWorkspaceShell() {
 
               {/* Unified User Profile Pill */}
               <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-2xs">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-600 text-xs font-extrabold text-white shadow-2xs">
-                  {userName
-                    .split(" ")
-                    .map((part) => part[0])
-                    .slice(0, 2)
-                    .join("")}
+                <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-lg bg-brand-600 text-xs font-extrabold text-white shadow-2xs">
+                  {memberPhoto ? (
+                    <img
+                      src={memberPhoto}
+                      alt={`${userName} profile`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    userName
+                      .split(" ")
+                      .map((part) => part[0])
+                      .slice(0, 2)
+                      .join("")
+                  )}
                 </span>
                 <div className="text-left hidden lg:block">
                   <strong className="block max-w-[120px] truncate text-sm font-bold text-slate-900 leading-tight">

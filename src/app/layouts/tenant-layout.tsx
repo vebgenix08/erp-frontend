@@ -36,14 +36,13 @@ import {
   getSessionTenantLabel,
 } from "../../features/session/api/session.api";
 import { useSession } from "../../features/session/model/session-provider";
-import { getInstitutionProfile } from "../../features/tenant-settings/api/settings.api";
-import { getFileDownloadUrl } from "../../features/storage/api/files.api";
 import { SelectedAcademicYearProvider } from "../../features/tenant-settings/model/selected-academic-year-provider";
 import { SelectedCampusProvider } from "../../features/tenant-settings/model/selected-campus-provider";
-import { subscribeToInstitutionBranding } from "../../features/tenant-settings/model/institution-branding";
+import { useInstitutionBranding } from "../../features/tenant-settings/model/use-institution-branding";
+import { useMemberProfilePhoto } from "../../features/session/model/use-member-profile-photo";
 import { OperatingContextControls } from "./operating-context-controls";
 import { cn } from "../../shared/ui/utils";
-import { Avatar, AvatarFallback } from "../../shared/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../../shared/ui/avatar";
 import { Button } from "../../shared/ui/button";
 import { Input } from "../../shared/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../shared/ui/tooltip";
@@ -70,9 +69,10 @@ function TenantWorkspace() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdSearch, setCmdSearch] = useState("");
-  const [institutionName, setInstitutionName] = useState<string | null>(null);
-  const [institutionLogo, setInstitutionLogo] = useState<string | null>(null);
   const [registryName, setRegistryName] = useState<string | null>(null);
+  const tenantId = session?.selectedTenant?.tenantId ?? session?.tenant?.tenantId;
+  const { name: institutionName, logoUrl: institutionLogo } = useInstitutionBranding(tenantId);
+  const memberPhoto = useMemberProfilePhoto(session?.user.profilePhotoFileId);
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
 
@@ -90,34 +90,6 @@ function TenantWorkspace() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    void getInstitutionProfile()
-      .then(async (profile) => {
-        if (!active) return;
-        setInstitutionName(profile?.name ?? null);
-        const logo = profile?.logoFileId
-          ? await getFileDownloadUrl(profile.logoFileId)
-          : (profile?.logoUrl ?? null);
-        if (active) setInstitutionLogo(logo);
-      })
-      .catch(() => {
-        if (active) setInstitutionName(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [session?.selectedTenant?.tenantId, session?.tenant?.tenantId]);
-
-  useEffect(
-    () =>
-      subscribeToInstitutionBranding((update) => {
-        if (update.name !== undefined) setInstitutionName(update.name);
-        if (update.logoUrl !== undefined) setInstitutionLogo(update.logoUrl);
-      }),
-    [],
-  );
 
   useEffect(() => {
     let active = true;
@@ -387,6 +359,9 @@ function TenantWorkspace() {
           <div className="border-t border-slate-800 bg-[#0b1329]/40 p-3">
             <div className="flex items-center gap-2.5 rounded-lg border border-slate-800 bg-slate-900/90 p-2">
               <Avatar className="h-7 w-7 shrink-0 rounded-md">
+                {memberPhoto ? (
+                  <AvatarImage src={memberPhoto} alt={`${userEmail} profile`} />
+                ) : null}
                 <AvatarFallback className="bg-brand-600 text-white text-xs font-bold">
                   {userInitial}
                 </AvatarFallback>
@@ -459,7 +434,15 @@ function TenantWorkspace() {
                 className="flex h-10 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold shadow-2xs hover:bg-slate-50/80 hover:border-slate-300 transition-all shrink-0"
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-600 text-white font-extrabold text-[11px] shadow-xs">
-                  {userInitial}
+                  {memberPhoto ? (
+                    <img
+                      src={memberPhoto}
+                      alt={`${userEmail} profile`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    userInitial
+                  )}
                 </span>
                 <div className="hidden md:flex flex-col text-left min-w-0">
                   <span className="text-[11px] font-bold text-slate-800 leading-none truncate max-w-[130px]">

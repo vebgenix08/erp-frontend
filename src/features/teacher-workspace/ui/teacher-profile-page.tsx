@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { updateEmployee } from "../../staff/api/staff.api";
 import { deleteFile, getFileDownloadUrl, uploadFile } from "../../storage/api/files.api";
+import { publishMemberProfilePhoto } from "../../session/model/use-member-profile-photo";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import { useTeacherWorkspace } from "../model/teacher-workspace-context";
 import {
@@ -97,7 +98,9 @@ export function TeacherProfilePage() {
       });
       uploadedFileId = stored.id;
       await updateEmployee(teacher.id, { profilePhotoFileId: stored.id });
-      setPhotoUrl(await getFileDownloadUrl(stored.id));
+      const signedPhotoUrl = await getFileDownloadUrl(stored.id);
+      setPhotoUrl(signedPhotoUrl);
+      publishMemberProfilePhoto(signedPhotoUrl);
       setPhotoMessage({ tone: "success", text: "Profile photo updated." });
     } catch (error) {
       if (uploadedFileId) await deleteFile(uploadedFileId).catch(() => undefined);

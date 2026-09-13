@@ -2,6 +2,7 @@ import { Building2, KeyRound, ShieldCheck, UserCheck, UserRound } from "lucide-r
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useSession } from "../../features/session/model/session-provider";
+import { useMemberProfilePhoto } from "../../features/session/model/use-member-profile-photo";
 import { InstitutionProfileSettings } from "../../features/tenant-settings/ui/institution-profile";
 import { Badge } from "../../shared/ui/badge";
 import { Button } from "../../shared/ui/button";
@@ -14,6 +15,7 @@ type ProfileTab = "institution" | "account";
 
 export function AdminProfilePage() {
   const { session } = useSession();
+  const memberPhoto = useMemberProfilePhoto(session?.user.profilePhotoFileId);
   const [activeTab, setActiveTab] = useState<ProfileTab>("institution");
 
   // User Profile details from session
@@ -94,8 +96,16 @@ export function AdminProfilePage() {
           {/* User Identity Snapshot Card */}
           <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 to-slate-800 p-6 text-white shadow-md">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-              <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-brand-600 text-white font-extrabold text-2xl shadow-md border-2 border-slate-700">
-                {userInitials}
+              <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-brand-600 text-white font-extrabold text-2xl shadow-md border-2 border-slate-700">
+                {memberPhoto ? (
+                  <img
+                    src={memberPhoto}
+                    alt={`${email} profile`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  userInitials
+                )}
               </span>
               <div className="flex-1 text-center sm:text-left min-w-0">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">

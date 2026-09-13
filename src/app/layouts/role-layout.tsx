@@ -23,9 +23,11 @@ import { useSession } from "../../features/session/model/session-provider";
 import { getSessionDashboardPath } from "../../features/session/api/session.api";
 import { SelectedAcademicYearProvider } from "../../features/tenant-settings/model/selected-academic-year-provider";
 import { SelectedCampusProvider } from "../../features/tenant-settings/model/selected-campus-provider";
+import { useInstitutionBranding } from "../../features/tenant-settings/model/use-institution-branding";
+import { useMemberProfilePhoto } from "../../features/session/model/use-member-profile-photo";
 import { OperatingContextControls } from "./operating-context-controls";
 import { cn } from "../../shared/ui/utils";
-import { Avatar, AvatarFallback } from "../../shared/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../../shared/ui/avatar";
 import { Button } from "../../shared/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../shared/ui/tooltip";
 import { RouteContentBoundary } from "../../shared/ui/route-content-boundary";
@@ -121,6 +123,9 @@ function RoleWorkspace() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const tenantId = session?.selectedTenant?.tenantId ?? session?.tenant?.tenantId;
+  const { name: institutionName, logoUrl: institutionLogo } = useInstitutionBranding(tenantId);
+  const memberPhoto = useMemberProfilePhoto(session?.user.profilePhotoFileId);
   useEffect(() => setMobileOpen(false), [location.pathname]);
 
   const prefix = location.pathname.split("/")[1] as keyof typeof portalDefinitions;
@@ -165,14 +170,24 @@ function RoleWorkspace() {
           <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
             <span
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded text-white shadow-sm",
+                "flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded text-white shadow-sm",
                 portal.color,
               )}
             >
-              <GraduationCap size={18} />
+              {institutionLogo ? (
+                <img
+                  src={institutionLogo}
+                  alt={`${institutionName ?? "Institution"} logo`}
+                  className="h-full w-full bg-white object-contain p-0.5"
+                />
+              ) : (
+                <GraduationCap size={18} />
+              )}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-bold text-slate-900">Vebgenix ERP</p>
+              <p className="truncate text-base font-bold text-slate-900">
+                {institutionName ?? session?.tenant?.displayName ?? "Vebgenix ERP"}
+              </p>
               <p className="truncate text-sm text-slate-500">{portal.label} workspace</p>
             </div>
             <button
@@ -211,6 +226,12 @@ function RoleWorkspace() {
           <div className="border-t border-slate-100 p-3">
             <div className="flex items-center gap-2 rounded-md px-2 py-2">
               <Avatar className="h-8 w-8 shrink-0">
+                {memberPhoto ? (
+                  <AvatarImage
+                    src={memberPhoto}
+                    alt={`${session?.user.email ?? portal.label} profile`}
+                  />
+                ) : null}
                 <AvatarFallback className={cn("text-xs", portal.accentFallback)}>
                   {session?.user.email?.slice(0, 1).toUpperCase() ?? "U"}
                 </AvatarFallback>

@@ -3,6 +3,8 @@ export type Permission = string;
 export interface SessionUserSnapshot {
   id: string;
   email?: string;
+  fullName?: string;
+  profilePhotoFileId?: string;
   role?: string;
   roles: Array<{ id?: string; code: string; name: string }>;
   permissions: Permission[];
