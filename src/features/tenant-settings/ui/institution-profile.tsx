@@ -1,7 +1,8 @@
 import { Building2, CheckCircle2, ImageUp, Mail, Phone, Save } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { getFileDownloadUrl, uploadFile } from "../../storage/api/files.api";
+import { deleteFile, getFileDownloadUrl, uploadFile } from "../../storage/api/files.api";
 import { getInstitutionProfile, saveInstitutionProfile } from "../api/settings.api";
+import { publishInstitutionBranding } from "../model/institution-branding";
 import type { InstitutionProfileInput } from "../model/settings.types";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import { Badge } from "../../../shared/ui/badge";
@@ -22,6 +23,7 @@ export function InstitutionProfileSettings() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
+  const previewObjectUrl = useRef<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -40,6 +42,9 @@ export function InstitutionProfileSettings() {
 
   useEffect(() => {
     void load();
+    return () => {
+      if (previewObjectUrl.current) URL.revokeObjectURL(previewObjectUrl.current);
+    };
   }, []);
 
   const field = (name: keyof InstitutionProfileInput, value: string) => {
@@ -52,7 +57,9 @@ export function InstitutionProfileSettings() {
     setBusy(true);
     setError(null);
     try {
-      setForm(await saveInstitutionProfile(form));
+      const profile = await saveInstitutionProfile(form);
+      setForm(profile);
+      publishInstitutionBranding({ name: profile.name, logoUrl });
       setSaved(true);
     } catch (value) {
       setError(value instanceof Error ? value.message : "Unable to save institution profile");
@@ -73,8 +80,20 @@ export function InstitutionProfileSettings() {
     }
     setUploading(true);
     setError(null);
+    setSaved(false);
+    if (previewObjectUrl.current) URL.revokeObjectURL(previewObjectUrl.current);
+    const previewUrl = URL.createObjectURL(file);
+    previewObjectUrl.current = previewUrl;
+    const previousLogoUrl = logoUrl;
+    const previousLogoFileId = form.logoFileId;
+    setLogoUrl(previewUrl);
+    let profileSaved = false;
     try {
-      const stored = await uploadFile({ file, scopeType: "TENANT" });
+      const stored = await uploadFile({
+        file,
+        scopeType: "TENANT",
+        metadata: { category: "institution_logo" },
+      });
       const profileInput = {
         ...(form.name ? { name: form.name } : {}),
         ...(form.shortName ? { shortName: form.shortName } : {}),
@@ -83,10 +102,28 @@ export function InstitutionProfileSettings() {
         ...(form.address ? { address: form.address } : {}),
       };
       const profile = await saveInstitutionProfile({ ...profileInput, logoFileId: stored.id });
+      profileSaved = true;
       setForm(profile);
-      setLogoUrl(await getFileDownloadUrl(stored.id));
+      publishInstitutionBranding({ name: profile.name, logoUrl: previewUrl });
+      try {
+        const signedLogoUrl = await getFileDownloadUrl(stored.id);
+        setLogoUrl(signedLogoUrl);
+        publishInstitutionBranding({ name: profile.name, logoUrl: signedLogoUrl });
+        URL.revokeObjectURL(previewUrl);
+        previewObjectUrl.current = null;
+      } catch {
+        // The local object URL keeps the saved logo visible until the next profile reload.
+      }
+      if (previousLogoFileId && previousLogoFileId !== stored.id) {
+        await deleteFile(previousLogoFileId).catch(() => undefined);
+      }
       setSaved(true);
     } catch (value) {
+      if (!profileSaved) {
+        setLogoUrl(previousLogoUrl);
+        URL.revokeObjectURL(previewUrl);
+        previewObjectUrl.current = null;
+      }
       setError(value instanceof Error ? value.message : "Unable to upload institution logo");
     } finally {
       setUploading(false);

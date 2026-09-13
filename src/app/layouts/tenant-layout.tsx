@@ -40,6 +40,7 @@ import { getInstitutionProfile } from "../../features/tenant-settings/api/settin
 import { getFileDownloadUrl } from "../../features/storage/api/files.api";
 import { SelectedAcademicYearProvider } from "../../features/tenant-settings/model/selected-academic-year-provider";
 import { SelectedCampusProvider } from "../../features/tenant-settings/model/selected-campus-provider";
+import { subscribeToInstitutionBranding } from "../../features/tenant-settings/model/institution-branding";
 import { OperatingContextControls } from "./operating-context-controls";
 import { cn } from "../../shared/ui/utils";
 import { Avatar, AvatarFallback } from "../../shared/ui/avatar";
@@ -108,6 +109,15 @@ function TenantWorkspace() {
       active = false;
     };
   }, [session?.selectedTenant?.tenantId, session?.tenant?.tenantId]);
+
+  useEffect(
+    () =>
+      subscribeToInstitutionBranding((update) => {
+        if (update.name !== undefined) setInstitutionName(update.name);
+        if (update.logoUrl !== undefined) setInstitutionLogo(update.logoUrl);
+      }),
+    [],
+  );
 
   useEffect(() => {
     let active = true;
