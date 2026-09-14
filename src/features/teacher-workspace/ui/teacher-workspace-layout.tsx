@@ -27,6 +27,7 @@ import type { TeacherWorkloadWorkspace } from "../../teacher-workload/model/teac
 import { getSessionDashboardPath } from "../../session/api/session.api";
 import { useMemberProfilePhoto } from "../../session/model/use-member-profile-photo";
 import { useInstitutionBranding } from "../../tenant-settings/model/use-institution-branding";
+import { invalidateRequestCache } from "../../../shared/api/request-coordinator";
 
 export function TeacherWorkspaceLayout() {
   return (
@@ -57,6 +58,7 @@ function TeacherWorkspaceShell() {
   const [workspace, setWorkspace] = useState<TeacherWorkloadWorkspace | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [workspaceRevision, setWorkspaceRevision] = useState(0);
   const [workspaceCampusId, setWorkspaceCampusId] = useState("");
   const tenantId = session?.selectedTenant?.tenantId ?? session?.tenant?.tenantId;
   const { name: institutionName, logoUrl: institutionLogo } = useInstitutionBranding(tenantId);
@@ -138,7 +140,7 @@ function TeacherWorkspaceShell() {
     return () => {
       active = false;
     };
-  }, [selectedAcademicYear?.id]);
+  }, [selectedAcademicYear?.id, workspaceRevision]);
 
   const scopedCampuses = workspace
     ? workspace.campusBreakdown
@@ -260,6 +262,10 @@ function TeacherWorkspaceShell() {
         workspace,
         workspaceLoading,
         workspaceError,
+        retryWorkspace: () => {
+          invalidateRequestCache();
+          setWorkspaceRevision((value) => value + 1);
+        },
       }}
     >
       <div className="flex h-screen w-full overflow-hidden bg-slate-50 text-slate-900">

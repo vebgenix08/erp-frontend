@@ -9,9 +9,10 @@ export type HttpRequestOptions = {
   headers?: Record<string, string>;
   body?: unknown;
   signal?: AbortSignal;
+  timeoutMs?: number;
 };
 
-const REQUEST_TIMEOUT_MS = 12000;
+const REQUEST_TIMEOUT_MS = 35000;
 
 function resolveUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) {
@@ -32,10 +33,13 @@ export async function httpClient<T = unknown>(
   options: HttpRequestOptions = {},
 ): Promise<T> {
   const resolvedUrl = resolveUrl(url);
-  const method = options.method ?? "GET";
+  const method = (options.method ?? "GET").toUpperCase();
+  const readOnly = method === "GET" || method === "HEAD";
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
+  const identity = JSON.stringify(Array.from(new Headers(options.headers).entries()).sort());
   return coordinatedRequest(
-    async () => {
-      const requestSignal = createRequestSignal(REQUEST_TIMEOUT_MS, options.signal);
+    async (signal) => {
+      const requestSignal = createRequestSignal(timeoutMs, signal);
       const requestInit: RequestInit = {
         method,
         headers: {
@@ -78,15 +82,19 @@ export async function httpClient<T = unknown>(
         if (requestSignal.didTimeout()) {
           throw new ApiError({
             code: "REQUEST_TIMEOUT",
-            message: `The request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds.`,
-            retryable: true,
+            message: readOnly
+              ? `The request timed out after ${timeoutMs / 1000} seconds.`
+              : "The response was not received. Check whether the change was saved before trying again.",
+            retryable: readOnly,
           });
         }
         if (error instanceof TypeError) {
           throw new ApiError({
             code: "NETWORK_ERROR",
-            message: "The service could not be reached. Check the connection and try again.",
-            retryable: true,
+            message: readOnly
+              ? "The service could not be reached. Check the connection and try again."
+              : "The response was lost. Check whether the change was saved before trying again.",
+            retryable: readOnly,
           });
         }
         throw error;
@@ -95,7 +103,8 @@ export async function httpClient<T = unknown>(
       }
     },
     {
-      key: `http:${method}:${resolvedUrl}:${JSON.stringify(options.body ?? null)}`,
+      key: `http:${method}:${resolvedUrl}:${identity}:${JSON.stringify(options.body ?? null)}`,
+      readOnly,
       cacheTimeMs: method === "GET" ? 1_500 : 0,
       ...(options.signal ? { signal: options.signal } : {}),
     },

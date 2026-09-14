@@ -21,7 +21,7 @@ import type {
   StaffType,
   UpdateEmployeeInput,
 } from "../model/staff.types";
-import { deleteFile, uploadFile } from "../../storage/api/files.api";
+import { uploadFile } from "../../storage/api/files.api";
 
 const teachingTypes: Array<[StaffType, string]> = [
   ["PRINCIPAL", "Principal"],
@@ -169,7 +169,7 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
       onUpdated(await updateEmployee(employee.id, input));
       setOpen(false);
     } catch (value) {
-      if (uploadedFileId) await deleteFile(uploadedFileId).catch(() => undefined);
+      // A lost save response does not prove the employee update failed.
       setError(value instanceof Error ? value.message : "Unable to update employee");
     } finally {
       setSaving(false);

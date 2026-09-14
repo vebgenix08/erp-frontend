@@ -8,6 +8,7 @@ import { TenantLayout } from "./layouts/tenant-layout";
 import { LoginPage } from "../pages/auth/login-page";
 import { TeacherWorkspaceLayout } from "../features/teacher-workspace/ui/teacher-workspace-layout";
 import { recoverFromAssetLoadFailure } from "../shared/lib/frontend-asset-recovery";
+import { WorkspaceUnavailablePage } from "../pages/workspace-unavailable-page";
 
 const lazyPage = <TModule extends Record<string, unknown>, TKey extends keyof TModule>(
   loader: () => Promise<TModule>,
@@ -265,6 +266,7 @@ export function AppRoutes() {
           <Route path="/logout" element={<LogoutPage />} />
         </Route>
         <Route element={<ProtectedRoutes />}>
+          <Route path="/workspace-unavailable" element={<WorkspaceUnavailablePage />} />
           <Route element={<ProtectedRoutes allowedRoles={["SUPER_ADMIN"]} />}>
             <Route element={<PlatformLayout />}>
               <Route path="/platform/dashboard" element={<PlatformDashboardPage />} />

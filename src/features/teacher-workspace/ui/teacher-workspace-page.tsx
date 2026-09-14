@@ -1,5 +1,5 @@
 import { Navigate, useParams } from "react-router-dom";
-import { LoadingState } from "../../../shared/ui/page-state";
+import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import {
   canAccessTeacherPage,
   findTeacherPage,
@@ -30,7 +30,8 @@ import { TeacherDepartmentPage } from "../../teacher-department/ui/teacher-depar
 import { useTeacherWorkspace } from "../model/teacher-workspace-context";
 
 export function TeacherWorkspacePage() {
-  const { capabilities, workspace, workspaceLoading, workspaceError } = useTeacherWorkspace();
+  const { capabilities, workspace, workspaceLoading, workspaceError, retryWorkspace } =
+    useTeacherWorkspace();
   const { pageSlug } = useParams<{ pageSlug: string }>();
   const resolvedPageSlug = pageSlug;
   const page = findTeacherPage(resolvedPageSlug);
@@ -43,7 +44,12 @@ export function TeacherWorkspacePage() {
   }
   const workspaceUnavailable = !workspaceLoading && (!workspace || Boolean(workspaceError));
   if (workspaceUnavailable && !["dashboard", "profile"].includes(page.id)) {
-    return <Navigate to="/teacher/dashboard" replace />;
+    return (
+      <ErrorState
+        message={workspaceError ?? "The academic workspace is unavailable."}
+        {...(retryWorkspace ? { retry: retryWorkspace } : {})}
+      />
+    );
   }
   if (!workspaceLoading && !workspaceUnavailable && !canAccessTeacherPage(page, capabilities)) {
     return <Navigate to="/teacher/dashboard" replace />;

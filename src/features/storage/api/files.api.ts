@@ -1,5 +1,10 @@
 import { getCognitoIdToken } from "../../../shared/auth/cognito-token";
 import { env } from "../../../shared/config/env";
+import { httpClient, type HttpRequestOptions } from "../../../shared/api/http-client";
+import { createRequestSignal } from "../../../shared/api/request-signal";
+import { coordinatedRequest } from "../../../shared/api/request-coordinator";
+import { expireClientSession } from "../../../shared/auth/session-expiry";
+import { ApiError } from "../../../shared/api/api-error";
 
 export interface StoredFile {
   id: string;
@@ -19,10 +24,18 @@ interface UploadUrlResponse {
   headers?: Record<string, string>;
 }
 
-async function storageRequest<T>(path: string, init?: RequestInit): Promise<T> {
+async function storageRequest<T>(path: string, init?: HttpRequestOptions): Promise<T> {
   const token = await getCognitoIdToken();
-  if (!token) throw new Error("Cognito session is required for file operations");
-  const response = await fetch(`${env.apiBaseUrl.replace(/\/$/, "")}${path}`, {
+  if (!token) {
+    expireClientSession();
+    throw new ApiError({
+      code: "SESSION_EXPIRED",
+      message: "Sign in again to manage files.",
+      retryable: false,
+      status: 401,
+    });
+  }
+  return httpClient<T>(`${env.apiBaseUrl.replace(/\/$/, "")}${path}`, {
     ...init,
     headers: {
       authorization: token,
@@ -30,15 +43,6 @@ async function storageRequest<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   });
-  const payload =
-    response.status === 204 ? undefined : await response.json().catch(() => undefined);
-  if (!response.ok) {
-    throw new Error(
-      (payload as { message?: string } | undefined)?.message ??
-        `File request failed with status ${response.status}`,
-    );
-  }
-  return payload as T;
 }
 
 export async function uploadFile(input: {
@@ -46,25 +50,49 @@ export async function uploadFile(input: {
   scopeType: StoredFile["scopeType"];
   scopeId?: string;
   metadata?: Record<string, string>;
+  signal?: AbortSignal;
 }): Promise<StoredFile> {
   const upload = await storageRequest<UploadUrlResponse>("/files/upload-url", {
     method: "POST",
-    body: JSON.stringify({
+    ...(input.signal ? { signal: input.signal } : {}),
+    body: {
       fileName: input.file.name,
       contentType: input.file.type || "application/octet-stream",
       sizeBytes: input.file.size,
       scopeType: input.scopeType,
       ...(input.scopeId ? { scopeId: input.scopeId } : {}),
       ...(input.metadata ? { metadata: input.metadata } : {}),
-    }),
+    },
   });
-  const put = await fetch(upload.uploadUrl, {
-    method: "PUT",
-    ...(upload.headers ? { headers: upload.headers } : {}),
-    body: input.file,
+  await coordinatedRequest(
+    async (signal) => {
+      const deadline = createRequestSignal(120_000, signal);
+      try {
+        const put = await fetch(upload.uploadUrl, {
+          method: "PUT",
+          ...(upload.headers ? { headers: upload.headers } : {}),
+          body: input.file,
+          signal: deadline.signal,
+        });
+        if (!put.ok) throw new Error(`Upload failed with status ${put.status}`);
+      } catch (error) {
+        if (deadline.didTimeout())
+          throw new Error("Upload timed out. Check your connection and try uploading again.");
+        throw error;
+      } finally {
+        deadline.cleanup();
+      }
+    },
+    {
+      key: `upload:${upload.file.id}`,
+      readOnly: false,
+      ...(input.signal ? { signal: input.signal } : {}),
+    },
+  );
+  return storageRequest<StoredFile>(`/files/${upload.file.id}/complete-upload`, {
+    method: "POST",
+    ...(input.signal ? { signal: input.signal } : {}),
   });
-  if (!put.ok) throw new Error(`S3 upload failed with status ${put.status}`);
-  return storageRequest<StoredFile>(`/files/${upload.file.id}/complete-upload`, { method: "POST" });
 }
 
 export async function getFileDownloadUrl(fileId: string): Promise<string> {
@@ -72,7 +100,7 @@ export async function getFileDownloadUrl(fileId: string): Promise<string> {
     `/files/${encodeURIComponent(fileId)}/download-url`,
     {
       method: "POST",
-      body: JSON.stringify({ expiresInSeconds: 3600 }),
+      body: { expiresInSeconds: 3600 },
     },
   );
   return result.downloadUrl;

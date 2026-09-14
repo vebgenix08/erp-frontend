@@ -76,16 +76,16 @@ export function getSessionDashboardPath(session: SessionPayload | null): string 
     admission_officer: "/admissions/enquiries",
     teacher: "/teacher/dashboard",
     class_teacher: "/teacher/dashboard",
-    student: "/not-found",
-    parent: "/not-found",
-    librarian: "/not-found",
-    transport_manager: "/not-found",
-    hostel_warden: "/not-found",
-    exam_coordinator: "/not-found",
-    hr_manager: "/not-found",
+    student: "/workspace-unavailable",
+    parent: "/workspace-unavailable",
+    librarian: "/workspace-unavailable",
+    transport_manager: "/workspace-unavailable",
+    hostel_warden: "/workspace-unavailable",
+    exam_coordinator: "/workspace-unavailable",
+    hr_manager: "/workspace-unavailable",
   };
 
-  return map[role] ?? "/admin/dashboard";
+  return map[role] ?? "/workspace-unavailable";
 }
 
 export function getSessionTenantLabel(tenant: SessionTenantSnapshot | null): string {

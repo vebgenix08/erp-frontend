@@ -15,6 +15,7 @@ interface TeacherWorkspaceContextValue {
   workspace: TeacherWorkloadWorkspace | null;
   workspaceLoading: boolean;
   workspaceError: string | null;
+  retryWorkspace?: () => void;
 }
 
 const Context = createContext<TeacherWorkspaceContextValue | null>(null);

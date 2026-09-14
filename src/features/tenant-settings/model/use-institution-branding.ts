@@ -9,23 +9,32 @@ export function useInstitutionBranding(tenantId: string | undefined) {
 
   useEffect(() => {
     let active = true;
-    void getInstitutionBranding()
-      .then(async (profile) => {
-        if (!active) return;
-        setName(profile?.name ?? null);
-        const nextLogo = profile?.logoFileId
-          ? await getFileDownloadUrl(profile.logoFileId)
-          : (profile?.logoUrl ?? null);
-        if (active) setLogoUrl(nextLogo);
-      })
-      .catch(() => {
-        if (active) {
-          setName(null);
-          setLogoUrl(null);
-        }
-      });
+    setName(null);
+    setLogoUrl(null);
+    const refresh = () => {
+      void getInstitutionBranding()
+        .then(async (profile) => {
+          if (!active) return;
+          setName(profile?.name ?? null);
+          const nextLogo = profile?.logoFileId
+            ? await getFileDownloadUrl(profile.logoFileId)
+            : (profile?.logoUrl ?? null);
+          if (active) setLogoUrl(nextLogo);
+        })
+        .catch(() => {
+          if (active) {
+            setName(null);
+            setLogoUrl(null);
+          }
+        });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 45 * 60 * 1000);
+    window.addEventListener("focus", refresh);
     return () => {
       active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
     };
   }, [tenantId]);
 

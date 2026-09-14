@@ -6,6 +6,37 @@ import { SESSION_EXPIRED_EVENT } from "../auth/session-expiry";
 const token = "header.payload.signature";
 
 describe("graphql client reliability", () => {
+  it("allows a response after 12 seconds and stops an uncertain write at 35 seconds without retry", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 15_000));
+        return new Response(JSON.stringify({ data: { ready: true } }));
+      })
+      .mockImplementationOnce(
+        async (_url, init) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const read = graphqlClient("query Slow { ready }");
+    await vi.advanceTimersByTimeAsync(15_000);
+    await expect(read).resolves.toEqual({ ready: true });
+    const write = graphqlClient("mutation SlowWrite { ready }");
+    const failed = expect(write).rejects.toMatchObject({
+      code: "REQUEST_TIMEOUT",
+      retryable: false,
+    });
+    await vi.advanceTimersByTimeAsync(35_000);
+    await failed;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
   beforeEach(() => {
     sessionStorage.setItem("erp.cognito.idToken", token);
     invalidateRequestCache();
@@ -15,6 +46,27 @@ describe("graphql client reliability", () => {
     sessionStorage.clear();
     vi.unstubAllGlobals();
     vi.useRealTimers();
+  });
+
+  it("does not cache or retry writes and invalidates read results after a write", async () => {
+    let value = 0;
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (_url, init) => {
+      const { query } = JSON.parse(String(init?.body));
+      if (query.startsWith("mutation")) value++;
+      return new Response(JSON.stringify({ data: { value } }), {
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await graphqlClient("query Value { value }")).toEqual({ value: 0 });
+    await graphqlClient("mutation Save { value }");
+    await graphqlClient("mutation Save { value }");
+    expect(await graphqlClient("query Value { value }")).toEqual({ value: 2 });
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await expect(graphqlClient("mutation Save { value }")).rejects.toMatchObject({
+      code: "NETWORK_ERROR",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
   it("creates a fresh deadline for a retryable second attempt", async () => {

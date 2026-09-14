@@ -1,10 +1,32 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { httpClient } from "./http-client";
 import { SESSION_EXPIRED_EVENT } from "../auth/session-expiry";
+import { resetRequestSession } from "./request-coordinator";
 
 describe("httpClient", () => {
   afterEach(() => {
+    resetRequestSession();
     vi.unstubAllGlobals();
+  });
+
+  it("isolates session responses by authentication headers", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(
+        async (_url, init) =>
+          new Response(
+            JSON.stringify({ identity: new Headers(init.headers).get("authorization") }),
+            { headers: { "content-type": "application/json" } },
+          ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await httpClient("/session/me", { headers: { Authorization: "Bearer first" } })).toEqual(
+      { identity: "Bearer first" },
+    );
+    expect(
+      await httpClient("/session/me", { headers: { authorization: "Bearer second" } }),
+    ).toEqual({ identity: "Bearer second" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("uses bearer-token CORS without enabling cookie credentials", async () => {

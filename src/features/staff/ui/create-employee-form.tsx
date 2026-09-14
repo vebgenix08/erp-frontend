@@ -112,6 +112,7 @@ export function CreateEmployeeForm() {
     setBusy(true);
     setError(null);
     const uploadedFileIds: string[] = [];
+    let saveAttempted = false;
     try {
       const email = form.email.trim(),
         phone = form.phone.trim(),
@@ -125,7 +126,7 @@ export function CreateEmployeeForm() {
           file: value,
           scopeType: "TENANT",
           metadata: {
-            category: "staff_onboarding",
+            category: fieldKey === profilePhotoField?.key ? "staff_profile" : "staff_onboarding",
             fieldKey,
             ...(email ? { employeeEmail: email } : {}),
           },
@@ -142,6 +143,7 @@ export function CreateEmployeeForm() {
           };
         }
       }
+      saveAttempted = true;
       const saved = await createEmployee({
         fullName: form.fullName,
         staffCategory: form.staffCategory,
@@ -164,7 +166,9 @@ export function CreateEmployeeForm() {
       });
       navigate(`/admin/staff/${saved.id}`);
     } catch (value) {
-      await Promise.allSettled(uploadedFileIds.map((fileId) => deleteFile(fileId)));
+      // Preserve files after a save attempt: the server may have saved them even if its response was lost.
+      if (!saveAttempted)
+        await Promise.allSettled(uploadedFileIds.map((fileId) => deleteFile(fileId)));
       setError(value instanceof Error ? value.message : "Unable to create employee");
     } finally {
       setBusy(false);

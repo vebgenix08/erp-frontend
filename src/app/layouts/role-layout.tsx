@@ -279,6 +279,17 @@ function RoleWorkspace() {
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <OperatingContextControls />
+              <Avatar className="h-8 w-8 shrink-0">
+                {memberPhoto ? (
+                  <AvatarImage
+                    src={memberPhoto}
+                    alt={`${session?.user.fullName ?? session?.user.email ?? "Member"} profile`}
+                  />
+                ) : null}
+                <AvatarFallback>
+                  {session?.user.email?.slice(0, 1).toUpperCase() ?? "U"}
+                </AvatarFallback>
+              </Avatar>
             </div>
           </header>
 

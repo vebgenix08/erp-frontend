@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import { fetchSession } from "../api/session.api";
@@ -27,15 +28,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [status, setStatus] = useState<SessionStatus>("loading");
   const [error, setError] = useState<string | null>(null);
+  const sessionRevision = useRef(0);
 
   const refreshSession = useCallback(async () => {
+    const revision = ++sessionRevision.current;
     setStatus("loading");
     setError(null);
     try {
       const nextSession = await fetchSession();
+      if (revision !== sessionRevision.current) return;
       setSession(nextSession);
       setStatus("authenticated");
     } catch (err) {
+      if (revision !== sessionRevision.current) return;
       const message = err instanceof Error ? err.message : "Unable to load session";
       const staleLocalSession = isSessionExpiredError(err);
       if (staleLocalSession) {
@@ -60,6 +65,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const clearSession = useCallback(() => {
+    sessionRevision.current += 1;
     clearCognitoIdToken();
     setSession(null);
     setStatus("anonymous");

@@ -1,9 +1,15 @@
 import { AlertCircle, Inbox } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Spinner } from "./spinner";
 import { Button } from "./button";
 
 export function LoadingState({ label = "Loading data" }: { label?: string }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    const timer = window.setTimeout(() => setSlow(true), 5000);
+    return () => window.clearTimeout(timer);
+  }, [label]);
   return (
     <div
       className="flex flex-col items-center justify-center gap-3 py-16 text-slate-500"
@@ -11,6 +17,11 @@ export function LoadingState({ label = "Loading data" }: { label?: string }) {
     >
       <Spinner className="h-6 w-6 text-accent-600" />
       <strong className="text-sm font-medium text-slate-600">{label}</strong>
+      {slow ? (
+        <p role="status" className="text-sm">
+          Still loading. This is taking longer than usual.
+        </p>
+      ) : null}
     </div>
   );
 }

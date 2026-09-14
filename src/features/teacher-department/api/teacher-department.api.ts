@@ -38,7 +38,7 @@ async function getWorkspace(
     {
       cacheKey: `${field}:${JSON.stringify(input)}`,
       cacheTimeMs: 60_000,
-      timeoutMs: 30_000,
+      timeoutMs: 35_000,
     },
   );
   return result[field];

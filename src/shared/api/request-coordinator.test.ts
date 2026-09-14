@@ -1,11 +1,46 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "./api-error";
-import { coordinatedRequest, invalidateRequestCache } from "./request-coordinator";
+import {
+  coordinatedRequest,
+  invalidateRequestCache,
+  resetRequestSession,
+} from "./request-coordinator";
 
 describe("coordinatedRequest", () => {
   beforeEach(() => {
     invalidateRequestCache();
     vi.restoreAllMocks();
+  });
+
+  it("rejects late results from the previous session and never caches them", async () => {
+    let resolve!: (value: string) => void;
+    const old = coordinatedRequest(
+      () =>
+        new Promise<string>((done) => {
+          resolve = done;
+        }),
+      { key: "session", cacheTimeMs: 60000 },
+    );
+    const rejected = expect(old).rejects.toMatchObject({ name: "AbortError" });
+    resetRequestSession();
+    resolve("old");
+    await rejected;
+    await expect(coordinatedRequest(async () => "new", { key: "session" })).resolves.toBe("new");
+  });
+
+  it("does not let a read started before a write repopulate the cache", async () => {
+    let resolve!: (value: string) => void;
+    const old = coordinatedRequest(
+      () =>
+        new Promise<string>((done) => {
+          resolve = done;
+        }),
+      { key: "students", cacheTimeMs: 60000 },
+    );
+    await coordinatedRequest(async () => "saved", { key: "save", readOnly: false });
+    resolve("old");
+    await old;
+    await expect(coordinatedRequest(async () => "new", { key: "students" })).resolves.toBe("new");
   });
 
   it("coalesces identical in-flight requests", async () => {

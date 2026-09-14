@@ -33,7 +33,7 @@ import {
 } from "../../teacher-department/api/teacher-department.api";
 import { getTeacherSectionWorkspace } from "../../teacher-section/api/teacher-section.api";
 import { updateEmployee } from "../../staff/api/staff.api";
-import { getFileDownloadUrl, uploadFile } from "../../storage/api/files.api";
+import { deleteFile, getFileDownloadUrl, uploadFile } from "../../storage/api/files.api";
 
 vi.mock("../../teacher-attendance/api/teacher-attendance.api", () => ({
   getTeacherAttendanceWorkspace: vi.fn(),
@@ -648,6 +648,26 @@ describe("teacher workspace pages", () => {
       "src",
       "https://storage.test/portrait.png",
     );
+  });
+
+  it("preserves a saved photo when loading its preview fails", async () => {
+    renderPage("/teacher/profile", emptyTeacherWorkspace);
+    vi.mocked(getFileDownloadUrl).mockRejectedValueOnce(new Error("network unavailable"));
+    fireEvent.change(screen.getByLabelText("Choose profile photo"), {
+      target: { files: [new File(["photo"], "photo.png", { type: "image/png" })] },
+    });
+    expect(
+      await screen.findByText("Profile photo saved. Refresh to load the preview."),
+    ).toBeInTheDocument();
+    expect(deleteFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps a failed attendance request on its page with the actual error", () => {
+    renderPage("/teacher/attendance", null, ["TEACHER"], {
+      hasEmployee: false,
+      workspaceError: "Academic service is temporarily unavailable",
+    });
+    expect(screen.getByText("Academic service is temporarily unavailable")).toBeInTheDocument();
   });
 
   it("renders real teaching context instead of repeating workload-only dashboard cards", () => {

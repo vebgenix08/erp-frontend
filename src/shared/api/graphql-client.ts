@@ -16,7 +16,7 @@ interface GraphqlResponse<T> {
   errors?: GraphqlError[];
 }
 
-const REQUEST_TIMEOUT_MS = 12000;
+const REQUEST_TIMEOUT_MS = 35000;
 
 export interface GraphqlClientOptions {
   cacheTimeMs?: number;
@@ -37,6 +37,7 @@ export async function graphqlClient<
     env.graphqlUrl.trim() ||
     "https://cvhvlqs5bjdp3hu4e5dfusigx4.appsync-api.ap-south-1.amazonaws.com/graphql";
   const token = await getCognitoIdToken();
+  const readOnly = /^\s*(?:#[^\n]*\n\s*)*(?:query\b|\{)/.test(query);
   if (!token) {
     expireClientSession();
     throw new ApiError({
@@ -48,9 +49,9 @@ export async function graphqlClient<
   }
 
   return coordinatedRequest(
-    async () => {
+    async (requestSessionSignal) => {
       const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
-      const requestSignal = createRequestSignal(timeoutMs, signal);
+      const requestSignal = createRequestSignal(timeoutMs, requestSessionSignal);
       try {
         const response = await fetch(endpoint, {
           method: "POST",
@@ -99,15 +100,19 @@ export async function graphqlClient<
         if (requestSignal.didTimeout()) {
           throw new ApiError({
             code: "REQUEST_TIMEOUT",
-            message: `The request timed out after ${timeoutMs / 1000} seconds.`,
-            retryable: true,
+            message: readOnly
+              ? `The request timed out after ${timeoutMs / 1000} seconds.`
+              : "The response was not received. Check whether the change was saved before trying again.",
+            retryable: readOnly,
           });
         }
         if (error instanceof TypeError) {
           throw new ApiError({
             code: "NETWORK_ERROR",
-            message: "The service could not be reached. Check the connection and try again.",
-            retryable: true,
+            message: readOnly
+              ? "The service could not be reached. Check the connection and try again."
+              : "The response was lost. Check whether the change was saved before trying again.",
+            retryable: readOnly,
           });
         }
         throw error;
@@ -117,7 +122,8 @@ export async function graphqlClient<
     },
     {
       key: `graphql:${endpoint}:${token}:${options.cacheKey ?? `${query}:${JSON.stringify(variables ?? {})}`}`,
-      cacheTimeMs: options.cacheTimeMs ?? 1_500,
+      cacheTimeMs: readOnly ? (options.cacheTimeMs ?? 1_500) : 0,
+      readOnly,
       ...(signal ? { signal } : {}),
     },
   );

@@ -38,7 +38,7 @@ export async function getTeacherWorkloadWorkspace(input: {
     {
       cacheKey: `teacher-workload:${JSON.stringify(input)}`,
       cacheTimeMs: 60_000,
-      timeoutMs: 30_000,
+      timeoutMs: 35_000,
     },
   );
   return result.teacherWorkloadWorkspace;

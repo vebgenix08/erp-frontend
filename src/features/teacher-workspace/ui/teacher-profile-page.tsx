@@ -8,7 +8,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { updateEmployee } from "../../staff/api/staff.api";
-import { deleteFile, getFileDownloadUrl, uploadFile } from "../../storage/api/files.api";
+import { getFileDownloadUrl, uploadFile } from "../../storage/api/files.api";
 import { publishMemberProfilePhoto } from "../../session/model/use-member-profile-photo";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import { useTeacherWorkspace } from "../model/teacher-workspace-context";
@@ -89,21 +89,25 @@ export function TeacherProfilePage() {
     }
 
     setPhotoSaving(true);
-    let uploadedFileId: string | undefined;
     try {
       const stored = await uploadFile({
         file,
         scopeType: "TENANT",
         metadata: { category: "staff_profile", employeeId: teacher.id },
       });
-      uploadedFileId = stored.id;
       await updateEmployee(teacher.id, { profilePhotoFileId: stored.id });
-      const signedPhotoUrl = await getFileDownloadUrl(stored.id);
-      setPhotoUrl(signedPhotoUrl);
-      publishMemberProfilePhoto(signedPhotoUrl);
-      setPhotoMessage({ tone: "success", text: "Profile photo updated." });
+      try {
+        const signedPhotoUrl = await getFileDownloadUrl(stored.id);
+        setPhotoUrl(signedPhotoUrl);
+        publishMemberProfilePhoto(signedPhotoUrl, stored.id);
+        setPhotoMessage({ tone: "success", text: "Profile photo updated." });
+      } catch {
+        setPhotoMessage({
+          tone: "success",
+          text: "Profile photo saved. Refresh to load the preview.",
+        });
+      }
     } catch (error) {
-      if (uploadedFileId) await deleteFile(uploadedFileId).catch(() => undefined);
       setPhotoMessage({
         tone: "error",
         text: error instanceof Error ? error.message : "Profile photo could not be updated.",

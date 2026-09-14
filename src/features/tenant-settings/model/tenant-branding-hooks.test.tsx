@@ -37,7 +37,24 @@ describe("tenant branding hooks", () => {
     );
   });
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("renews signed images before expiry and uses the newly uploaded photo ID", async () => {
+    vi.useFakeTimers();
+    render(<BrandingProbe />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    act(() => publishMemberProfilePhoto("https://storage.test/new.png", "file-new"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(45 * 60 * 1000);
+    });
+    expect(getFileDownloadUrl).toHaveBeenCalledWith("file-new");
+    expect(getInstitutionBranding).toHaveBeenCalledTimes(2);
+  });
 
   it("loads the institution logo and current member photo", async () => {
     render(<BrandingProbe />);
