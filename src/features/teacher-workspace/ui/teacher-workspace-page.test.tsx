@@ -942,11 +942,69 @@ describe("teacher workspace pages", () => {
     };
     renderPage("/teacher/dept-overview", hodWorkspace);
     expect(await screen.findByRole("heading", { name: "Department Overview" })).toBeInTheDocument();
-    expect(await screen.findByText("Anitha Rao")).toBeInTheDocument();
+    expect(await screen.findByTestId("department-operational-overview")).toBeInTheDocument();
+    expect(screen.queryByText("Anitha Rao")).not.toBeInTheDocument();
     expect(getTeacherDepartmentWorkspace).toHaveBeenCalledWith({
       academicYearId: "year-1",
       date: expect.any(String),
     });
+  });
+
+  it("shows leadership coverage gaps without repeating faculty records", async () => {
+    const base = await getTeacherDepartmentWorkspace({ academicYearId: "year-1" });
+    vi.mocked(getTeacherLeadershipWorkspace).mockResolvedValueOnce({
+      ...base,
+      coverage: [
+        { ...base.coverage[0]!, status: "UNASSIGNED", scheduledPeriods: 0, teacherNames: [] },
+      ],
+      issues: [
+        {
+          code: "WARNING",
+          severity: "WARNING",
+          title: "Review allocations",
+          scope: "Grade 8",
+          action: "Review next week",
+        },
+        {
+          code: "ERROR",
+          severity: "ERROR",
+          title: "Subject has no allocation",
+          scope: "Grade 8",
+          action: "Assign coverage",
+        },
+      ],
+    });
+    renderPage("/teacher/leadership-dashboard", emptyTeacherWorkspace, ["PRINCIPAL"]);
+    expect(
+      await screen.findByRole("heading", { name: "Teaching coverage gaps" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("0 / 5 periods")).toBeInTheDocument();
+    expect(screen.queryByText("anitha.rao@vebgenix.com")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Review subjects ready" })).toHaveAttribute(
+      "href",
+      "/teacher/academic-overview",
+    );
+    const error = screen.getByText("Subject has no allocation");
+    const warning = screen.getByText("Review allocations");
+    expect(error.compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("does not describe an unconfigured leadership scope as fully covered", async () => {
+    const base = await getTeacherDepartmentWorkspace({ academicYearId: "year-1" });
+    vi.mocked(getTeacherLeadershipWorkspace).mockResolvedValueOnce({
+      ...base,
+      coverage: [],
+      timetables: [],
+      completion: [],
+      issues: [],
+    });
+    renderPage("/teacher/leadership-dashboard", emptyTeacherWorkspace, ["PRINCIPAL"]);
+    expect(
+      await screen.findByText("No subject offerings are configured in this scope."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("All subject offerings in this scope are ready."),
+    ).not.toBeInTheDocument();
   });
 
   it("redirects an HOD dashboard to department oversight", async () => {

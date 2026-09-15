@@ -1,5 +1,6 @@
-import { AlertTriangle, ArrowLeft, List, Table2 } from "lucide-react";
+import { ArrowLeft, List, Table2 } from "lucide-react";
 import { DepartmentTimetableGrid } from "./department-timetable-grid";
+import { DepartmentOverview } from "./department-overview";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
 import { formatClockTime } from "../../../shared/lib/time-format";
@@ -92,6 +93,9 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
   const [selectedFacultyId, setSelectedFacultyId] = useState<string | null>(null);
   const [facultyDetailTab, setFacultyDetailTab] = useState<FacultyDetailTab>("PROFILE");
   const isFacultyPage = facultyPageIds.has(page.id);
+  const isOverviewPage = ["dept_overview", "coord_overview", "leadership_dashboard"].includes(
+    page.id,
+  );
 
   const load = useCallback(async () => {
     if (!workspace) return;
@@ -201,19 +205,6 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
           item.scheduledPeriods < item.requiredPeriods
             ? `${item.requiredPeriods - item.scheduledPeriods} periods free`
             : "Normal load",
-      }));
-    }
-    if (page.id === "dept_overview") {
-      return data.faculty.map((item) => ({
-        id: item.employeeId,
-        record: item.fullName,
-        scope: [item.employeeCode, item.designation].filter(Boolean).join(" · "),
-        owner: item.email ?? "No work email",
-        allocation: `${item.scheduledPeriods} / ${item.requiredPeriods} weekly periods`,
-        status: item.scheduledPeriods >= item.requiredPeriods ? "Complete" : "Review",
-        action: item.responsibilityTypes.length
-          ? item.responsibilityTypes.map((value) => value.replaceAll("_", " ")).join(", ")
-          : "Teaching Assignment",
       }));
     }
     if (academicOverviewPageIds.has(page.id) || completionPageIds.has(page.id)) {
@@ -453,111 +444,92 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
       {loading && !data ? (
         <LoadingState label="Loading department records" />
       ) : data ? (
-        <>
-          <dl className="grid grid-cols-2 gap-x-5 gap-y-3 border-y border-slate-200 py-3 lg:grid-cols-4">
-            {[
-              ["Faculty", String(data.summary.faculty)],
-              ["Class sections", `${data.summary.sections} across ${data.summary.classes} classes`],
-              [
-                "Teaching coverage",
-                `${data.coverage.filter((item) => item.status === "READY").length} / ${data.summary.subjectOfferings} ready`,
-              ],
-              ["Published timetables", `${data.summary.publishedTimetables} sections`],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <dt className="text-sm text-slate-500">{label}</dt>
-                <dd className="mt-1 text-base font-semibold text-slate-900">{value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          {/* ======================================================= */}
-          {/* SPECIAL VIEW: DEPARTMENT TIMETABLES (PAGE.ID === dept_timetable) */}
-          {/* ======================================================= */}
-          {page.id === "dept_timetable" || page.id === "coord_timetable" ? (
-            <div className="space-y-4">
-              {/* Section Selector Toolbar */}
-              <WorkspaceSurface>
-                <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3 flex-1 max-w-lg">
-                    <span className="text-xs font-bold text-slate-700 whitespace-nowrap">
-                      View Class Timetable:
-                    </span>
-                    <ModernSelect
-                      value={selectedSectionId || sectionOptions[0]?.value || ""}
-                      disabled={!sectionOptions.length}
-                      onValueChange={(val) => setSelectedSectionId(val)}
-                      className="w-full"
-                      options={sectionOptions}
-                    />
-                  </div>
-
-                  {activeSectionTimetable && (
-                    <div className="flex items-center gap-2">
-                      <WorkspaceStatus
-                        tone={activeSectionTimetable.status === "PUBLISHED" ? "success" : "warning"}
-                      >
-                        {activeSectionTimetable.status.replaceAll("_", " ")}
-                      </WorkspaceStatus>
-                      {activeSectionTimetable.conflictCount > 0 && (
-                        <span className="inline-block rounded-lg bg-rose-100 px-2 py-1 text-xs font-bold text-rose-700">
-                          {activeSectionTimetable.conflictCount} Conflicts
-                        </span>
-                      )}
-                    </div>
-                  )}
+        isOverviewPage ? (
+          <DepartmentOverview data={data} pageId={page.id} />
+        ) : (
+          <>
+            <dl className="grid grid-cols-2 gap-x-5 gap-y-3 border-y border-slate-200 py-3 lg:grid-cols-4">
+              {[
+                ["Faculty", String(data.summary.faculty)],
+                [
+                  "Class sections",
+                  `${data.summary.sections} across ${data.summary.classes} classes`,
+                ],
+                [
+                  "Teaching coverage",
+                  `${data.coverage.filter((item) => item.status === "READY").length} / ${data.summary.subjectOfferings} ready`,
+                ],
+                ["Published timetables", `${data.summary.publishedTimetables} sections`],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-sm text-slate-500">{label}</dt>
+                  <dd className="mt-1 text-base font-semibold text-slate-900">{value}</dd>
                 </div>
-              </WorkspaceSurface>
+              ))}
+            </dl>
 
-              <DepartmentTimetableGrid timetable={activeSectionTimetable ?? null} />
-            </div>
-          ) : (
-            /* Standard Table View for Overview, Faculty, Coverage, Workload */
-            <WorkspaceSurface>
-              <WorkspaceDataTable
-                rows={rows}
-                columns={columns}
-                downloadName={page.slug}
-                {...(isFacultyPage || page.id === "dept_workload"
-                  ? {
-                      onOpen: (row: DepartmentRow) => {
-                        setFacultyDetailTab(page.id === "dept_workload" ? "WORKLOAD" : "PROFILE");
-                        setSelectedFacultyId(row.id);
-                      },
-                    }
-                  : {})}
-              />
-            </WorkspaceSurface>
-          )}
-
-          {/* Exceptions Box for Overview */}
-          {page.id === "dept_overview" && data.issues.length > 0 && (
-            <WorkspaceSurface>
-              <div className="border-b border-slate-100 px-4 py-3">
-                <h2 className="text-sm font-extrabold text-slate-900">
-                  Priority Department Exceptions
-                </h2>
-              </div>
-              <div className="grid gap-3 p-4 lg:grid-cols-2">
-                {data.issues.slice(0, 4).map((item, index) => (
-                  <div
-                    key={`${item.code}-${index}`}
-                    className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3"
-                  >
-                    <AlertTriangle size={17} className="mt-0.5 shrink-0 text-amber-700" />
-                    <div>
-                      <strong className="text-xs font-bold text-slate-900">{item.title}</strong>
-                      <p className="mt-0.5 text-[11px] font-semibold text-slate-600">
-                        {item.scope}
-                      </p>
-                      <p className="mt-1 text-[11px] text-slate-500">{item.action}</p>
+            {/* ======================================================= */}
+            {/* SPECIAL VIEW: DEPARTMENT TIMETABLES (PAGE.ID === dept_timetable) */}
+            {/* ======================================================= */}
+            {page.id === "dept_timetable" || page.id === "coord_timetable" ? (
+              <div className="space-y-4">
+                {/* Section Selector Toolbar */}
+                <WorkspaceSurface>
+                  <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3 flex-1 max-w-lg">
+                      <span className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                        View Class Timetable:
+                      </span>
+                      <ModernSelect
+                        value={selectedSectionId || sectionOptions[0]?.value || ""}
+                        disabled={!sectionOptions.length}
+                        onValueChange={(val) => setSelectedSectionId(val)}
+                        className="w-full"
+                        options={sectionOptions}
+                      />
                     </div>
+
+                    {activeSectionTimetable && (
+                      <div className="flex items-center gap-2">
+                        <WorkspaceStatus
+                          tone={
+                            activeSectionTimetable.status === "PUBLISHED" ? "success" : "warning"
+                          }
+                        >
+                          {activeSectionTimetable.status.replaceAll("_", " ")}
+                        </WorkspaceStatus>
+                        {activeSectionTimetable.conflictCount > 0 && (
+                          <span className="inline-block rounded-lg bg-rose-100 px-2 py-1 text-xs font-bold text-rose-700">
+                            {activeSectionTimetable.conflictCount} Conflicts
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ))}
+                </WorkspaceSurface>
+
+                <DepartmentTimetableGrid timetable={activeSectionTimetable ?? null} />
               </div>
-            </WorkspaceSurface>
-          )}
-        </>
+            ) : (
+              /* Standard Table View for Overview, Faculty, Coverage, Workload */
+              <WorkspaceSurface>
+                <WorkspaceDataTable
+                  rows={rows}
+                  columns={columns}
+                  downloadName={page.slug}
+                  {...(isFacultyPage || page.id === "dept_workload"
+                    ? {
+                        onOpen: (row: DepartmentRow) => {
+                          setFacultyDetailTab(page.id === "dept_workload" ? "WORKLOAD" : "PROFILE");
+                          setSelectedFacultyId(row.id);
+                        },
+                      }
+                    : {})}
+                />
+              </WorkspaceSurface>
+            )}
+          </>
+        )
       ) : null}
     </div>
   );

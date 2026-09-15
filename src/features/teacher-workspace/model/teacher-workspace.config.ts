@@ -291,7 +291,7 @@ const departmentNavigation: TeacherNavigationGroup[] = [
         "dept_overview",
         "Overview",
         "Department Overview",
-        "Faculty, teaching coverage and academic completion in the department.",
+        "Teaching coverage gaps, timetable readiness and academic work requiring attention.",
         LayoutDashboard,
         "dashboard",
         "department",
