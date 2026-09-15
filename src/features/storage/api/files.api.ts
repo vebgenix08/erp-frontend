@@ -5,6 +5,7 @@ import { createRequestSignal } from "../../../shared/api/request-signal";
 import { coordinatedRequest } from "../../../shared/api/request-coordinator";
 import { expireClientSession } from "../../../shared/auth/session-expiry";
 import { ApiError } from "../../../shared/api/api-error";
+import { uploadTransfer } from "./upload-transfer";
 
 export interface StoredFile {
   id: string;
@@ -51,6 +52,7 @@ export async function uploadFile(input: {
   scopeId?: string;
   metadata?: Record<string, string>;
   signal?: AbortSignal;
+  onProgress?: (percent: number) => void;
 }): Promise<StoredFile> {
   const upload = await storageRequest<UploadUrlResponse>("/files/upload-url", {
     method: "POST",
@@ -68,13 +70,23 @@ export async function uploadFile(input: {
     async (signal) => {
       const deadline = createRequestSignal(120_000, signal);
       try {
-        const put = await fetch(upload.uploadUrl, {
-          method: "PUT",
-          ...(upload.headers ? { headers: upload.headers } : {}),
-          body: input.file,
-          signal: deadline.signal,
-        });
-        if (!put.ok) throw new Error(`Upload failed with status ${put.status}`);
+        if (input.onProgress) {
+          await uploadTransfer(
+            upload.uploadUrl,
+            input.file,
+            upload.headers ?? {},
+            deadline.signal,
+            input.onProgress,
+          );
+        } else {
+          const put = await fetch(upload.uploadUrl, {
+            method: "PUT",
+            ...(upload.headers ? { headers: upload.headers } : {}),
+            body: input.file,
+            signal: deadline.signal,
+          });
+          if (!put.ok) throw new Error(`Upload failed with status ${put.status}`);
+        }
       } catch (error) {
         if (deadline.didTimeout())
           throw new Error("Upload timed out. Check your connection and try uploading again.");

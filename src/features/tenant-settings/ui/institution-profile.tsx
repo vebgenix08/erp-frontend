@@ -22,18 +22,25 @@ export function InstitutionProfileSettings() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [savingLogo, setSavingLogo] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const uploadController = useRef<AbortController | null>(null);
+  const profileForm = useRef<HTMLFormElement>(null);
   const logoInput = useRef<HTMLInputElement>(null);
   const previewObjectUrl = useRef<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     setError(null);
+    setLoadFailed(false);
     try {
       const profile = await getInstitutionProfile();
       setForm(profile ?? {});
       if (profile?.logoFileId) setLogoUrl(await getFileDownloadUrl(profile.logoFileId));
       else setLogoUrl(profile?.logoUrl ?? null);
     } catch (value) {
+      setLoadFailed(true);
       setError(value instanceof Error ? value.message : "Unable to load institution profile");
     } finally {
       setLoading(false);
@@ -43,6 +50,7 @@ export function InstitutionProfileSettings() {
   useEffect(() => {
     void load();
     return () => {
+      uploadController.current?.abort();
       if (previewObjectUrl.current) URL.revokeObjectURL(previewObjectUrl.current);
     };
   }, []);
@@ -54,6 +62,12 @@ export function InstitutionProfileSettings() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busy || uploading) return;
+    if (!form.name?.trim()) {
+      setError("Enter the official institution name.");
+      document.getElementById("inst-name")?.focus();
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -69,7 +83,12 @@ export function InstitutionProfileSettings() {
   }
 
   async function uploadLogo(file?: File) {
-    if (!file) return;
+    if (!file || busy || uploading) return;
+    if (!profileForm.current?.reportValidity() || !form.name?.trim()) {
+      setError("Complete the institution details before uploading a logo.");
+      if (logoInput.current) logoInput.current.value = "";
+      return;
+    }
     if (!file.type.startsWith("image/")) {
       setError("Choose a PNG, JPG, WEBP or other image file");
       return;
@@ -79,6 +98,10 @@ export function InstitutionProfileSettings() {
       return;
     }
     setUploading(true);
+    setUploadProgress(0);
+    setSavingLogo(false);
+    const controller = new AbortController();
+    uploadController.current = controller;
     setError(null);
     setSaved(false);
     if (previewObjectUrl.current) URL.revokeObjectURL(previewObjectUrl.current);
@@ -93,13 +116,17 @@ export function InstitutionProfileSettings() {
         file,
         scopeType: "TENANT",
         metadata: { category: "institution_logo" },
+        signal: controller.signal,
+        onProgress: setUploadProgress,
       });
+      controller.signal.throwIfAborted();
+      setSavingLogo(true);
       const profileInput = {
         ...(form.name ? { name: form.name } : {}),
-        ...(form.shortName ? { shortName: form.shortName } : {}),
-        ...(form.contactEmail ? { contactEmail: form.contactEmail } : {}),
-        ...(form.contactPhone ? { contactPhone: form.contactPhone } : {}),
-        ...(form.address ? { address: form.address } : {}),
+        shortName: form.shortName ?? "",
+        contactEmail: form.contactEmail ?? "",
+        contactPhone: form.contactPhone ?? "",
+        address: form.address ?? "",
       };
       const profile = await saveInstitutionProfile({ ...profileInput, logoFileId: stored.id });
       profileSaved = true;
@@ -124,15 +151,23 @@ export function InstitutionProfileSettings() {
         URL.revokeObjectURL(previewUrl);
         previewObjectUrl.current = null;
       }
-      setError(value instanceof Error ? value.message : "Unable to upload institution logo");
+      setError(
+        controller.signal.aborted && !profileSaved
+          ? "Logo upload cancelled. Your previous logo is unchanged."
+          : value instanceof Error
+            ? value.message
+            : "Unable to upload institution logo",
+      );
     } finally {
       setUploading(false);
+      setSavingLogo(false);
+      uploadController.current = null;
       if (logoInput.current) logoInput.current.value = "";
     }
   }
 
   if (loading) return <LoadingState label="Loading institution profile..." />;
-  if (error && !form.name) return <ErrorState message={error} retry={() => void load()} />;
+  if (error && loadFailed) return <ErrorState message={error} retry={() => void load()} />;
 
   return (
     <section className="space-y-6 pb-12 max-w-6xl mx-auto">
@@ -158,9 +193,9 @@ export function InstitutionProfileSettings() {
 
         <div className="flex items-center gap-2">
           <Button
-            type="button"
+            type="submit"
+            form="institution-profile-form"
             disabled={busy || uploading}
-            onClick={(e) => void submit(e)}
             className="h-9 px-4 text-xs font-bold gap-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-xs"
           >
             {busy ? (
@@ -287,13 +322,13 @@ export function InstitutionProfileSettings() {
               type="button"
               variant="outline"
               size="sm"
-              disabled={uploading}
+              disabled={uploading || busy}
               onClick={() => logoInput.current?.click()}
               className="h-9 px-4 text-xs font-bold gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50"
             >
               {uploading ? (
                 <>
-                  <Spinner className="h-3.5 w-3.5" /> Uploading…
+                  <Spinner className="h-3.5 w-3.5" /> {savingLogo ? "Saving logo…" : "Uploading…"}
                 </>
               ) : (
                 <>
@@ -301,6 +336,32 @@ export function InstitutionProfileSettings() {
                 </>
               )}
             </Button>
+            {uploading ? (
+              <div className="w-full space-y-2">
+                <progress
+                  aria-label="Logo upload progress"
+                  value={uploadProgress}
+                  max={100}
+                  className="h-2 w-full accent-blue-700"
+                />
+                <p role="status" className="text-xs text-slate-600">
+                  {savingLogo
+                    ? "Saving logo to your institution…"
+                    : uploadProgress === 100
+                      ? "Verifying upload…"
+                      : `${uploadProgress}% uploaded`}
+                </p>
+                {!savingLogo ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => uploadController.current?.abort()}
+                  >
+                    Cancel upload
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5 w-full text-left space-y-1">
               <p className="text-[11px] font-bold text-slate-700">Logo Guidelines</p>
@@ -325,95 +386,102 @@ export function InstitutionProfileSettings() {
             </p>
           </CardHeader>
           <CardContent className="p-5">
-            <form onSubmit={(e) => void submit(e)} className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="inst-name" className="text-xs font-bold text-slate-700">
-                    Official Institution Name <span className="text-rose-500">*</span>
-                  </Label>
-                  <Input
-                    id="inst-name"
-                    required
-                    placeholder="Institution legal name"
-                    value={form.name ?? ""}
-                    onChange={(e) => field("name", e.target.value)}
-                    className="h-10 rounded-xl text-xs font-semibold"
-                  />
+            <form
+              id="institution-profile-form"
+              ref={profileForm}
+              onSubmit={(e) => void submit(e)}
+              className="space-y-4"
+            >
+              <fieldset disabled={busy || uploading} className="space-y-4 disabled:opacity-70">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="inst-name" className="text-xs font-bold text-slate-700">
+                      Official Institution Name <span className="text-rose-500">*</span>
+                    </Label>
+                    <Input
+                      id="inst-name"
+                      required
+                      placeholder="Institution legal name"
+                      value={form.name ?? ""}
+                      onChange={(e) => field("name", e.target.value)}
+                      className="h-10 rounded-xl text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="inst-short" className="text-xs font-bold text-slate-700">
+                      Short / Display Name
+                    </Label>
+                    <Input
+                      id="inst-short"
+                      placeholder="Short display name"
+                      value={form.shortName ?? ""}
+                      onChange={(e) => field("shortName", e.target.value)}
+                      className="h-10 rounded-xl text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="inst-email" className="text-xs font-bold text-slate-700">
+                      Official Contact Email
+                    </Label>
+                    <Input
+                      id="inst-email"
+                      type="email"
+                      placeholder="Official contact email"
+                      value={form.contactEmail ?? ""}
+                      onChange={(e) => field("contactEmail", e.target.value)}
+                      className="h-10 rounded-xl text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="inst-phone" className="text-xs font-bold text-slate-700">
+                      Contact Phone Number
+                    </Label>
+                    <Input
+                      id="inst-phone"
+                      inputMode="tel"
+                      placeholder="e.g. +91 80000 55000"
+                      value={form.contactPhone ?? ""}
+                      onChange={(e) => field("contactPhone", e.target.value)}
+                      className="h-10 rounded-xl text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="inst-address" className="text-xs font-bold text-slate-700">
+                      Campus Address & Location
+                    </Label>
+                    <textarea
+                      id="inst-address"
+                      rows={3}
+                      placeholder="e.g. Vidyanagara, Sirigere, Davangere District, Karnataka, India - 577541"
+                      value={form.address ?? ""}
+                      onChange={(e) => field("address", e.target.value)}
+                      className="flex w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none shadow-2xs"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="inst-short" className="text-xs font-bold text-slate-700">
-                    Short / Display Name
-                  </Label>
-                  <Input
-                    id="inst-short"
-                    placeholder="Short display name"
-                    value={form.shortName ?? ""}
-                    onChange={(e) => field("shortName", e.target.value)}
-                    className="h-10 rounded-xl text-xs font-semibold"
-                  />
+                <div className="pt-3 border-t border-slate-100 flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={busy || uploading}
+                    className="h-9 px-5 text-xs font-bold gap-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-xs"
+                  >
+                    {busy ? (
+                      <>
+                        <Spinner className="h-3.5 w-3.5" /> Saving…
+                      </>
+                    ) : (
+                      <>
+                        <Save size={14} /> Save Profile
+                      </>
+                    )}
+                  </Button>
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="inst-email" className="text-xs font-bold text-slate-700">
-                    Official Contact Email
-                  </Label>
-                  <Input
-                    id="inst-email"
-                    type="email"
-                    placeholder="Official contact email"
-                    value={form.contactEmail ?? ""}
-                    onChange={(e) => field("contactEmail", e.target.value)}
-                    className="h-10 rounded-xl text-xs font-semibold"
-                  />
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="inst-phone" className="text-xs font-bold text-slate-700">
-                    Contact Phone Number
-                  </Label>
-                  <Input
-                    id="inst-phone"
-                    inputMode="tel"
-                    placeholder="e.g. +91 80000 55000"
-                    value={form.contactPhone ?? ""}
-                    onChange={(e) => field("contactPhone", e.target.value)}
-                    className="h-10 rounded-xl text-xs font-semibold"
-                  />
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="inst-address" className="text-xs font-bold text-slate-700">
-                    Campus Address & Location
-                  </Label>
-                  <textarea
-                    id="inst-address"
-                    rows={3}
-                    placeholder="e.g. Vidyanagara, Sirigere, Davangere District, Karnataka, India - 577541"
-                    value={form.address ?? ""}
-                    onChange={(e) => field("address", e.target.value)}
-                    className="flex w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none shadow-2xs"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={busy}
-                  className="h-9 px-5 text-xs font-bold gap-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-xs"
-                >
-                  {busy ? (
-                    <>
-                      <Spinner className="h-3.5 w-3.5" /> Saving…
-                    </>
-                  ) : (
-                    <>
-                      <Save size={14} /> Save Profile
-                    </>
-                  )}
-                </Button>
-              </div>
+              </fieldset>
             </form>
           </CardContent>
         </Card>

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -1066,13 +1066,17 @@ describe("teacher workspace pages", () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "View details" }));
+    expect(screen.getByTestId("location")).toHaveTextContent("faculty=");
     expect(screen.getByTestId("faculty-details-workspace")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Anitha Rao" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Back to faculty list" })).toBeInTheDocument();
-    expect(screen.getByText("+91 9876543210")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("faculty-details-workspace")).getByText("+91 9876543210"),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Workload" }));
+    expect(screen.getByTestId("location")).toHaveTextContent("tab=WORKLOAD");
     expect(screen.getByText("Allocation balanced")).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Mathematics" })).toBeInTheDocument();
     expect(screen.getByText("Teacher Timetable")).toBeInTheDocument();

@@ -68,11 +68,13 @@ describe("institution profile branding", () => {
     fireEvent.change(input!, { target: { files: [logo] } });
 
     await waitFor(() =>
-      expect(uploadFile).toHaveBeenCalledWith({
-        file: logo,
-        scopeType: "TENANT",
-        metadata: { category: "institution_logo" },
-      }),
+      expect(uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          file: logo,
+          scopeType: "TENANT",
+          metadata: { category: "institution_logo" },
+        }),
+      ),
     );
     expect(saveInstitutionProfile).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Vebgenix School", logoFileId: "file-logo-1" }),
@@ -88,5 +90,35 @@ describe("institution profile branding", () => {
       logoUrl: "https://storage.test/school-logo.png",
     });
     unsubscribe();
+  });
+
+  it("validates required details from the header save button", async () => {
+    render(<InstitutionProfileSettings />);
+    const name = await screen.findByLabelText(/Official Institution Name/);
+    fireEvent.change(name, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    expect(saveInstitutionProfile).not.toHaveBeenCalled();
+    expect(name).toBeInvalid();
+  });
+
+  it("shows transfer progress and cancels without attaching a logo", async () => {
+    vi.mocked(uploadFile).mockImplementation(
+      ({ signal, onProgress }) =>
+        new Promise((_resolve, reject) => {
+          onProgress?.(45);
+          signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+        }),
+    );
+    const view = render(<InstitutionProfileSettings />);
+    await screen.findByRole("heading", { name: "Institution Profile" });
+    fireEvent.change(view.container.querySelector('input[type="file"]')!, {
+      target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] },
+    });
+    expect(await screen.findByText("45% uploaded")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Official Institution Name/)).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel upload" }));
+    expect(await screen.findByText(/Logo upload cancelled/)).toBeInTheDocument();
+    expect(saveInstitutionProfile).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/Official Institution Name/)).not.toBeDisabled();
   });
 });

@@ -1,5 +1,8 @@
 import {
   CheckCircle2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   ChevronLeft,
   ChevronRight,
   Columns3,
@@ -13,6 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { cn } from "../../../shared/ui/utils";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
 export function WorkspacePageHeader({
   title,
@@ -55,7 +59,7 @@ export function WorkspaceButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-3.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3.5 text-xs font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50",
         variant === "primary" && "border-slate-900 bg-slate-900 text-white hover:bg-slate-800",
         variant === "secondary" &&
           "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
@@ -211,10 +215,10 @@ export function WorkspaceDataTable<Row extends { id: string }>({
   onOpen?: (row: Row) => void;
 }) {
   const signature = columns.map((column) => column.key).join("|");
-  const columnKeys = useMemo(() => columns.map((column) => column.key), [columns]);
+  const columnKeys = useMemo(() => signature.split("|"), [signature]);
   const [query, setQuery] = useState("");
   const [visible, setVisible] = useState<string[]>(columns.map((column) => column.key));
-  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [sort, setSort] = useState<{ key: string; descending: boolean } | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -223,27 +227,44 @@ export function WorkspaceDataTable<Row extends { id: string }>({
     setVisible(columnKeys);
     setSelected([]);
     setPage(1);
+    setSort(null);
   }, [columnKeys, signature]);
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return rows;
-    return rows.filter((row) =>
-      Object.values(row).some((value) =>
-        String(value ?? "")
-          .toLowerCase()
-          .includes(normalized),
-      ),
-    );
-  }, [query, rows]);
+    const matches = !normalized
+      ? rows
+      : rows.filter((row) =>
+          Object.values(row).some((value) =>
+            String(value ?? "")
+              .toLowerCase()
+              .includes(normalized),
+          ),
+        );
+    if (!sort) return matches;
+    return [...matches].sort((a, b) => {
+      const left = a[sort.key as keyof Row];
+      const right = b[sort.key as keyof Row];
+      // Missing values stay last in either direction.
+      if (left == null || left === "") return right == null || right === "" ? 0 : 1;
+      if (right == null || right === "") return -1;
+      const order =
+        typeof left === "number" && typeof right === "number"
+          ? left - right
+          : String(left).localeCompare(String(right), undefined, {
+              numeric: true,
+              sensitivity: "base",
+            });
+      return sort.descending ? -order : order;
+    });
+  }, [query, rows, sort]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const displayedColumns = columns.filter((column) => visible.includes(column.key));
   const allSelected = pageRows.length > 0 && pageRows.every((row) => selected.includes(row.id));
-  const exportRows = selected.length
-    ? filtered.filter((row) => selected.includes(row.id))
-    : filtered;
+  const selectedRows = filtered.filter((row) => selected.includes(row.id));
+  const exportRows = selectedRows.length ? selectedRows : filtered;
 
   const downloadCsv = () => {
     const content = [
@@ -272,52 +293,57 @@ export function WorkspaceDataTable<Row extends { id: string }>({
               setQuery(event.target.value);
               setPage(1);
             }}
-            placeholder="Search visible records"
+            placeholder="Search records"
             className="min-w-0 flex-1 border-0 bg-transparent text-xs font-semibold text-slate-800 outline-none"
           />
         </label>
-        <div className="relative">
-          <WorkspaceButton icon={Columns3} onClick={() => setColumnsOpen((open) => !open)}>
-            Columns
-          </WorkspaceButton>
-          {columnsOpen ? (
-            <div className="absolute right-0 top-11 z-30 w-64 rounded-md border border-slate-200 bg-white p-3 shadow-xl">
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger className="inline-flex min-h-11 items-center gap-2 rounded-md border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
+            <Columns3 size={15} aria-hidden="true" /> Columns
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              align="end"
+              sideOffset={6}
+              className="z-[90] w-64 rounded-md border border-slate-200 bg-white p-3 shadow-xl"
+            >
               <strong className="block pb-2 text-xs font-extrabold text-slate-900">
                 Visible columns
               </strong>
               <div className="max-h-64 space-y-1 overflow-y-auto">
                 {columns.map((column) => (
-                  <label
+                  <DropdownMenu.CheckboxItem
                     key={column.key}
-                    className="flex min-h-8 items-center gap-2 rounded px-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                    checked={visible.includes(column.key)}
+                    disabled={visible.length === 1 && visible.includes(column.key)}
+                    onSelect={(event) => event.preventDefault()}
+                    onCheckedChange={() =>
+                      setVisible((current) =>
+                        current.includes(column.key)
+                          ? current.filter((key) => key !== column.key)
+                          : [...current, column.key],
+                      )
+                    }
+                    className="flex min-h-11 cursor-pointer items-center gap-2 rounded px-2 text-xs font-semibold text-slate-600 outline-none data-[highlighted]:bg-slate-100 data-[disabled]:opacity-50"
                   >
-                    <input
-                      type="checkbox"
-                      checked={visible.includes(column.key)}
-                      onChange={() =>
-                        setVisible((current) =>
-                          current.includes(column.key)
-                            ? current.filter((key) => key !== column.key)
-                            : [...current, column.key],
-                        )
-                      }
-                      className="accent-slate-900"
-                    />
+                    <span aria-hidden="true" className="w-4">
+                      {visible.includes(column.key) ? "✓" : ""}
+                    </span>
                     {column.label}
-                  </label>
+                  </DropdownMenu.CheckboxItem>
                 ))}
               </div>
-              <button
+              <DropdownMenu.Item
                 onClick={() => setVisible(columns.map((column) => column.key))}
                 className="mt-2 w-full rounded bg-blue-50 py-2 text-xs font-bold text-blue-950 hover:bg-blue-100"
               >
                 Show all
-              </button>
-            </div>
-          ) : null}
-        </div>
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
         <WorkspaceButton icon={Download} onClick={downloadCsv}>
-          {selected.length ? `Download Selected (${selected.length})` : "Download CSV"}
+          {selectedRows.length ? `Download Selected (${selectedRows.length})` : "Download CSV"}
         </WorkspaceButton>
         <WorkspaceButton icon={Printer} onClick={() => window.print()}>
           Print / PDF
@@ -328,9 +354,14 @@ export function WorkspaceDataTable<Row extends { id: string }>({
           </WorkspaceButton>
         ) : null}
       </div>
-      <div className="overflow-x-auto">
+      <div
+        className="max-h-[65vh] overflow-auto print:max-h-none print:overflow-visible"
+        tabIndex={0}
+        role="region"
+        aria-label="Records table"
+      >
         <table className="w-full min-w-[760px] border-collapse">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-slate-50">
             <tr className="border-b border-slate-200 bg-slate-50 text-left">
               <th className="w-12 px-3 py-3">
                 <input
@@ -350,9 +381,38 @@ export function WorkspaceDataTable<Row extends { id: string }>({
               {displayedColumns.map((column) => (
                 <th
                   key={column.key}
+                  scope="col"
+                  aria-sort={
+                    sort?.key === column.key
+                      ? sort.descending
+                        ? "descending"
+                        : "ascending"
+                      : "none"
+                  }
                   className="whitespace-nowrap px-3 py-3 text-[10px] font-extrabold uppercase text-slate-500"
                 >
-                  {column.label}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSort((current) => ({
+                        key: column.key,
+                        descending: current?.key === column.key && !current.descending,
+                      }));
+                      setPage(1);
+                    }}
+                    className="inline-flex min-h-11 items-center gap-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+                  >
+                    {column.label}
+                    {sort?.key === column.key ? (
+                      sort.descending ? (
+                        <ArrowDown size={13} aria-hidden="true" />
+                      ) : (
+                        <ArrowUp size={13} aria-hidden="true" />
+                      )
+                    ) : (
+                      <ArrowUpDown size={13} aria-hidden="true" />
+                    )}
+                  </button>
                 </th>
               ))}
               {onOpen ? (
@@ -413,9 +473,13 @@ export function WorkspaceDataTable<Row extends { id: string }>({
                 <td colSpan={displayedColumns.length + 2} className="px-4 py-12">
                   <div className="grid place-items-center gap-2 text-center">
                     <FileWarning size={24} className="text-slate-400" />
-                    <strong className="text-sm text-slate-800">No matching records</strong>
+                    <strong className="text-sm text-slate-800">
+                      {query.trim() ? "No matching records" : "No records available"}
+                    </strong>
                     <span className="text-xs text-slate-500">
-                      Change or reset the current search.
+                      {query.trim()
+                        ? "Change or reset the current search."
+                        : "Records will appear here when they are available for this scope."}
                     </span>
                   </div>
                 </td>
@@ -426,7 +490,7 @@ export function WorkspaceDataTable<Row extends { id: string }>({
       </div>
       <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 text-xs font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
         <span>
-          {selected.length ? `${selected.length} selected · ` : ""}Showing{" "}
+          {selectedRows.length ? `${selectedRows.length} selected · ` : ""}Showing{" "}
           {filtered.length ? (currentPage - 1) * pageSize + 1 : 0}-
           {Math.min(currentPage * pageSize, filtered.length)} of {filtered.length}
         </span>
@@ -440,7 +504,7 @@ export function WorkspaceDataTable<Row extends { id: string }>({
                 setPageSize(Number(event.target.value));
                 setPage(1);
               }}
-              className="h-8 rounded border border-slate-200 bg-white px-2"
+              className="h-11 rounded border border-slate-200 bg-white px-2"
             >
               <option>5</option>
               <option>10</option>
@@ -451,8 +515,8 @@ export function WorkspaceDataTable<Row extends { id: string }>({
           <button
             aria-label="Previous page"
             disabled={currentPage === 1}
-            onClick={() => setPage((value) => value - 1)}
-            className="grid h-8 w-8 place-items-center rounded border border-slate-200 disabled:opacity-40"
+            onClick={() => setPage(Math.max(1, currentPage - 1))}
+            className="grid h-11 w-11 place-items-center rounded border border-slate-200 disabled:opacity-40"
           >
             <ChevronLeft size={15} />
           </button>
@@ -462,8 +526,8 @@ export function WorkspaceDataTable<Row extends { id: string }>({
           <button
             aria-label="Next page"
             disabled={currentPage === totalPages}
-            onClick={() => setPage((value) => value + 1)}
-            className="grid h-8 w-8 place-items-center rounded border border-slate-200 disabled:opacity-40"
+            onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+            className="grid h-11 w-11 place-items-center rounded border border-slate-200 disabled:opacity-40"
           >
             <ChevronRight size={15} />
           </button>
