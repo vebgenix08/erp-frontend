@@ -289,7 +289,7 @@ const departmentNavigation: TeacherNavigationGroup[] = [
     pages: [
       page(
         "dept_overview",
-        "Overview",
+        "Department Health",
         "Department Overview",
         "Teaching coverage gaps, timetable readiness and academic work requiring attention.",
         LayoutDashboard,
@@ -358,7 +358,7 @@ const coordinatorNavigation: TeacherNavigationGroup[] = [
     pages: [
       page(
         "coord_overview",
-        "Overview",
+        "Operations Health",
         "Academic Operations Overview",
         "Cross-unit readiness and pending academic operations.",
         LayoutDashboard,
@@ -447,7 +447,7 @@ const leadershipNavigation: TeacherNavigationGroup[] = [
     pages: [
       page(
         "leadership_dashboard",
-        "Leadership Dashboard",
+        "Campus Health",
         "Academic Leadership Dashboard",
         "Campus academic health and exceptions requiring leadership attention.",
         LayoutDashboard,
@@ -542,11 +542,21 @@ export function canAccessTeacherPage(
 }
 
 export function getVisibleTeacherNavigation(capabilities: TeacherWorkspaceCapabilities) {
+  const usesScopedDashboard =
+    capabilities.responsibilityTypes.has("HOD") ||
+    capabilities.responsibilityTypes.has("PROGRAM_COORDINATOR") ||
+    capabilities.roleCodes.has("PRINCIPAL") ||
+    capabilities.roleCodes.has("VICE_PRINCIPAL") ||
+    capabilities.roleCodes.has("DEAN");
+
   return teacherWorkspaceNavigation
     .map((group) => ({
       ...group,
       pages: group.pages.filter(
-        (item) => item.showInNavigation !== false && canAccessTeacherPage(item, capabilities),
+        (item) =>
+          item.showInNavigation !== false &&
+          !(item.id === "dashboard" && usesScopedDashboard) &&
+          canAccessTeacherPage(item, capabilities),
       ),
     }))
     .filter((group) => group.pages.length);

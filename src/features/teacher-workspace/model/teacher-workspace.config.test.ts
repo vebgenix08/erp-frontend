@@ -92,6 +92,38 @@ describe("teacher workspace navigation", () => {
     expect(ids).not.toContain("coord_overview");
   });
 
+  it("replaces the generic dashboard with the appropriate scoped dashboard", () => {
+    expect(visiblePageIds(capabilities({ responsibilityTypes: ["HOD"] }))).toContain(
+      "dept_overview",
+    );
+    expect(visiblePageIds(capabilities({ responsibilityTypes: ["HOD"] }))).not.toContain(
+      "dashboard",
+    );
+    expect(
+      visiblePageIds(capabilities({ responsibilityTypes: ["PROGRAM_COORDINATOR"] })),
+    ).toContain("coord_overview");
+    expect(
+      visiblePageIds(capabilities({ responsibilityTypes: ["PROGRAM_COORDINATOR"] })),
+    ).not.toContain("dashboard");
+    expect(visiblePageIds(capabilities({ roleCodes: ["PRINCIPAL"] }))).toContain(
+      "leadership_dashboard",
+    );
+    expect(visiblePageIds(capabilities({ roleCodes: ["PRINCIPAL"] }))).not.toContain("dashboard");
+  });
+
+  it("gives scoped dashboards distinct navigation labels", () => {
+    const labels = getVisibleTeacherNavigation(
+      capabilities({
+        responsibilityTypes: ["HOD", "PROGRAM_COORDINATOR"],
+        roleCodes: ["PRINCIPAL"],
+      }),
+    ).flatMap((group) => group.pages.map((page) => page.label));
+    expect(labels).toContain("Department Health");
+    expect(labels).toContain("Operations Health");
+    expect(labels).toContain("Campus Health");
+    expect(labels.filter((label) => label === "Dashboard")).toHaveLength(0);
+  });
+
   it("contains the approved marks, report and responsibility workspaces", () => {
     const pageIds = new Set(teacherWorkspacePages.map((page) => page.id));
     for (const required of [
