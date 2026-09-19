@@ -40,6 +40,10 @@ export function DepartmentOverview({
   const issues = [...data.issues].sort(
     (a, b) => Number(b.severity === "ERROR") - Number(a.severity === "ERROR"),
   );
+  const timetableHighlights = data.timetables
+    .filter((item) => item.status !== "PUBLISHED" || item.conflictCount > 0)
+    .slice(0, 6);
+  const priorityIssues = issues.slice(0, 6);
   const target = (path: string, filter: string, sectionId?: string) => {
     const query = new URLSearchParams({ filter });
     if (data.scope.responsibilityId) query.set("scope", data.scope.responsibilityId);
@@ -76,6 +80,13 @@ export function DepartmentOverview({
       filter: "pending",
     },
   ];
+  const issueTarget = (code: string) => {
+    const normalized = code.toLowerCase();
+    if (normalized.includes("attendance") || normalized.includes("marks"))
+      return target(completionPath, "pending");
+    if (normalized.includes("timetable")) return target(timetablePath, "unpublished");
+    return target(coveragePath, "attention");
+  };
   return (
     <div className="space-y-5" data-testid="department-operational-overview">
       <p className="text-sm text-slate-600">
@@ -151,9 +162,9 @@ export function DepartmentOverview({
           <div className="border-b border-slate-200 p-4">
             <h2 className="font-semibold">Timetable readiness</h2>
           </div>
-          {data.timetables.length ? (
+          {timetableHighlights.length ? (
             <ul className="divide-y divide-slate-100">
-              {data.timetables.map((item) => (
+              {timetableHighlights.map((item) => (
                 <li
                   key={item.sectionId}
                   className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm"
@@ -181,6 +192,18 @@ export function DepartmentOverview({
                 </li>
               ))}
             </ul>
+          ) : data.timetables.length ? (
+            <div className="space-y-3 p-4 text-sm text-slate-600">
+              <p>
+                All {data.timetables.length} section timetables are published without conflicts.
+              </p>
+              <Link
+                to={target(timetablePath, "all")}
+                className="inline-flex min-h-11 items-center font-semibold text-blue-700 underline"
+              >
+                Open department timetables
+              </Link>
+            </div>
           ) : (
             <p className="p-4 text-sm text-slate-600">
               No section timetables are available in this scope.
@@ -192,9 +215,9 @@ export function DepartmentOverview({
             <h2 className="font-semibold">Priority actions</h2>
             <p className="mt-1 text-sm text-slate-500">Errors first, followed by warnings.</p>
           </div>
-          {issues.length ? (
+          {priorityIssues.length ? (
             <ul className="divide-y divide-slate-100">
-              {issues.map((item, index) => (
+              {priorityIssues.map((item, index) => (
                 <li key={`${item.code}-${index}`} className="space-y-1 p-4 text-sm">
                   <WorkspaceStatus tone={item.severity === "ERROR" ? "danger" : "warning"}>
                     {item.severity === "ERROR" ? "Action needed" : "Review"}
@@ -203,13 +226,23 @@ export function DepartmentOverview({
                   <p className="text-slate-500">{item.scope}</p>
                   <p>{item.action}</p>
                   <Link
-                    to={target(coveragePath, "attention")}
+                    to={issueTarget(item.code)}
                     className="inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 underline"
                   >
                     Open affected records
                   </Link>
                 </li>
               ))}
+              {issues.length > priorityIssues.length ? (
+                <li className="p-4 text-sm">
+                  <Link
+                    to={target(completionPath, "pending")}
+                    className="inline-flex min-h-11 items-center font-semibold text-blue-700 underline"
+                  >
+                    Review {issues.length - priorityIssues.length} more actions
+                  </Link>
+                </li>
+              ) : null}
             </ul>
           ) : (
             <p className="p-4 text-sm text-slate-600">
