@@ -28,6 +28,7 @@ import {
   textareaClass,
 } from "../model/teacher-content.utils";
 import { ContentFilters, ContentPagination, Field } from "./teacher-content-primitives";
+import { useUnsavedChanges } from "../../../shared/navigation/unsaved-changes";
 
 interface DiaryForm {
   id?: string;
@@ -68,9 +69,14 @@ export function TeacherDiaryPage() {
   const [subjectOfferingId, setSubjectOfferingId] = useState("");
   const [form, setForm] = useState<DiaryForm>(() => emptyForm());
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [initialForm, setInitialForm] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { requestDiscard } = useUnsavedChanges(
+    "teacher-diary-entry",
+    dialogOpen && JSON.stringify(form) !== initialForm,
+  );
 
   const load = useCallback(async () => {
     if (!workspace) {
@@ -123,12 +129,14 @@ export function TeacherDiaryPage() {
   }
   function openCreate() {
     const offeringId = subjectOfferingId || assignments[0]?.subjectOfferingId || "";
-    setForm(emptyForm(offeringId));
+    const nextForm = emptyForm(offeringId);
+    setForm(nextForm);
+    setInitialForm(JSON.stringify(nextForm));
     void loadPlans(offeringId);
     setDialogOpen(true);
   }
   function openEdit(item: TeachingDiaryEntry) {
-    setForm({
+    const nextForm: DiaryForm = {
       id: item.id,
       expectedVersion: item.version,
       subjectOfferingId: item.subjectOfferingId,
@@ -138,7 +146,9 @@ export function TeacherDiaryPage() {
       homework: item.homework ?? "",
       followUp: item.followUp ?? "",
       lessonPlanId: item.lessonPlanId ?? "",
-    });
+    };
+    setForm(nextForm);
+    setInitialForm(JSON.stringify(nextForm));
     void loadPlans(item.subjectOfferingId);
     setDialogOpen(true);
   }
@@ -345,7 +355,7 @@ export function TeacherDiaryPage() {
         description="Keep drafts while preparing. Recording an entry makes it part of the academic delivery history."
         className="sm:max-w-3xl"
         onClose={() => {
-          if (!busy) setDialogOpen(false);
+          if (!busy) requestDiscard(() => setDialogOpen(false));
         }}
       >
         <form onSubmit={(event) => void submit(event)} className="space-y-4">
@@ -463,7 +473,7 @@ export function TeacherDiaryPage() {
               type="button"
               variant="outline"
               disabled={busy}
-              onClick={() => setDialogOpen(false)}
+              onClick={() => requestDiscard(() => setDialogOpen(false))}
             >
               Cancel
             </Button>

@@ -27,7 +27,7 @@ export function ServerPagination({
   ).filter((value) => value <= totalPages);
 
   return (
-    <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3 text-sm">
+    <footer className="flex flex-col gap-3 border-t border-slate-200 bg-white px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-4">
       <span className="text-slate-600">
         Showing{" "}
         <strong>
@@ -35,14 +35,14 @@ export function ServerPagination({
         </strong>{" "}
         of <strong>{total}</strong> records
       </span>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
         <div className="flex items-center gap-2 text-slate-600 text-xs font-semibold">
           <span>Rows</span>
           <ModernSelect
             aria-label="Rows per page"
             value={String(pageSize)}
             onValueChange={(val) => onPageSizeChange(Number(val))}
-            className="h-8 min-w-[70px] text-xs font-bold"
+            className="min-h-11 min-w-[70px] text-xs font-bold"
             options={[
               { label: "10", value: "10" },
               { label: "25", value: "25" },
@@ -54,6 +54,7 @@ export function ServerPagination({
         <Button
           variant="outline"
           size="icon-sm"
+          className="min-h-11 min-w-11"
           disabled={page <= 1}
           onClick={() => onPageChange(1)}
           aria-label="First page"
@@ -63,17 +64,22 @@ export function ServerPagination({
         <Button
           variant="outline"
           size="icon-sm"
+          className="min-h-11 min-w-11"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
           aria-label="Previous page"
         >
           <ChevronLeft />
         </Button>
+        <span className="text-xs font-bold text-slate-700 sm:hidden">
+          {page} / {totalPages}
+        </span>
         {pages.map((value) => (
           <Button
             key={value}
             variant={value === page ? "default" : "outline"}
             size="sm"
+            className="hidden min-h-11 min-w-11 sm:inline-flex"
             onClick={() => onPageChange(value)}
             aria-label={`Page ${value}`}
           >
@@ -83,6 +89,7 @@ export function ServerPagination({
         <Button
           variant="outline"
           size="icon-sm"
+          className="min-h-11 min-w-11"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
           aria-label="Next page"
@@ -92,6 +99,7 @@ export function ServerPagination({
         <Button
           variant="outline"
           size="icon-sm"
+          className="min-h-11 min-w-11"
           disabled={page >= totalPages}
           onClick={() => onPageChange(totalPages)}
           aria-label="Last page"

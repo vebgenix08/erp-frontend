@@ -28,6 +28,7 @@ import {
   textareaClass,
 } from "../model/teacher-content.utils";
 import { ContentFilters, ContentPagination, Field } from "./teacher-content-primitives";
+import { useUnsavedChanges } from "../../../shared/navigation/unsaved-changes";
 
 interface LessonForm {
   id?: string;
@@ -72,9 +73,14 @@ export function TeacherLessonPlansPage() {
   const [subjectOfferingId, setSubjectOfferingId] = useState("");
   const [form, setForm] = useState<LessonForm>(() => emptyForm());
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [initialForm, setInitialForm] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { requestDiscard } = useUnsavedChanges(
+    "teacher-lesson-plan",
+    dialogOpen && JSON.stringify(form) !== initialForm,
+  );
 
   const load = useCallback(async () => {
     if (!workspace) {
@@ -128,12 +134,14 @@ export function TeacherLessonPlansPage() {
   }
   function openCreate() {
     const offeringId = subjectOfferingId || assignments[0]?.subjectOfferingId || "";
-    setForm(emptyForm(offeringId));
+    const nextForm = emptyForm(offeringId);
+    setForm(nextForm);
+    setInitialForm(JSON.stringify(nextForm));
     void loadResources(offeringId);
     setDialogOpen(true);
   }
   function openEdit(item: LessonPlan) {
-    setForm({
+    const nextForm: LessonForm = {
       id: item.id,
       expectedVersion: item.version,
       subjectOfferingId: item.subjectOfferingId,
@@ -145,7 +153,9 @@ export function TeacherLessonPlansPage() {
       preparationNotes: item.preparationNotes ?? "",
       homework: item.homework ?? "",
       resourceIds: item.resourceIds,
-    });
+    };
+    setForm(nextForm);
+    setInitialForm(JSON.stringify(nextForm));
     void loadResources(item.subjectOfferingId);
     setDialogOpen(true);
   }
@@ -378,7 +388,7 @@ export function TeacherLessonPlansPage() {
         description="Plans remain editable while in draft. Ready and completed plans preserve their academic record."
         className="sm:max-w-3xl"
         onClose={() => {
-          if (!busy) setDialogOpen(false);
+          if (!busy) requestDiscard(() => setDialogOpen(false));
         }}
       >
         <form onSubmit={(event) => void submit(event)} className="space-y-4">
@@ -536,7 +546,7 @@ export function TeacherLessonPlansPage() {
               type="button"
               variant="outline"
               disabled={busy}
-              onClick={() => setDialogOpen(false)}
+              onClick={() => requestDiscard(() => setDialogOpen(false))}
             >
               Cancel
             </Button>

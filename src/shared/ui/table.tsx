@@ -3,7 +3,12 @@ import { cn } from "./utils";
 
 const Table = forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+    <div
+      className="relative w-full overflow-auto overscroll-contain"
+      role="region"
+      aria-label="Scrollable data table"
+      tabIndex={0}
+    >
       <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   ),
@@ -16,7 +21,10 @@ const TableHeader = forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn("[&_tr]:border-b [&_tr]:border-slate-200 bg-slate-50/60", className)}
+    className={cn(
+      "sticky top-0 z-[1] bg-slate-50 [&_tr]:border-b [&_tr]:border-slate-200",
+      className,
+    )}
     {...props}
   />
 ));

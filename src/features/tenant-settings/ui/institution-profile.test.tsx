@@ -19,6 +19,16 @@ vi.mock("../api/settings.api", () => ({
   saveInstitutionProfile: vi.fn(),
 }));
 
+vi.mock("../../../shared/ui/image-editor-dialog", () => ({
+  ImageEditorDialog: ({
+    file,
+    onConfirm,
+  }: {
+    file: File | null;
+    onConfirm: (file: File) => void;
+  }) => (file ? <button onClick={() => onConfirm(file)}>Use this image</button> : null),
+}));
+
 describe("institution profile branding", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -66,6 +76,7 @@ describe("institution profile branding", () => {
     const input = view.container.querySelector<HTMLInputElement>('input[type="file"]');
     const logo = new File(["logo"], "school-logo.png", { type: "image/png" });
     fireEvent.change(input!, { target: { files: [logo] } });
+    fireEvent.click(screen.getByRole("button", { name: "Use this image" }));
 
     await waitFor(() =>
       expect(uploadFile).toHaveBeenCalledWith(
@@ -114,6 +125,7 @@ describe("institution profile branding", () => {
     fireEvent.change(view.container.querySelector('input[type="file"]')!, {
       target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] },
     });
+    fireEvent.click(screen.getByRole("button", { name: "Use this image" }));
     expect(await screen.findByText("45% uploaded")).toBeInTheDocument();
     expect(screen.getByLabelText(/Official Institution Name/)).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Cancel upload" }));

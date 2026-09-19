@@ -39,7 +39,7 @@ const portalDefinitions = {
     accentOpen: "bg-violet-50 text-violet-700",
     accentFallback: "bg-violet-100 text-violet-700",
     links: [
-      ["/accountant/dashboard", "Dashboard", LayoutDashboard],
+      ["/accountant/dashboard", "Finance Overview", LayoutDashboard],
       ["/accountant/collections", "Collections", BadgeIndianRupee],
       ["/accountant/outstanding", "Outstanding Fees", FileSearch],
       ["/accountant/receipts", "Receipts", FileText],
@@ -52,59 +52,9 @@ const portalDefinitions = {
     accentOpen: "bg-sky-50 text-sky-700",
     accentFallback: "bg-sky-100 text-sky-700",
     links: [
-      ["/admissions/dashboard", "Dashboard", LayoutDashboard],
       ["/admissions/enquiries", "Enquiries", FileSearch],
       ["/admissions/applications", "Applications", ClipboardCheck],
     ],
-  },
-  student: {
-    label: "Student",
-    color: "bg-blue-600",
-    accentOpen: "bg-blue-50 text-blue-700",
-    accentFallback: "bg-blue-100 text-blue-700",
-    links: [["/student/dashboard", "Dashboard", LayoutDashboard]],
-  },
-  parent: {
-    label: "Parent",
-    color: "bg-pink-600",
-    accentOpen: "bg-pink-50 text-pink-700",
-    accentFallback: "bg-pink-100 text-pink-700",
-    links: [["/parent/dashboard", "Dashboard", LayoutDashboard]],
-  },
-  library: {
-    label: "Librarian",
-    color: "bg-amber-600",
-    accentOpen: "bg-amber-50 text-amber-700",
-    accentFallback: "bg-amber-100 text-amber-700",
-    links: [["/library/dashboard", "Dashboard", LayoutDashboard]],
-  },
-  transport: {
-    label: "Transport Manager",
-    color: "bg-orange-600",
-    accentOpen: "bg-orange-50 text-orange-700",
-    accentFallback: "bg-orange-100 text-orange-700",
-    links: [["/transport/dashboard", "Dashboard", LayoutDashboard]],
-  },
-  hostel: {
-    label: "Hostel Warden",
-    color: "bg-rose-600",
-    accentOpen: "bg-rose-50 text-rose-700",
-    accentFallback: "bg-rose-100 text-rose-700",
-    links: [["/hostel/dashboard", "Dashboard", LayoutDashboard]],
-  },
-  exams: {
-    label: "Exam Coordinator",
-    color: "bg-purple-600",
-    accentOpen: "bg-purple-50 text-purple-700",
-    accentFallback: "bg-purple-100 text-purple-700",
-    links: [["/exams/dashboard", "Dashboard", LayoutDashboard]],
-  },
-  hr: {
-    label: "HR Manager",
-    color: "bg-fuchsia-600",
-    accentOpen: "bg-fuchsia-50 text-fuchsia-700",
-    accentFallback: "bg-fuchsia-100 text-fuchsia-700",
-    links: [["/hr/dashboard", "Dashboard", LayoutDashboard]],
   },
 } as const;
 
@@ -133,13 +83,6 @@ function RoleWorkspace() {
   const requiredRole: Partial<Record<keyof typeof portalDefinitions, string>> = {
     accountant: "ACCOUNTANT",
     admissions: "ADMISSION_OFFICER",
-    student: "STUDENT",
-    parent: "PARENT",
-    library: "LIBRARIAN",
-    transport: "TRANSPORT_MANAGER",
-    hostel: "HOSTEL_WARDEN",
-    exams: "EXAM_COORDINATOR",
-    hr: "HR_MANAGER",
   };
   if (session?.user.role?.trim().toUpperCase() !== requiredRole[prefix]) {
     return <Navigate to={getSessionDashboardPath(session)} replace />;

@@ -3,6 +3,7 @@ import { ApiError } from "./api-error";
 import { apiErrorFromPayload, coordinatedRequest } from "./request-coordinator";
 import { createRequestSignal } from "./request-signal";
 import { expireClientSession, isSessionExpiredError } from "../auth/session-expiry";
+import { recordRequestPerformance } from "./request-performance";
 
 export type HttpRequestOptions = {
   method?: string;
@@ -39,6 +40,8 @@ export async function httpClient<T = unknown>(
   const identity = JSON.stringify(Array.from(new Headers(options.headers).entries()).sort());
   return coordinatedRequest(
     async (signal) => {
+      const startedAt = performance.now();
+      let outcome: "success" | "error" | "cancelled" = "error";
       const requestSignal = createRequestSignal(timeoutMs, signal);
       const requestInit: RequestInit = {
         method,
@@ -55,6 +58,10 @@ export async function httpClient<T = unknown>(
 
       try {
         const response = await fetch(resolvedUrl, requestInit);
+        const traceId =
+          response.headers.get("x-request-id") ??
+          response.headers.get("x-amzn-trace-id") ??
+          undefined;
         const contentType = response.headers.get("content-type") ?? "";
         const payload = contentType.includes("application/json")
           ? await response.json().catch(() => null)
@@ -71,14 +78,17 @@ export async function httpClient<T = unknown>(
                   : `Request failed with status ${response.status}`,
               retryable: response.status === 429 || response.status === 503,
               status: response.status,
+              ...(traceId ? { traceId } : {}),
             }),
           );
           if (isSessionExpiredError(error)) expireClientSession();
           throw error;
         }
 
+        outcome = "success";
         return payload as T;
       } catch (error) {
+        if (requestSignal.signal.aborted && !requestSignal.didTimeout()) outcome = "cancelled";
         if (requestSignal.didTimeout()) {
           throw new ApiError({
             code: "REQUEST_TIMEOUT",
@@ -99,6 +109,12 @@ export async function httpClient<T = unknown>(
         }
         throw error;
       } finally {
+        recordRequestPerformance({
+          kind: "http",
+          operation: `${method} ${new URL(resolvedUrl).pathname}`,
+          durationMs: Math.round(performance.now() - startedAt),
+          outcome,
+        });
         requestSignal.cleanup();
       }
     },

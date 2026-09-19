@@ -105,7 +105,7 @@ function TenantWorkspace() {
     };
   }, [session?.selectedTenant?.tenantId, session?.tenant?.tenantId]);
 
-  const dashboardLink = ["/admin/dashboard", "Dashboard", LayoutDashboard] as const;
+  const dashboardLink = ["/admin/dashboard", "Institution Health", LayoutDashboard] as const;
 
   const setupLinks = [
     ["/admin/setup/campuses", "Campuses", Building2],
@@ -121,7 +121,7 @@ function TenantWorkspace() {
   ] as const;
 
   const financeLinks = [
-    ["/admin/finance/dashboard", "Finance Dashboard", BadgeIndianRupee],
+    ["/admin/finance/dashboard", "Finance Overview", BadgeIndianRupee],
     ["/admin/finance/setup", "Finance Setup", Settings2],
     ["/admin/finance/collections", "Fee Collections", BadgeIndianRupee],
     ["/admin/finance/general-charges", "Additional Fees", FileText],
@@ -294,7 +294,7 @@ function TenantWorkspace() {
                 }
               >
                 <LayoutDashboard size={16} className="shrink-0" />
-                <span>Dashboard</span>
+                <span>Institution Health</span>
               </NavLink>
             </div>
 

@@ -15,6 +15,7 @@ import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
 import { Card, CardContent } from "../../../shared/ui/card";
 import { Separator } from "../../../shared/ui/separator";
+import { useUnsavedChanges } from "../../../shared/navigation/unsaved-changes";
 
 const teaching: Array<[StaffType, string]> = [
   ["PRINCIPAL", "Principal"],
@@ -41,6 +42,8 @@ export function CreateEmployeeForm() {
   const [template, setTemplate] = useState<TenantTemplate | null>(null);
   const [customFields, setCustomFields] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [createdEmployeeId, setCreatedEmployeeId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     fullName: "",
@@ -58,6 +61,25 @@ export function CreateEmployeeForm() {
     roleIds: [] as string[],
     scopeType: "CAMPUS" as "TENANT" | "CAMPUS",
   });
+  const hasDraft =
+    !completed &&
+    (Boolean(
+      form.fullName.trim() ||
+        form.email.trim() ||
+        form.phone.trim() ||
+        form.designation.trim() ||
+        form.department.trim(),
+    ) ||
+      form.staffType !== "TEACHER" ||
+      form.employmentType !== "FULL_TIME" ||
+      form.loginEnabled ||
+      form.roleIds.length > 0 ||
+      Object.keys(customFields).length > 0);
+  useUnsavedChanges("create-employee", hasDraft);
+
+  useEffect(() => {
+    if (createdEmployeeId) navigate(`/admin/staff/${createdEmployeeId}`);
+  }, [createdEmployeeId, navigate]);
 
   useEffect(() => {
     void Promise.all([listIdentityRoles(), listTenantTemplates()])
@@ -164,7 +186,8 @@ export function CreateEmployeeForm() {
         ...(designation ? { designation } : {}),
         ...(department ? { department } : {}),
       });
-      navigate(`/admin/staff/${saved.id}`);
+      setCompleted(true);
+      setCreatedEmployeeId(saved.id);
     } catch (value) {
       // Preserve files after a save attempt: the server may have saved them even if its response was lost.
       if (!saveAttempted)

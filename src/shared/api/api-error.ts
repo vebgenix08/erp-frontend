@@ -13,7 +13,7 @@ export class ApiError extends Error implements ApiErrorShape {
   readonly status: number | undefined;
 
   constructor(shape: ApiErrorShape) {
-    super(shape.message);
+    super(shape.traceId ? `${shape.message} Reference: ${shape.traceId}` : shape.message);
     this.name = "ApiError";
     this.code = shape.code;
     this.retryable = shape.retryable;

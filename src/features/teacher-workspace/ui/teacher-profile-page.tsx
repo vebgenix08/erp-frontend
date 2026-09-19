@@ -11,6 +11,8 @@ import { updateEmployee } from "../../staff/api/staff.api";
 import { getFileDownloadUrl, uploadFile } from "../../storage/api/files.api";
 import { publishMemberProfilePhoto } from "../../session/model/use-member-profile-photo";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
+import { ImageEditorDialog } from "../../../shared/ui/image-editor-dialog";
+import { useUnsavedChanges } from "../../../shared/navigation/unsaved-changes";
 import { useTeacherWorkspace } from "../model/teacher-workspace-context";
 import {
   WorkspaceDetails,
@@ -45,9 +47,15 @@ export function TeacherProfilePage() {
   const [photoUrl, setPhotoUrl] = useState<string>();
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoSaving, setPhotoSaving] = useState(false);
+  const [photoStage, setPhotoStage] = useState<"uploading" | "saving">("uploading");
+  const [photoProgress, setPhotoProgress] = useState(0);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const photoController = useRef<AbortController | null>(null);
   const [photoMessage, setPhotoMessage] = useState<
     { tone: "success" | "error"; text: string } | undefined
   >();
+
+  useUnsavedChanges("teacher-profile-photo", selectedPhoto !== null || photoSaving);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,26 +83,40 @@ export function TeacherProfilePage() {
     };
   }, [workspace?.teacher.profilePhotoFileId]);
 
-  async function changePhoto(file: File | undefined) {
-    const teacher = workspace?.teacher;
-    if (!file || !teacher) return;
+  function selectPhoto(file: File | undefined) {
+    if (!file) return;
     setPhotoMessage(undefined);
     if (!file.type.startsWith("image/")) {
-      setPhotoMessage({ tone: "error", text: "Choose a JPG, PNG or other image file." });
+      setPhotoMessage({ tone: "error", text: "Choose a JPG, PNG or WEBP image file." });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       setPhotoMessage({ tone: "error", text: "Profile photos must be 5 MB or smaller." });
       return;
     }
+    setSelectedPhoto(file);
+  }
 
+  async function changePhoto(file: File) {
+    const teacher = workspace?.teacher;
+    if (!teacher) return;
+    setSelectedPhoto(null);
+    setPhotoMessage(undefined);
+    const controller = new AbortController();
+    photoController.current = controller;
+    setPhotoStage("uploading");
+    setPhotoProgress(0);
     setPhotoSaving(true);
     try {
       const stored = await uploadFile({
         file,
         scopeType: "TENANT",
         metadata: { category: "staff_profile", employeeId: teacher.id },
+        signal: controller.signal,
+        onProgress: setPhotoProgress,
       });
+      controller.signal.throwIfAborted();
+      setPhotoStage("saving");
       await updateEmployee(teacher.id, { profilePhotoFileId: stored.id });
       try {
         const signedPhotoUrl = await getFileDownloadUrl(stored.id);
@@ -110,10 +132,15 @@ export function TeacherProfilePage() {
     } catch (error) {
       setPhotoMessage({
         tone: "error",
-        text: error instanceof Error ? error.message : "Profile photo could not be updated.",
+        text: controller.signal.aborted
+          ? "Photo upload cancelled. Your previous photo is unchanged."
+          : error instanceof Error
+            ? error.message
+            : "Profile photo could not be updated.",
       });
     } finally {
       setPhotoSaving(false);
+      photoController.current = null;
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
@@ -175,7 +202,7 @@ export function TeacherProfilePage() {
               accept="image/*"
               className="sr-only"
               aria-label="Choose profile photo"
-              onChange={(event) => void changePhoto(event.target.files?.[0])}
+              onChange={(event) => selectPhoto(event.target.files?.[0])}
             />
             <button
               type="button"
@@ -188,8 +215,36 @@ export function TeacherProfilePage() {
               ) : (
                 <Camera size={14} />
               )}
-              {photoSaving ? "Uploading…" : photoUrl ? "Change photo" : "Upload photo"}
+              {photoSaving
+                ? photoStage === "saving"
+                  ? "Saving…"
+                  : "Uploading…"
+                : photoUrl
+                  ? "Change photo"
+                  : "Upload photo"}
             </button>
+            {photoSaving ? (
+              <div className="w-full min-w-48 space-y-1 text-right">
+                <progress
+                  aria-label="Profile photo upload progress"
+                  value={photoProgress}
+                  max={100}
+                  className="h-2 w-full accent-blue-700"
+                />
+                <p role="status" className="text-[11px] font-semibold text-slate-600">
+                  {photoStage === "saving" ? "Saving photo…" : `${photoProgress}% uploaded`}
+                </p>
+                {photoStage === "uploading" ? (
+                  <button
+                    type="button"
+                    className="min-h-9 text-xs font-bold text-rose-700 underline"
+                    onClick={() => photoController.current?.abort()}
+                  >
+                    Cancel upload
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             {photoMessage ? (
               <p
                 role={photoMessage.tone === "error" ? "alert" : "status"}
@@ -314,6 +369,15 @@ export function TeacherProfilePage() {
           </p>
         )}
       </WorkspaceSurface>
+      <ImageEditorDialog
+        file={selectedPhoto}
+        title="Adjust profile photo"
+        onCancel={() => {
+          setSelectedPhoto(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }}
+        onConfirm={(file) => void changePhoto(file)}
+      />
     </div>
   );
 }

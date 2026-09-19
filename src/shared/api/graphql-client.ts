@@ -4,6 +4,7 @@ import { ApiError } from "./api-error";
 import { coordinatedRequest } from "./request-coordinator";
 import { createRequestSignal } from "./request-signal";
 import { expireClientSession, isSessionExpiredFailure } from "../auth/session-expiry";
+import { graphqlOperationName, recordRequestPerformance } from "./request-performance";
 
 interface GraphqlError {
   message?: string;
@@ -50,6 +51,8 @@ export async function graphqlClient<
 
   return coordinatedRequest(
     async (requestSessionSignal) => {
+      const startedAt = performance.now();
+      let outcome: "success" | "error" | "cancelled" = "error";
       const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
       const requestSignal = createRequestSignal(timeoutMs, requestSessionSignal);
       try {
@@ -95,8 +98,10 @@ export async function graphqlClient<
             ...(firstError?.extensions?.traceId ? { traceId: firstError.extensions.traceId } : {}),
           });
         }
+        outcome = "success";
         return payload.data;
       } catch (error) {
+        if (requestSignal.signal.aborted && !requestSignal.didTimeout()) outcome = "cancelled";
         if (requestSignal.didTimeout()) {
           throw new ApiError({
             code: "REQUEST_TIMEOUT",
@@ -117,6 +122,12 @@ export async function graphqlClient<
         }
         throw error;
       } finally {
+        recordRequestPerformance({
+          kind: "graphql",
+          operation: graphqlOperationName(query),
+          durationMs: Math.round(performance.now() - startedAt),
+          outcome,
+        });
         requestSignal.cleanup();
       }
     },

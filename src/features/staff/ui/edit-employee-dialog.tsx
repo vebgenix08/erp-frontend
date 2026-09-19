@@ -1,5 +1,5 @@
 import { Camera, Pencil } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Campus } from "../../tenant-settings/model/settings.types";
 import { Button } from "../../../shared/ui/button";
 import {
@@ -23,6 +23,7 @@ import type {
 } from "../model/staff.types";
 import { uploadFile } from "../../storage/api/files.api";
 import { useUnsavedChanges } from "../../../shared/navigation/unsaved-changes";
+import { ImageEditorDialog } from "../../../shared/ui/image-editor-dialog";
 
 const teachingTypes: Array<[StaffType, string]> = [
   ["PRINCIPAL", "Principal"],
@@ -42,6 +43,7 @@ const nonTeachingTypes: Array<[StaffType, string]> = [
 ];
 const selectClass =
   "mt-1 h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20";
+const maxProfilePhotoBytes = 5 * 1024 * 1024;
 
 interface EditForm {
   fullName: string;
@@ -90,8 +92,15 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [photoToEdit, setPhotoToEdit] = useState<File | null>(null);
+  const [photoProgress, setPhotoProgress] = useState(0);
+  const [saveStage, setSaveStage] = useState<"uploading" | "saving">("saving");
+  const uploadController = useRef<AbortController | null>(null);
   const dirty =
-    open && (profilePhoto !== null || formSnapshot(form) !== formSnapshot(fromEmployee(employee)));
+    open &&
+    (profilePhoto !== null ||
+      photoToEdit !== null ||
+      formSnapshot(form) !== formSnapshot(fromEmployee(employee)));
   const { requestDiscard } = useUnsavedChanges(`edit-employee-${employee.id}`, dirty);
   const staffTypes = useMemo(
     () => (form.staffCategory === "TEACHING" ? teachingTypes : nonTeachingTypes),
@@ -106,6 +115,7 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
       setForm(fromEmployee(employee));
       setError(null);
       setProfilePhoto(null);
+      setPhotoToEdit(null);
     }
   }, [employee, open]);
 
@@ -135,6 +145,20 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
     });
   };
 
+  const selectProfilePhoto = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Choose a PNG, JPEG, or WebP image.");
+      return;
+    }
+    if (file.size > maxProfilePhotoBytes) {
+      setError("Profile photos must be 5 MB or smaller.");
+      return;
+    }
+    setError(null);
+    setPhotoToEdit(file);
+  };
+
   const save = async () => {
     if (!form.fullName.trim()) {
       setError("Full name is required.");
@@ -149,16 +173,24 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
       return;
     }
     setSaving(true);
+    setSaveStage(profilePhoto ? "uploading" : "saving");
+    setPhotoProgress(0);
     setError(null);
     let uploadedFileId: string | undefined;
     try {
       if (profilePhoto) {
+        const controller = new AbortController();
+        uploadController.current = controller;
         const stored = await uploadFile({
           file: profilePhoto,
           scopeType: "TENANT",
           metadata: { category: "staff_profile", employeeId: employee.id },
+          signal: controller.signal,
+          onProgress: setPhotoProgress,
         });
+        controller.signal.throwIfAborted();
         uploadedFileId = stored.id;
+        setSaveStage("saving");
       }
       const input: UpdateEmployeeInput = {
         fullName: form.fullName.trim(),
@@ -178,9 +210,16 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
       setOpen(false);
     } catch (value) {
       // A lost save response does not prove the employee update failed.
-      setError(value instanceof Error ? value.message : "Unable to update employee");
+      setError(
+        uploadController.current?.signal.aborted
+          ? "Photo upload cancelled. No employee changes were saved."
+          : value instanceof Error
+            ? value.message
+            : "Unable to update employee",
+      );
     } finally {
       setSaving(false);
+      uploadController.current = null;
     }
   };
 
@@ -324,9 +363,14 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
                     id="edit-profile-photo"
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
-                    onChange={(event) => setProfilePhoto(event.target.files?.[0] ?? null)}
+                    onChange={(event) => selectProfilePhoto(event.target.files?.[0])}
                   />
                 </div>
+                {profilePhoto ? (
+                  <p className="mt-1 text-[11px] font-semibold text-emerald-700">
+                    Ready to upload: {profilePhoto.name}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <Label htmlFor="edit-primary-campus">Primary campus</Label>
@@ -376,19 +420,38 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={saving}
-              onClick={() => requestDiscard(() => setOpen(false))}
-            >
-              Cancel
-            </Button>
+            {saving && saveStage === "uploading" ? (
+              <Button variant="outline" onClick={() => uploadController.current?.abort()}>
+                Cancel upload ({photoProgress}%)
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                disabled={saving}
+                onClick={() => requestDiscard(() => setOpen(false))}
+              >
+                Cancel
+              </Button>
+            )}
             <Button disabled={saving} onClick={() => void save()}>
-              {saving ? "Saving..." : "Save changes"}
+              {saving
+                ? saveStage === "uploading"
+                  ? `Uploading photo… ${photoProgress}%`
+                  : "Saving…"
+                : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ImageEditorDialog
+        file={photoToEdit}
+        title="Adjust employee photo"
+        onCancel={() => setPhotoToEdit(null)}
+        onConfirm={(file) => {
+          setProfilePhoto(file);
+          setPhotoToEdit(null);
+        }}
+      />
     </>
   );
 }

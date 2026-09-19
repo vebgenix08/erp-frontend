@@ -97,6 +97,16 @@ vi.mock("../../storage/api/files.api", () => ({
   deleteFile: vi.fn(),
 }));
 
+vi.mock("../../../shared/ui/image-editor-dialog", () => ({
+  ImageEditorDialog: ({
+    file,
+    onConfirm,
+  }: {
+    file: File | null;
+    onConfirm: (file: File) => void;
+  }) => (file ? <button onClick={() => onConfirm(file)}>Use this image</button> : null),
+}));
+
 const operatingContext = {
   campusId: "campus-1",
   campusName: "Vidyapeetha Campus",
@@ -632,13 +642,16 @@ describe("teacher workspace pages", () => {
     fireEvent.change(screen.getByLabelText("Choose profile photo"), {
       target: { files: [photo] },
     });
+    fireEvent.click(screen.getByRole("button", { name: "Use this image" }));
 
     await waitFor(() =>
-      expect(uploadFile).toHaveBeenCalledWith({
-        file: photo,
-        scopeType: "TENANT",
-        metadata: { category: "staff_profile", employeeId: "employee-1" },
-      }),
+      expect(uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          file: photo,
+          scopeType: "TENANT",
+          metadata: { category: "staff_profile", employeeId: "employee-1" },
+        }),
+      ),
     );
     expect(updateEmployee).toHaveBeenCalledWith("employee-1", {
       profilePhotoFileId: "file-profile-1",
@@ -656,6 +669,7 @@ describe("teacher workspace pages", () => {
     fireEvent.change(screen.getByLabelText("Choose profile photo"), {
       target: { files: [new File(["photo"], "photo.png", { type: "image/png" })] },
     });
+    fireEvent.click(screen.getByRole("button", { name: "Use this image" }));
     expect(
       await screen.findByText("Profile photo saved. Refresh to load the preview."),
     ).toBeInTheDocument();
@@ -982,7 +996,7 @@ describe("teacher workspace pages", () => {
     expect(screen.queryByText("anitha.rao@vebgenix.com")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Review subjects ready" })).toHaveAttribute(
       "href",
-      "/teacher/academic-overview",
+      "/teacher/academic-overview?filter=attention&scope=hod-1",
     );
     const error = screen.getByText("Subject has no allocation");
     const warning = screen.getByText("Review allocations");

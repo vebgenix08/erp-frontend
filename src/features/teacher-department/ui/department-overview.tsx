@@ -40,30 +40,40 @@ export function DepartmentOverview({
   const issues = [...data.issues].sort(
     (a, b) => Number(b.severity === "ERROR") - Number(a.severity === "ERROR"),
   );
+  const target = (path: string, filter: string, sectionId?: string) => {
+    const query = new URLSearchParams({ filter });
+    if (data.scope.responsibilityId) query.set("scope", data.scope.responsibilityId);
+    if (sectionId) query.set("section", sectionId);
+    return `/teacher/${path}?${query.toString()}`;
+  };
   const metrics = [
     {
       label: "Subjects ready",
       value: `${ready} / ${data.coverage.length}`,
       detail: `${gaps.length} offerings need attention`,
       path: coveragePath,
+      filter: "attention",
     },
     {
       label: "Unscheduled weekly periods",
       value: missingPeriods,
       detail: "Sum of shortfalls; excess periods do not offset gaps",
       path: coveragePath,
+      filter: "shortfall",
     },
     {
       label: "Timetables awaiting publication",
       value: unpublished.length,
       detail: `${conflicts} reported conflicts`,
       path: timetablePath,
+      filter: "unpublished",
     },
     {
       label: "Pending academic work",
       value: `${data.summary.pendingAttendanceSections} sections · ${data.summary.pendingMarksSheets} mark sheets`,
       detail: `Attendance for ${data.date}; marks for ${data.academicYear.name}`,
       path: completionPath,
+      filter: "pending",
     },
   ];
   return (
@@ -82,7 +92,7 @@ export function DepartmentOverview({
             <p className="mt-1 text-xs text-slate-500">{metric.detail}</p>
             <Link
               className="mt-2 inline-block text-sm font-semibold text-blue-700 underline"
-              to={`/teacher/${metric.path}`}
+              to={target(metric.path, metric.filter)}
             >
               Review {metric.label.toLowerCase()}
             </Link>
@@ -148,12 +158,19 @@ export function DepartmentOverview({
                   key={item.sectionId}
                   className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm"
                 >
-                  <span>
+                  <Link
+                    to={target(
+                      timetablePath,
+                      item.status === "PUBLISHED" ? "all" : "unpublished",
+                      item.sectionId,
+                    )}
+                    className="min-h-11 text-blue-800 hover:underline"
+                  >
                     {item.className} · {item.sectionName}
                     <span className="block text-xs text-slate-500">
                       {item.conflictCount} reported conflicts
                     </span>
-                  </span>
+                  </Link>
                   <WorkspaceStatus
                     tone={
                       item.status === "PUBLISHED" && !item.conflictCount ? "success" : "warning"
@@ -185,6 +202,12 @@ export function DepartmentOverview({
                   <p className="font-medium">{item.title}</p>
                   <p className="text-slate-500">{item.scope}</p>
                   <p>{item.action}</p>
+                  <Link
+                    to={target(coveragePath, "attention")}
+                    className="inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 underline"
+                  >
+                    Open affected records
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -36,7 +36,7 @@ export function PlatformLayout() {
   useEffect(() => setMobileOpen(false), [location.pathname]);
 
   const links = [
-    ["/platform/dashboard", "Dashboard", LayoutDashboard],
+    ["/platform/dashboard", "Platform Health", LayoutDashboard],
     ["/platform/tenants", "Tenants", Building2],
     ["/platform/audit-logs", "Audit logs", ScrollText],
     ["/platform/features", "Features", Flag],

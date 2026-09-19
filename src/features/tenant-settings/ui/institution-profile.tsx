@@ -12,6 +12,7 @@ import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
 import { Spinner } from "../../../shared/ui/spinner";
 import { useUnsavedChanges } from "../../../shared/navigation/unsaved-changes";
+import { ImageEditorDialog } from "../../../shared/ui/image-editor-dialog";
 
 const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
@@ -38,6 +39,7 @@ export function InstitutionProfileSettings() {
   const [savingLogo, setSavingLogo] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [selectedLogo, setSelectedLogo] = useState<File | null>(null);
   const uploadController = useRef<AbortController | null>(null);
   const profileForm = useRef<HTMLFormElement>(null);
   const logoInput = useRef<HTMLInputElement>(null);
@@ -71,7 +73,10 @@ export function InstitutionProfileSettings() {
 
   useUnsavedChanges(
     "institution-profile",
-    !loading && (uploading || (savedSnapshot !== null && profileSnapshot(form) !== savedSnapshot)),
+    !loading &&
+      (selectedLogo !== null ||
+        uploading ||
+        (savedSnapshot !== null && profileSnapshot(form) !== savedSnapshot)),
   );
 
   const field = (name: keyof InstitutionProfileInput, value: string) => {
@@ -185,6 +190,20 @@ export function InstitutionProfileSettings() {
       uploadController.current = null;
       if (logoInput.current) logoInput.current.value = "";
     }
+  }
+
+  function selectLogo(file?: File) {
+    if (!file) return;
+    setError(null);
+    if (!file.type.startsWith("image/")) {
+      setError("Choose a PNG, JPG or WEBP image file");
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setError("Institution logo must be 5 MB or smaller");
+      return;
+    }
+    setSelectedLogo(file);
   }
 
   if (loading) return <LoadingState label="Loading institution profile..." />;
@@ -336,7 +355,7 @@ export function InstitutionProfileSettings() {
               hidden
               type="file"
               accept="image/*"
-              onChange={(e) => void uploadLogo(e.target.files?.[0])}
+              onChange={(e) => selectLogo(e.target.files?.[0])}
             />
 
             <Button
@@ -507,6 +526,19 @@ export function InstitutionProfileSettings() {
           </CardContent>
         </Card>
       </div>
+      <ImageEditorDialog
+        file={selectedLogo}
+        mode="original"
+        title="Preview institution logo"
+        onCancel={() => {
+          setSelectedLogo(null);
+          if (logoInput.current) logoInput.current.value = "";
+        }}
+        onConfirm={(file) => {
+          setSelectedLogo(null);
+          void uploadLogo(file);
+        }}
+      />
     </section>
   );
 }

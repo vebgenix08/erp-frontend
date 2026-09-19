@@ -55,6 +55,7 @@ interface DepartmentRow {
   marksStatus?: string;
   timetableEntries?: number;
   conflicts?: number;
+  deficit?: number;
 }
 
 type FacultyDetailTab = "PROFILE" | "WORKLOAD" | "COUNSELLING";
@@ -165,12 +166,17 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
   }, [load]);
 
   // Active section for timetable grid
+  const requestedSectionId = searchParams.get("section") ?? selectedSectionId;
   const activeSectionTimetable = useMemo(() => {
     if (!data?.timetables.length) return null;
-    return data.timetables.find((t) => t.sectionId === selectedSectionId) ?? data.timetables[0];
-  }, [data?.timetables, selectedSectionId]);
+    const candidates =
+      searchParams.get("filter") === "unpublished"
+        ? data.timetables.filter((item) => item.status !== "PUBLISHED")
+        : data.timetables;
+    return candidates.find((t) => t.sectionId === requestedSectionId) ?? candidates[0] ?? null;
+  }, [data?.timetables, requestedSectionId, searchParams]);
 
-  const rows = useMemo<DepartmentRow[]>(() => {
+  const allRows = useMemo<DepartmentRow[]>(() => {
     if (!data) return [];
     if (isFacultyPage) {
       return data.faculty.map((item) => ({
@@ -199,6 +205,7 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
               ? "Unassigned"
               : "Incomplete",
         action: item.status === "READY" ? "Allocation Ready" : "Assign Faculty",
+        deficit: Math.max(0, item.requiredPeriods - item.scheduledPeriods),
       }));
     }
     if (page.id === "dept_workload") {
@@ -267,6 +274,20 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
       action: item.action,
     }));
   }, [data, isFacultyPage, page.id]);
+
+  const operationalFilter = searchParams.get("filter") ?? "";
+  const rows = useMemo(() => {
+    if (!operationalFilter || operationalFilter === "all") return allRows;
+    if (operationalFilter === "attention")
+      return allRows.filter((row) => !["Ready", "Complete", "Balanced"].includes(row.status ?? ""));
+    if (operationalFilter === "shortfall") return allRows.filter((row) => (row.deficit ?? 0) > 0);
+    if (operationalFilter === "pending")
+      return allRows.filter(
+        (row) =>
+          row.attendanceStatus !== "SUBMITTED" || row.marksStatus?.includes("0 pending") === false,
+      );
+    return allRows;
+  }, [allRows, operationalFilter]);
 
   const columns = useMemo<WorkspaceTableColumn<DepartmentRow>[]>(() => {
     if (isFacultyPage) {
@@ -422,6 +443,14 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
     label: `${item.className} - ${item.sectionName} (${item.entryCount} periods)`,
     value: item.sectionId,
   }));
+  const visibleSectionOptions =
+    operationalFilter === "unpublished"
+      ? sectionOptions.filter((option) =>
+          data?.timetables.some(
+            (item) => item.sectionId === option.value && item.status !== "PUBLISHED",
+          ),
+        )
+      : sectionOptions;
 
   return (
     <>
@@ -516,6 +545,26 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
                 ))}
               </dl>
 
+              {operationalFilter ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-900">
+                  <span>Filtered view: {operationalFilter.replaceAll("_", " ")}</span>
+                  <button
+                    type="button"
+                    className="min-h-10 underline"
+                    onClick={() =>
+                      setSearchParams((current) => {
+                        const next = new URLSearchParams(current);
+                        next.delete("filter");
+                        next.delete("section");
+                        return next;
+                      })
+                    }
+                  >
+                    Clear filter
+                  </button>
+                </div>
+              ) : null}
+
               {/* ======================================================= */}
               {/* SPECIAL VIEW: DEPARTMENT TIMETABLES (PAGE.ID === dept_timetable) */}
               {/* ======================================================= */}
@@ -529,11 +578,21 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
                           View Class Timetable:
                         </span>
                         <ModernSelect
-                          value={selectedSectionId || sectionOptions[0]?.value || ""}
-                          disabled={!sectionOptions.length}
-                          onValueChange={(val) => setSelectedSectionId(val)}
+                          value={requestedSectionId || visibleSectionOptions[0]?.value || ""}
+                          disabled={!visibleSectionOptions.length}
+                          onValueChange={(val) => {
+                            setSelectedSectionId(val);
+                            setSearchParams(
+                              (current) => {
+                                const next = new URLSearchParams(current);
+                                next.set("section", val);
+                                return next;
+                              },
+                              { replace: true },
+                            );
+                          }}
                           className="w-full"
-                          options={sectionOptions}
+                          options={visibleSectionOptions}
                         />
                       </div>
 

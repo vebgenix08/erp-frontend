@@ -35,6 +35,7 @@ const DialogContent = forwardRef<
       ref={ref}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 flex flex-col w-[92vw] sm:max-w-2xl max-h-[88vh] translate-x-[-50%] translate-y-[-50%] gap-0",
+        "max-sm:left-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-none max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none",
         "bg-white border border-slate-300 shadow-2xl rounded-2xl overflow-hidden",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -48,7 +49,7 @@ const DialogContent = forwardRef<
       {showClose ? (
         <DialogPrimitive.Close
           className={cn(
-            "absolute right-3 top-3 rounded p-1 opacity-70 text-slate-500 transition-opacity",
+            "absolute right-2 top-2 grid min-h-11 min-w-11 place-items-center rounded opacity-70 text-slate-500 transition-opacity",
             "hover:opacity-100 hover:bg-slate-200 focus:outline-none",
             "disabled:pointer-events-none",
           )}
