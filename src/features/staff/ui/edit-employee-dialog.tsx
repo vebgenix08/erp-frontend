@@ -22,6 +22,7 @@ import type {
   UpdateEmployeeInput,
 } from "../model/staff.types";
 import { uploadFile } from "../../storage/api/files.api";
+import { useUnsavedChanges } from "../../../shared/navigation/unsaved-changes";
 
 const teachingTypes: Array<[StaffType, string]> = [
   ["PRINCIPAL", "Principal"],
@@ -72,6 +73,10 @@ function fromEmployee(employee: Employee): EditForm {
   };
 }
 
+function formSnapshot(form: EditForm) {
+  return JSON.stringify({ ...form, campusIds: [...form.campusIds].sort() });
+}
+
 interface Props {
   employee: Employee;
   campuses: Campus[];
@@ -85,6 +90,9 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const dirty =
+    open && (profilePhoto !== null || formSnapshot(form) !== formSnapshot(fromEmployee(employee)));
+  const { requestDiscard } = useUnsavedChanges(`edit-employee-${employee.id}`, dirty);
   const staffTypes = useMemo(
     () => (form.staffCategory === "TEACHING" ? teachingTypes : nonTeachingTypes),
     [form.staffCategory],
@@ -190,7 +198,9 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
       <Dialog
         open={open}
         onOpenChange={(value) => {
-          if (!saving) setOpen(value);
+          if (saving) return;
+          if (value) setOpen(true);
+          else requestDiscard(() => setOpen(false));
         }}
       >
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
@@ -366,7 +376,11 @@ export function EditEmployeeDialog({ employee, campuses, disabled, onUpdated }: 
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button variant="outline" disabled={saving} onClick={() => setOpen(false)}>
+            <Button
+              variant="outline"
+              disabled={saving}
+              onClick={() => requestDiscard(() => setOpen(false))}
+            >
               Cancel
             </Button>
             <Button disabled={saving} onClick={() => void save()}>

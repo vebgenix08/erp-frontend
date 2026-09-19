@@ -1,9 +1,9 @@
-import { BrowserRouter } from "react-router-dom";
-import { useLocation } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { AppProviders } from "./providers";
 import { AppRoutes } from "./routes";
 import { AppErrorBoundary } from "../shared/ui/app-error-boundary";
+import { UnsavedChangesProvider } from "../shared/navigation/unsaved-changes";
 
 function RouteErrorBoundary({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -17,11 +17,20 @@ function RouteErrorBoundary({ children }: { children: ReactNode }) {
 export function App() {
   return (
     <AppProviders>
-      <BrowserRouter>
-        <RouteErrorBoundary>
-          <AppRoutes />
-        </RouteErrorBoundary>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </AppProviders>
   );
 }
+
+const router = createBrowserRouter([
+  {
+    path: "*",
+    element: (
+      <UnsavedChangesProvider>
+        <RouteErrorBoundary>
+          <AppRoutes />
+        </RouteErrorBoundary>
+      </UnsavedChangesProvider>
+    ),
+  },
+]);

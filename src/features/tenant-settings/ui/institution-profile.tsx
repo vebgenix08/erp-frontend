@@ -11,8 +11,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../shared/ui/car
 import { Input } from "../../../shared/ui/input";
 import { Label } from "../../../shared/ui/label";
 import { Spinner } from "../../../shared/ui/spinner";
+import { useUnsavedChanges } from "../../../shared/navigation/unsaved-changes";
 
 const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+
+function profileSnapshot(profile: InstitutionProfileInput) {
+  return JSON.stringify({
+    name: profile.name ?? "",
+    shortName: profile.shortName ?? "",
+    contactEmail: profile.contactEmail ?? "",
+    contactPhone: profile.contactPhone ?? "",
+    address: profile.address ?? "",
+    logoFileId: profile.logoFileId ?? "",
+  });
+}
 
 export function InstitutionProfileSettings() {
   const [form, setForm] = useState<InstitutionProfileInput>({});
@@ -25,6 +37,7 @@ export function InstitutionProfileSettings() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [savingLogo, setSavingLogo] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const uploadController = useRef<AbortController | null>(null);
   const profileForm = useRef<HTMLFormElement>(null);
   const logoInput = useRef<HTMLInputElement>(null);
@@ -37,6 +50,7 @@ export function InstitutionProfileSettings() {
     try {
       const profile = await getInstitutionProfile();
       setForm(profile ?? {});
+      setSavedSnapshot(profileSnapshot(profile ?? {}));
       if (profile?.logoFileId) setLogoUrl(await getFileDownloadUrl(profile.logoFileId));
       else setLogoUrl(profile?.logoUrl ?? null);
     } catch (value) {
@@ -54,6 +68,11 @@ export function InstitutionProfileSettings() {
       if (previewObjectUrl.current) URL.revokeObjectURL(previewObjectUrl.current);
     };
   }, []);
+
+  useUnsavedChanges(
+    "institution-profile",
+    !loading && (uploading || (savedSnapshot !== null && profileSnapshot(form) !== savedSnapshot)),
+  );
 
   const field = (name: keyof InstitutionProfileInput, value: string) => {
     setSaved(false);
@@ -73,6 +92,7 @@ export function InstitutionProfileSettings() {
     try {
       const profile = await saveInstitutionProfile(form);
       setForm(profile);
+      setSavedSnapshot(profileSnapshot(profile));
       publishInstitutionBranding({ name: profile.name, logoUrl });
       setSaved(true);
     } catch (value) {
@@ -131,6 +151,7 @@ export function InstitutionProfileSettings() {
       const profile = await saveInstitutionProfile({ ...profileInput, logoFileId: stored.id });
       profileSaved = true;
       setForm(profile);
+      setSavedSnapshot(profileSnapshot(profile));
       publishInstitutionBranding({ name: profile.name, logoUrl: previewUrl });
       try {
         const signedLogoUrl = await getFileDownloadUrl(stored.id);
