@@ -990,17 +990,19 @@ describe("teacher workspace pages", () => {
     });
     renderPage("/teacher/leadership-dashboard", emptyTeacherWorkspace, ["PRINCIPAL"]);
     expect(
-      await screen.findByRole("heading", { name: "Teaching coverage gaps" }),
+      await screen.findByRole("heading", { name: "Sections requiring attention" }),
     ).toBeInTheDocument();
-    expect(await screen.findByText("0 / 5 periods")).toBeInTheDocument();
+    expect(await screen.findByText("5 weekly periods short")).toBeInTheDocument();
     expect(screen.queryByText("anitha.rao@vebgenix.com")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Review subjects ready" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Teaching coverage/ })).toHaveAttribute(
       "href",
       "/teacher/academic-overview?filter=attention&scope=hod-1",
     );
-    const error = screen.getByText("Subject has no allocation");
-    const warning = screen.getByText("Review allocations");
-    expect(error.compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Coverage gaps/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Grade 8 · Section A" })).toHaveAttribute(
+      "href",
+      "/teacher/leadership-reports?filter=pending&scope=hod-1&section=section-1",
+    );
   });
 
   it("does not describe an unconfigured leadership scope as fully covered", async () => {
@@ -1014,7 +1016,7 @@ describe("teacher workspace pages", () => {
     });
     renderPage("/teacher/leadership-dashboard", emptyTeacherWorkspace, ["PRINCIPAL"]);
     expect(
-      await screen.findByText("No subject offerings are configured in this scope."),
+      await screen.findByText(/No subject offerings are configured in this scope/),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("All subject offerings in this scope are ready."),

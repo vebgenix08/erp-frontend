@@ -53,6 +53,7 @@ interface DepartmentRow {
   attendanceStatus?: string;
   attendanceSessions?: number;
   marksStatus?: string;
+  marksPending?: number;
   timetableEntries?: number;
   conflicts?: number;
   deficit?: number;
@@ -259,6 +260,7 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
           attendanceStatus: item.attendanceStatus,
           attendanceSessions: item.submittedAttendanceSessions,
           marksStatus: `${item.marksSubmitted} submitted · ${item.marksPending} pending`,
+          marksPending: item.marksPending,
           timetableEntries: timetable?.entryCount ?? 0,
           conflicts: timetable?.conflictCount ?? 0,
         };
@@ -277,17 +279,26 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
 
   const operationalFilter = searchParams.get("filter") ?? "";
   const rows = useMemo(() => {
-    if (!operationalFilter || operationalFilter === "all") return allRows;
+    let filteredRows = allRows;
     if (operationalFilter === "attention")
-      return allRows.filter((row) => !["Ready", "Complete", "Balanced"].includes(row.status ?? ""));
-    if (operationalFilter === "shortfall") return allRows.filter((row) => (row.deficit ?? 0) > 0);
-    if (operationalFilter === "pending")
-      return allRows.filter(
-        (row) =>
-          row.attendanceStatus !== "SUBMITTED" || row.marksStatus?.includes("0 pending") === false,
+      filteredRows = allRows.filter(
+        (row) => !["Ready", "Complete", "Balanced"].includes(row.status ?? ""),
       );
-    return allRows;
-  }, [allRows, operationalFilter]);
+    if (operationalFilter === "shortfall")
+      filteredRows = allRows.filter((row) => (row.deficit ?? 0) > 0);
+    if (operationalFilter === "pending")
+      filteredRows = allRows.filter(
+        (row) => row.attendanceStatus !== "SUBMITTED" || (row.marksPending ?? 0) > 0,
+      );
+    if (operationalFilter === "unpublished")
+      filteredRows = allRows.filter(
+        (row) => row.timetableStatus !== "PUBLISHED" || (row.conflicts ?? 0) > 0,
+      );
+    const requestedSection = searchParams.get("section");
+    return requestedSection && completionPageIds.has(page.id)
+      ? filteredRows.filter((row) => row.id === requestedSection)
+      : filteredRows;
+  }, [allRows, operationalFilter, page.id, searchParams]);
 
   const columns = useMemo<WorkspaceTableColumn<DepartmentRow>[]>(() => {
     if (isFacultyPage) {
