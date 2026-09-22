@@ -63,7 +63,7 @@ export function TenantLayout() {
 }
 
 function TenantWorkspace() {
-  const { session, clearSession } = useSession();
+  const { session } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -373,16 +373,14 @@ function TenantWorkspace() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    asChild
                     variant="ghost"
                     size="icon-sm"
                     className="h-6 w-6 text-slate-400 hover:bg-slate-800 hover:text-white"
-                    aria-label="Sign out"
-                    onClick={() => {
-                      clearSession();
-                      navigate("/login", { replace: true });
-                    }}
                   >
-                    <LogOut size={14} />
+                    <a href="/logout" aria-label="Sign out">
+                      <LogOut size={14} />
+                    </a>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Sign out</TooltipContent>

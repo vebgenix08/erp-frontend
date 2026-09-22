@@ -16,7 +16,6 @@ import {
   Navigate,
   Outlet,
   useLocation,
-  useNavigate,
   type NavLinkRenderProps,
 } from "react-router-dom";
 import { useSession } from "../../features/session/model/session-provider";
@@ -69,9 +68,8 @@ export function RoleLayout() {
 }
 
 function RoleWorkspace() {
-  const { session, clearSession } = useSession();
+  const { session } = useSession();
   const location = useLocation();
-  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const tenantId = session?.selectedTenant?.tenantId ?? session?.tenant?.tenantId;
   const { name: institutionName, logoUrl: institutionLogo } = useInstitutionBranding(tenantId);
@@ -186,15 +184,13 @@ function RoleWorkspace() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    asChild
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Sign out"
-                    onClick={() => {
-                      clearSession();
-                      navigate("/login", { replace: true });
-                    }}
                   >
-                    <LogOut size={15} />
+                    <a href="/logout" aria-label="Sign out">
+                      <LogOut size={15} />
+                    </a>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Sign out</TooltipContent>

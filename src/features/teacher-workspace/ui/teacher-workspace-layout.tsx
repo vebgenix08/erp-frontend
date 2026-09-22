@@ -40,7 +40,7 @@ export function TeacherWorkspaceLayout() {
 }
 
 function TeacherWorkspaceShell() {
-  const { session, clearSession } = useSession();
+  const { session } = useSession();
   const { campuses, selectedCampus, selectCampus, loading: campusLoading } = useSelectedCampus();
   const {
     academicYears,
@@ -444,12 +444,9 @@ function TeacherWorkspaceShell() {
                   </span>
                 </div>
               ) : null}
-              <button
+              <a
+                href="/logout"
                 aria-label="Sign out"
-                onClick={() => {
-                  clearSession();
-                  navigate("/login", { replace: true });
-                }}
                 className={cn(
                   "grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors",
                   collapsed && "hidden",
@@ -457,7 +454,7 @@ function TeacherWorkspaceShell() {
                 title="Sign out"
               >
                 <LogOut size={14} />
-              </button>
+              </a>
             </div>
           </div>
         </aside>

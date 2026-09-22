@@ -18,7 +18,6 @@ import {
   NavLink,
   Outlet,
   useLocation,
-  useNavigate,
   type NavLinkRenderProps,
 } from "react-router-dom";
 import { useSession } from "../../features/session/model/session-provider";
@@ -29,8 +28,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../
 import { RouteContentBoundary } from "../../shared/ui/route-content-boundary";
 
 export function PlatformLayout() {
-  const { session, clearSession } = useSession();
-  const navigate = useNavigate();
+  const { session } = useSession();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => setMobileOpen(false), [location.pathname]);
@@ -130,16 +128,14 @@ export function PlatformLayout() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    asChild
                     variant="ghost"
                     size="icon-sm"
                     className="h-6 w-6 text-slate-400 hover:bg-slate-800 hover:text-white"
-                    aria-label="Sign out"
-                    onClick={() => {
-                      clearSession();
-                      navigate("/login", { replace: true });
-                    }}
                   >
-                    <LogOut size={14} />
+                    <a href="/logout" aria-label="Sign out">
+                      <LogOut size={14} />
+                    </a>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Sign out</TooltipContent>
