@@ -347,6 +347,16 @@ const departmentNavigation: TeacherNavigationGroup[] = [
         "department",
         responsibilityAccess("HOD"),
       ),
+      page(
+        "dept_gradebook",
+        "Gradebook Moderation",
+        "Gradebook Moderation",
+        "Review submitted marks, rubric evidence and comments before final result locking.",
+        ClipboardCheck,
+        "workflow",
+        "department",
+        responsibilityAccess("HOD"),
+      ),
     ],
   },
 ];

@@ -6,7 +6,7 @@ import type {
 } from "../model/assessment.types";
 
 const fields =
-  "id campusId academicYearId classId name assessmentDate attendanceWindowStart attendanceWindowEnd maximumMarks sequence status version createdBy createdAt updatedBy updatedAt";
+  "id campusId academicYearId classId name assessmentDate attendanceWindowStart attendanceWindowEnd maximumMarks passMarks weightage decimalPlaces scoringMode commentsEnabled moderationRequired gradeScale{code label minimumPercentage maximumPercentage gradePoint} rubricCriteria{id name description maximumMarks} sequence status version createdBy createdAt updatedBy updatedAt";
 
 export async function listAssessmentDefinitions(input: {
   academicYearId: string;

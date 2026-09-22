@@ -25,6 +25,9 @@ import {
 } from "../api/assessments.api";
 import type {
   AssessmentDefinition,
+  AssessmentGradeBand,
+  AssessmentRubricCriterion,
+  AssessmentScoringMode,
   SaveAssessmentDefinitionInput,
 } from "../model/assessment.types";
 
@@ -37,8 +40,69 @@ interface AssessmentForm {
   attendanceWindowStart: string;
   attendanceWindowEnd: string;
   maximumMarks: string;
+  passMarks: string;
+  weightage: string;
+  decimalPlaces: string;
+  scoringMode: AssessmentScoringMode;
+  commentsEnabled: boolean;
+  moderationRequired: boolean;
+  gradeScale: AssessmentGradeBand[];
+  rubricCriteria: AssessmentRubricCriterion[];
   sequence: string;
 }
+
+const percentageBands = (
+  rows: Array<[string, string, number, number, number?]>,
+): AssessmentGradeBand[] =>
+  rows.map(([code, label, minimumPercentage, maximumPercentage, gradePoint]) => ({
+    code,
+    label,
+    minimumPercentage,
+    maximumPercentage,
+    ...(gradePoint !== undefined ? { gradePoint } : {}),
+  }));
+
+const gradingPresets = {
+  SCHOOL: {
+    passPercentage: 35,
+    decimalPlaces: "0",
+    gradeScale: percentageBands([
+      ["A1", "Outstanding", 91, 100],
+      ["A2", "Excellent", 81, 90.99],
+      ["B1", "Very good", 71, 80.99],
+      ["B2", "Good", 61, 70.99],
+      ["C1", "Satisfactory", 51, 60.99],
+      ["C2", "Developing", 41, 50.99],
+      ["D", "Basic", 35, 40.99],
+      ["E", "Needs improvement", 0, 34.99],
+    ]),
+  },
+  PU: {
+    passPercentage: 35,
+    decimalPlaces: "0",
+    gradeScale: percentageBands([
+      ["DIST", "Distinction", 85, 100],
+      ["I", "First class", 60, 84.99],
+      ["II", "Second class", 50, 59.99],
+      ["PASS", "Pass", 35, 49.99],
+      ["FAIL", "Not passed", 0, 34.99],
+    ]),
+  },
+  DEGREE: {
+    passPercentage: 40,
+    decimalPlaces: "1",
+    gradeScale: percentageBands([
+      ["O", "Outstanding", 90, 100, 10],
+      ["A+", "Excellent", 80, 89.99, 9],
+      ["A", "Very good", 70, 79.99, 8],
+      ["B+", "Good", 60, 69.99, 7],
+      ["B", "Above average", 55, 59.99, 6],
+      ["C", "Average", 50, 54.99, 5],
+      ["P", "Pass", 40, 49.99, 4],
+      ["F", "Fail", 0, 39.99, 0],
+    ]),
+  },
+};
 
 const emptyForm = (): AssessmentForm => ({
   classId: "",
@@ -47,6 +111,14 @@ const emptyForm = (): AssessmentForm => ({
   attendanceWindowStart: "",
   attendanceWindowEnd: "",
   maximumMarks: "",
+  passMarks: "",
+  weightage: "100",
+  decimalPlaces: "0",
+  scoringMode: "MARKS",
+  commentsEnabled: true,
+  moderationRequired: true,
+  gradeScale: [],
+  rubricCriteria: [],
   sequence: "",
 });
 
@@ -116,9 +188,30 @@ export function AssessmentSetupPage() {
       attendanceWindowStart: item.attendanceWindowStart,
       attendanceWindowEnd: item.attendanceWindowEnd,
       maximumMarks: String(item.maximumMarks),
+      passMarks: String(item.passMarks),
+      weightage: String(item.weightage),
+      decimalPlaces: String(item.decimalPlaces),
+      scoringMode: item.scoringMode,
+      commentsEnabled: item.commentsEnabled,
+      moderationRequired: item.moderationRequired,
+      gradeScale: item.gradeScale.map((band) => ({ ...band })),
+      rubricCriteria: item.rubricCriteria.map((criterion) => ({ ...criterion })),
       sequence: String(item.sequence),
     });
     setOpen(true);
+  }
+
+  function applyPreset(key: keyof typeof gradingPresets) {
+    const preset = gradingPresets[key];
+    setForm((current) => {
+      const maximum = Number(current.maximumMarks || 100);
+      return {
+        ...current,
+        passMarks: String((maximum * preset.passPercentage) / 100),
+        decimalPlaces: preset.decimalPlaces,
+        gradeScale: preset.gradeScale.map((band) => ({ ...band })),
+      };
+    });
   }
 
   async function submit(event: FormEvent) {
@@ -138,6 +231,14 @@ export function AssessmentSetupPage() {
         attendanceWindowStart: form.attendanceWindowStart,
         attendanceWindowEnd: form.attendanceWindowEnd,
         maximumMarks: Number(form.maximumMarks),
+        passMarks: Number(form.passMarks || 0),
+        weightage: Number(form.weightage || 100),
+        decimalPlaces: Number(form.decimalPlaces),
+        scoringMode: form.scoringMode,
+        commentsEnabled: form.commentsEnabled,
+        moderationRequired: form.moderationRequired,
+        gradeScale: form.gradeScale,
+        rubricCriteria: form.scoringMode === "RUBRIC" ? form.rubricCriteria : [],
         sequence: Number(form.sequence),
       };
       await saveAssessmentDefinition(input);
@@ -253,6 +354,7 @@ export function AssessmentSetupPage() {
                   <TableHead>Assessment date</TableHead>
                   <TableHead>Attendance window</TableHead>
                   <TableHead>Maximum marks</TableHead>
+                  <TableHead>Scoring and pass rule</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead aria-label="Actions" />
                 </TableRow>
@@ -275,6 +377,14 @@ export function AssessmentSetupPage() {
                       {formatDate(item.attendanceWindowEnd)}
                     </TableCell>
                     <TableCell>{item.maximumMarks}</TableCell>
+                    <TableCell>
+                      <strong className="block text-slate-900">
+                        {item.scoringMode === "RUBRIC" ? "Rubric" : "Direct marks"}
+                      </strong>
+                      <span className="text-xs text-slate-500">
+                        Pass {item.passMarks} · {item.gradeScale.length} grade bands
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -343,8 +453,9 @@ export function AssessmentSetupPage() {
 
       <Modal
         open={open}
+        className="max-w-5xl"
         title={form.id ? "Edit draft assessment" : "Add assessment"}
-        description="Maximum marks and attendance dates are enforced when teachers enter results."
+        description="Configure class-specific scoring, grading, moderation and result rules before marks entry opens."
         onClose={() => {
           if (!busy) setOpen(false);
         }}
@@ -380,6 +491,26 @@ export function AssessmentSetupPage() {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:col-span-2">
+              <p className="text-xs font-bold text-slate-700">Optional grading starter</p>
+              <p className="text-xs text-slate-500">
+                These are editable starting points. Board and university regulations must be
+                confirmed before the assessment is opened.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(["SCHOOL", "PU", "DEGREE"] as const).map((key) => (
+                  <Button
+                    key={key}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => applyPreset(key)}
+                  >
+                    {key === "SCHOOL" ? "School" : key === "PU" ? "PU college" : "Degree CBCS"}
+                  </Button>
+                ))}
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="assessment-date">Assessment date</Label>
@@ -451,7 +582,278 @@ export function AssessmentSetupPage() {
                 placeholder="100"
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pass-marks">Pass marks</Label>
+              <Input
+                id="pass-marks"
+                required
+                type="text"
+                inputMode="decimal"
+                value={form.passMarks}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    passMarks: event.target.value.replace(/[^0-9.]/g, ""),
+                  }))
+                }
+                placeholder="35"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="assessment-weightage">Assessment weightage (%)</Label>
+              <Input
+                id="assessment-weightage"
+                required
+                type="text"
+                inputMode="decimal"
+                value={form.weightage}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    weightage: event.target.value.replace(/[^0-9.]/g, ""),
+                  }))
+                }
+                placeholder="100"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="scoring-mode">Scoring method</Label>
+              <select
+                id="scoring-mode"
+                value={form.scoringMode}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    scoringMode: event.target.value as AssessmentScoringMode,
+                  }))
+                }
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+              >
+                <option value="MARKS">Direct marks</option>
+                <option value="RUBRIC">Rubric criteria</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="decimal-places">Allowed decimals</Label>
+              <select
+                id="decimal-places"
+                value={form.decimalPlaces}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, decimalPlaces: event.target.value }))
+                }
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+              >
+                <option value="0">Whole numbers</option>
+                <option value="1">One decimal</option>
+                <option value="2">Two decimals</option>
+              </select>
+            </div>
+            <label className="flex items-center gap-2 rounded-md border border-slate-200 p-3 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={form.commentsEnabled}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, commentsEnabled: event.target.checked }))
+                }
+              />
+              Allow teacher comments
+            </label>
+            <label className="flex items-center gap-2 rounded-md border border-slate-200 p-3 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={form.moderationRequired}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, moderationRequired: event.target.checked }))
+                }
+              />
+              Require HOD moderation
+            </label>
           </div>
+
+          {form.scoringMode === "RUBRIC" ? (
+            <section className="space-y-3 rounded-lg border border-slate-200 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Rubric criteria</h3>
+                  <p className="text-xs text-slate-500">
+                    Criterion maximums must total {form.maximumMarks || "the maximum marks"}.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      rubricCriteria: [
+                        ...current.rubricCriteria,
+                        {
+                          id: `criterion_${crypto.randomUUID()}`,
+                          name: "",
+                          description: "",
+                          maximumMarks: 0,
+                        },
+                      ],
+                    }))
+                  }
+                >
+                  Add criterion
+                </Button>
+              </div>
+              {form.rubricCriteria.map((criterion, index) => (
+                <div key={criterion.id} className="grid gap-2 md:grid-cols-[1fr_1.5fr_140px_auto]">
+                  <Input
+                    aria-label={`Criterion ${index + 1} name`}
+                    required
+                    value={criterion.name}
+                    placeholder="Knowledge"
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        rubricCriteria: current.rubricCriteria.map((item) =>
+                          item.id === criterion.id ? { ...item, name: event.target.value } : item,
+                        ),
+                      }))
+                    }
+                  />
+                  <Input
+                    aria-label={`Criterion ${index + 1} description`}
+                    value={criterion.description ?? ""}
+                    placeholder="What is evaluated"
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        rubricCriteria: current.rubricCriteria.map((item) =>
+                          item.id === criterion.id
+                            ? { ...item, description: event.target.value }
+                            : item,
+                        ),
+                      }))
+                    }
+                  />
+                  <Input
+                    aria-label={`Criterion ${index + 1} maximum marks`}
+                    required
+                    inputMode="decimal"
+                    value={criterion.maximumMarks || ""}
+                    placeholder="Marks"
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        rubricCriteria: current.rubricCriteria.map((item) =>
+                          item.id === criterion.id
+                            ? {
+                                ...item,
+                                maximumMarks: Number(event.target.value.replace(/[^0-9.]/g, "")),
+                              }
+                            : item,
+                        ),
+                      }))
+                    }
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setForm((current) => ({
+                        ...current,
+                        rubricCriteria: current.rubricCriteria.filter(
+                          (item) => item.id !== criterion.id,
+                        ),
+                      }))
+                    }
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </section>
+          ) : null}
+
+          <section className="space-y-3 rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Grade scale</h3>
+                <p className="text-xs text-slate-500">
+                  Percentage ranges may differ by class, board, program or university.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    gradeScale: [
+                      ...current.gradeScale,
+                      {
+                        code: "",
+                        label: "",
+                        minimumPercentage: 0,
+                        maximumPercentage: 0,
+                      },
+                    ],
+                  }))
+                }
+              >
+                Add grade band
+              </Button>
+            </div>
+            {form.gradeScale.map((band, index) => (
+              <div key={index} className="grid gap-2 md:grid-cols-6">
+                {(
+                  [
+                    ["code", "Code"],
+                    ["label", "Label"],
+                    ["minimumPercentage", "Minimum %"],
+                    ["maximumPercentage", "Maximum %"],
+                    ["gradePoint", "Grade point"],
+                  ] as const
+                ).map(([key, placeholder]) => (
+                  <Input
+                    key={key}
+                    aria-label={`Grade band ${index + 1} ${placeholder}`}
+                    value={band[key] ?? ""}
+                    placeholder={placeholder}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        gradeScale: current.gradeScale.map((item, itemIndex) =>
+                          itemIndex === index
+                            ? {
+                                ...item,
+                                [key]:
+                                  key === "code" || key === "label"
+                                    ? event.target.value
+                                    : event.target.value === ""
+                                      ? undefined
+                                      : Number(event.target.value.replace(/[^0-9.]/g, "")),
+                              }
+                            : item,
+                        ),
+                      }))
+                    }
+                  />
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      gradeScale: current.gradeScale.filter((_, itemIndex) => itemIndex !== index),
+                    }))
+                  }
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </section>
           <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
             <CalendarClock className="mr-2 inline h-4 w-4" />
             Attendance is counted only from submitted subject sessions inside this window.

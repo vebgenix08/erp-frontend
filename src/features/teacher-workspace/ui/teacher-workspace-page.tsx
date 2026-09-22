@@ -27,6 +27,7 @@ import { TeacherHistoryPage } from "../../teacher-history/ui/teacher-history-pag
 import { TeacherMentoringPage } from "../../teacher-mentoring/ui/teacher-mentoring-page";
 import { TeacherSectionWorkspacePage } from "../../teacher-section/ui/teacher-section-workspace-page";
 import { TeacherDepartmentPage } from "../../teacher-department/ui/teacher-department-page";
+import { GradebookModerationPage } from "../../teacher-marks/ui/gradebook-moderation-page";
 import { useTeacherWorkspace } from "../model/teacher-workspace-context";
 
 export function TeacherWorkspacePage() {
@@ -69,6 +70,7 @@ export function TeacherWorkspacePage() {
       return <Navigate to="/teacher/coord-overview" replace />;
     }
   }
+  if (page.id === "dept_gradebook") return <GradebookModerationPage />;
   if (page.id.startsWith("dept_")) return <TeacherDepartmentPage page={page} />;
   if (page.id.startsWith("coord_")) return <TeacherDepartmentPage page={page} />;
   if (
