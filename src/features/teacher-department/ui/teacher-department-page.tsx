@@ -85,7 +85,7 @@ const completionPageIds = new Set([
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition }) {
-  const { workspace, workspaceLoading, workspaceError } = useTeacherWorkspace();
+  const { workspace, workspaceLoading, workspaceError, operatingContext } = useTeacherWorkspace();
   const [data, setData] = useState<TeacherDepartmentWorkspace | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const responsibilityId = searchParams.get("scope") ?? "";
@@ -122,9 +122,10 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
   const isOverviewPage = ["dept_overview", "coord_overview", "leadership_dashboard"].includes(
     page.id,
   );
+  const academicYearId = operatingContext.academicYearId ?? workspace?.academicYear.id;
 
   const load = useCallback(async () => {
-    if (!workspace) return;
+    if (!academicYearId) return;
     setLoading(true);
     setError(null);
     try {
@@ -141,7 +142,7 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
           ? getTeacherCoordinationWorkspace
           : getTeacherDepartmentWorkspace;
       const result = await loader({
-        academicYearId: workspace.academicYear.id,
+        academicYearId,
         ...(responsibilityId
           ? leadership
             ? { campusId: responsibilityId.replace(/^leadership:/, "") }
@@ -160,7 +161,7 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
     } finally {
       setLoading(false);
     }
-  }, [page.id, responsibilityId, workspace]);
+  }, [academicYearId, page.id, responsibilityId]);
 
   useEffect(() => {
     void load();

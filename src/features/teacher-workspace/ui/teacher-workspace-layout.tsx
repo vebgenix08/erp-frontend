@@ -45,6 +45,7 @@ function TeacherWorkspaceShell() {
   const {
     academicYears,
     selectedAcademicYear,
+    selectedAcademicYearId,
     selectAcademicYear,
     loading: yearLoading,
   } = useSelectedAcademicYear();
@@ -190,7 +191,7 @@ function TeacherWorkspaceShell() {
     campusName:
       selectedWorkspaceCampus?.name ??
       (campusLoading || workspaceLoading ? "Loading campus" : "Campus not selected"),
-    academicYearId: selectedAcademicYear?.id ?? workspace?.academicYear.id ?? null,
+    academicYearId: selectedAcademicYearId ?? workspace?.academicYear.id ?? null,
     academicYearName:
       selectedAcademicYear?.name ??
       workspace?.academicYear.name ??

@@ -14,6 +14,7 @@ import type { AcademicYear } from "./settings.types";
 interface Value {
   academicYears: AcademicYear[];
   selectedAcademicYear: AcademicYear | null;
+  selectedAcademicYearId: string | null;
   loading: boolean;
   error: string | null;
   selectAcademicYear: (id: string) => void;
@@ -25,7 +26,9 @@ export function SelectedAcademicYearProvider({ children }: { children: ReactNode
   const tenantId = session?.selectedTenant?.tenantId ?? session?.tenant?.tenantId ?? "unknown";
   const storageKey = `erp:selected-academic-year:${tenantId}`;
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [selectedId, setSelectedId] = useState("");
+  const [selectedId, setSelectedId] = useState(
+    () => window.localStorage.getItem(storageKey) ?? "",
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refreshAcademicYears = useCallback(async () => {
@@ -69,12 +72,21 @@ export function SelectedAcademicYearProvider({ children }: { children: ReactNode
     () => ({
       academicYears,
       selectedAcademicYear,
+      selectedAcademicYearId: selectedId || null,
       loading,
       error,
       selectAcademicYear,
       refreshAcademicYears,
     }),
-    [academicYears, selectedAcademicYear, loading, error, selectAcademicYear, refreshAcademicYears],
+    [
+      academicYears,
+      selectedAcademicYear,
+      selectedId,
+      loading,
+      error,
+      selectAcademicYear,
+      refreshAcademicYears,
+    ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
