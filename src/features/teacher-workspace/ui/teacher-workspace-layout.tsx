@@ -478,12 +478,9 @@ function TeacherWorkspaceShell() {
                   <PageIcon size={16} />
                 </span>
                 <div className="min-w-0">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                  <span className="block truncate text-xs font-bold uppercase tracking-wider text-slate-500">
                     {activeNavigationGroup.label}
                   </span>
-                  <h1 className="truncate text-sm font-bold text-slate-900 leading-tight">
-                    {page.title || page.label}
-                  </h1>
                 </div>
               </div>
             </div>

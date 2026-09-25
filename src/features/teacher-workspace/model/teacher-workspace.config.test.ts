@@ -125,6 +125,12 @@ describe("teacher workspace navigation", () => {
     expect(labels.filter((label) => label === "Dashboard")).toHaveLength(0);
   });
 
+  it("keeps legacy teaching coverage routes available without duplicating HOD navigation", () => {
+    const ids = visiblePageIds(capabilities({ responsibilityTypes: ["HOD"] }));
+    expect(ids).not.toContain("dept_coverage");
+    expect(findTeacherPage("dept-coverage").id).toBe("dept_coverage");
+  });
+
   it("contains the approved marks, report and responsibility workspaces", () => {
     const pageIds = new Set(teacherWorkspacePages.map((page) => page.id));
     for (const required of [
