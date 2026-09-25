@@ -44,7 +44,7 @@ const page = (
   > = {},
 ): TeacherPageDefinition => ({
   id,
-  slug: id.replaceAll("_", "-"),
+  slug: canonicalRouteSlugs[id] ?? id.replaceAll("_", "-"),
   label,
   title,
   description,
@@ -53,6 +53,52 @@ const page = (
   section,
   ...access,
 });
+
+const canonicalRouteSlugs: Record<string, string> = {
+  marks_entry: "marks-register",
+  marks_history: "marks-submission-history",
+  dept_overview: "department-overview",
+  dept_faculty: "faculty-allocation",
+  dept_coverage: "teaching-coverage",
+  dept_timetable: "department-timetable",
+  dept_workload: "department-workload",
+  dept_reports: "department-reports",
+  dept_gradebook: "gradebook-moderation",
+  coord_overview: "operations-overview",
+  coord_coverage: "academic-coverage",
+  coord_allocation: "teaching-allocation",
+  coord_timetable: "timetable-readiness",
+  coord_attendance: "attendance-monitoring",
+  coord_marks: "marks-completion",
+  coord_actions: "pending-actions",
+  coord_reports: "academic-operations-reports",
+  leadership_dashboard: "leadership-overview",
+  leadership_faculty: "leadership-faculty",
+  attendance_timetable_mon: "attendance-timetable",
+  leadership_reports: "leadership-reports",
+};
+
+const teacherRouteAliases: Record<string, string> = {
+  "marks-entry": "marks-register",
+  "marks-history": "marks-submission-history",
+  "dept-overview": "department-overview",
+  "dept-faculty": "faculty-allocation",
+  "dept-coverage": "teaching-coverage",
+  "dept-timetable": "department-timetable",
+  "dept-workload": "department-workload",
+  "dept-reports": "department-reports",
+  "dept-gradebook": "gradebook-moderation",
+  "coord-overview": "operations-overview",
+  "coord-coverage": "academic-coverage",
+  "coord-allocation": "teaching-allocation",
+  "coord-timetable": "timetable-readiness",
+  "coord-attendance": "attendance-monitoring",
+  "coord-marks": "marks-completion",
+  "coord-actions": "pending-actions",
+  "coord-reports": "academic-operations-reports",
+  "leadership-dashboard": "leadership-overview",
+  "attendance-timetable-mon": "attendance-timetable",
+};
 
 const teachingAccess = { requiresTeachingAssignment: true } as const;
 const responsibilityAccess = (...requiredResponsibilityTypes: string[]) => ({
@@ -81,8 +127,8 @@ const teachingNavigation: TeacherNavigationGroup[] = [
     pages: [
       page(
         "schedule",
-        "Schedule",
-        "Academic Year Timetable",
+        "My Timetable",
+        "My Timetable",
         "Published timetable revisions and assigned teaching periods.",
         CalendarDays,
         "schedule",
@@ -289,7 +335,7 @@ const departmentNavigation: TeacherNavigationGroup[] = [
     pages: [
       page(
         "dept_overview",
-        "Department Health",
+        "Department Overview",
         "Department Overview",
         "Teaching coverage gaps, timetable readiness and academic work requiring attention.",
         LayoutDashboard,
@@ -332,7 +378,7 @@ const departmentNavigation: TeacherNavigationGroup[] = [
       ),
       page(
         "dept_workload",
-        "Workload & Capacity",
+        "Department Workload",
         "Department Workload",
         "Capacity, teaching periods and allocation balance.",
         Scale,
@@ -371,7 +417,7 @@ const coordinatorNavigation: TeacherNavigationGroup[] = [
     pages: [
       page(
         "coord_overview",
-        "Operations Health",
+        "Academic Operations Overview",
         "Academic Operations Overview",
         "Cross-unit readiness and pending academic operations.",
         LayoutDashboard,
@@ -441,7 +487,7 @@ const coordinatorNavigation: TeacherNavigationGroup[] = [
       ),
       page(
         "coord_reports",
-        "Reports",
+        "Academic Operations Reports",
         "Academic Operations Reports",
         "Coverage, allocation, timetable, attendance and marks reports.",
         FileChartColumn,
@@ -460,8 +506,8 @@ const leadershipNavigation: TeacherNavigationGroup[] = [
     pages: [
       page(
         "leadership_dashboard",
-        "Campus Health",
-        "Academic Leadership Dashboard",
+        "Leadership Overview",
+        "Leadership Overview",
         "Campus academic health and exceptions requiring leadership attention.",
         LayoutDashboard,
         "dashboard",
@@ -500,7 +546,7 @@ const leadershipNavigation: TeacherNavigationGroup[] = [
       ),
       page(
         "leadership_reports",
-        "Reports",
+        "Leadership Reports",
         "Leadership Reports",
         "Read-only campus academic and operational reports.",
         FileChartColumn,
@@ -576,8 +622,9 @@ export function getVisibleTeacherNavigation(capabilities: TeacherWorkspaceCapabi
 }
 
 export function findTeacherPage(slug: string | undefined) {
+  const canonicalSlug = slug ? (teacherRouteAliases[slug] ?? slug) : undefined;
   return (
-    teacherWorkspacePages.find((item) => item.slug === slug || item.id === slug) ??
+    teacherWorkspacePages.find((item) => item.slug === canonicalSlug || item.id === slug) ??
     teacherWorkspacePages[0]!
   );
 }

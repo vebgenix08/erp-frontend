@@ -61,13 +61,13 @@ export function TeacherWorkspacePage() {
       capabilities.roleCodes.has("VICE_PRINCIPAL") ||
       capabilities.roleCodes.has("DEAN")
     ) {
-      return <Navigate to="/teacher/leadership-dashboard" replace />;
+      return <Navigate to="/teacher/leadership-overview" replace />;
     }
     if (capabilities.responsibilityTypes.has("HOD")) {
-      return <Navigate to="/teacher/dept-overview" replace />;
+      return <Navigate to="/teacher/department-overview" replace />;
     }
     if (capabilities.responsibilityTypes.has("PROGRAM_COORDINATOR")) {
-      return <Navigate to="/teacher/coord-overview" replace />;
+      return <Navigate to="/teacher/operations-overview" replace />;
     }
   }
   if (page.id === "dept_gradebook") return <GradebookModerationPage />;

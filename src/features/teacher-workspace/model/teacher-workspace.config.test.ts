@@ -119,10 +119,17 @@ describe("teacher workspace navigation", () => {
         roleCodes: ["PRINCIPAL"],
       }),
     ).flatMap((group) => group.pages.map((page) => page.label));
-    expect(labels).toContain("Department Health");
-    expect(labels).toContain("Operations Health");
-    expect(labels).toContain("Campus Health");
+    expect(labels).toContain("Department Overview");
+    expect(labels).toContain("Academic Operations Overview");
+    expect(labels).toContain("Leadership Overview");
     expect(labels.filter((label) => label === "Dashboard")).toHaveLength(0);
+  });
+
+  it("uses canonical route slugs and resolves legacy links", () => {
+    expect(findTeacherPage("dept-overview").slug).toBe("department-overview");
+    expect(findTeacherPage("department-overview").id).toBe("dept_overview");
+    expect(findTeacherPage("attendance-timetable-mon").slug).toBe("attendance-timetable");
+    expect(findTeacherPage("marks-entry").slug).toBe("marks-register");
   });
 
   it("keeps legacy teaching coverage routes available without duplicating HOD navigation", () => {

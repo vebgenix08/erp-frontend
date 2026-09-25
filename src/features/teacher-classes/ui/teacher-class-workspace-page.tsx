@@ -209,7 +209,7 @@ export function TeacherClassWorkspacePage() {
             </Button>
             <Button
               variant="default"
-              onClick={() => navigate(contextualPath("/teacher/marks-entry"))}
+              onClick={() => navigate(contextualPath("/teacher/marks-register"))}
               className="rounded-xl shadow-2xs text-xs font-bold bg-brand-600 hover:bg-brand-700"
             >
               <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Enter Marks
@@ -558,7 +558,7 @@ export function TeacherClassWorkspacePage() {
                 </p>
               </div>
               <Button
-                onClick={() => navigate(contextualPath("/teacher/marks-entry"))}
+                onClick={() => navigate(contextualPath("/teacher/marks-register"))}
                 className="rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 shadow-2xs"
               >
                 <Award className="mr-1.5 h-4 w-4" /> Enter / Update Exam Marks

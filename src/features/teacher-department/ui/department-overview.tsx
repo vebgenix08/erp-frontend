@@ -33,7 +33,7 @@ export function DepartmentOverview({
       ? "coord-coverage"
       : "dept-coverage";
   const timetablePath = leadership
-    ? "attendance-timetable-mon"
+    ? "attendance-timetable"
     : coordination
       ? "coord-timetable"
       : "dept-timetable";
