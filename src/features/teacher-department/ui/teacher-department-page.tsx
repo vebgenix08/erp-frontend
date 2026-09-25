@@ -119,6 +119,24 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
       { replace },
     );
   };
+  useEffect(() => {
+    if (
+      selectedFacultyId &&
+      requestedTab &&
+      requestedTab !== "PROFILE" &&
+      requestedTab !== "WORKLOAD"
+    ) {
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.set("faculty", selectedFacultyId);
+          next.set("tab", "PROFILE");
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [requestedTab, selectedFacultyId, setSearchParams]);
   const isFacultyPage = facultyPageIds.has(page.id);
   const isOverviewPage = ["dept_overview", "coord_overview", "leadership_dashboard"].includes(
     page.id,

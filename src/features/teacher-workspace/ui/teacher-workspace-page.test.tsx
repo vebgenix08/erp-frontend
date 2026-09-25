@@ -1108,7 +1108,7 @@ describe("teacher workspace pages", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Workload" }));
     expect(screen.getByTestId("location")).toHaveTextContent("tab=WORKLOAD");
-    expect(screen.getAllByText("Allocation balanced")).toHaveLength(2);
+    expect(screen.getByText("Allocation balanced")).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Mathematics" })).toBeInTheDocument();
     expect(screen.getByText("Teacher Timetable")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute("aria-pressed", "true");
