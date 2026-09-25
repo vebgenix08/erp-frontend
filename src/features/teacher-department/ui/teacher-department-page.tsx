@@ -1,4 +1,4 @@
-import { ArrowLeft, List, Table2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarClock, List, Table2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { DepartmentTimetableGrid } from "./department-timetable-grid";
 import { DepartmentOverview } from "./department-overview";
@@ -25,17 +25,18 @@ import type {
   DepartmentFaculty,
   TeacherDepartmentWorkspace,
 } from "../model/teacher-department.types";
+import { getTeacherWorkloadWorkspace } from "../../teacher-workload/api/teacher-workload.api";
+import type { TeacherWorkloadWorkspace } from "../../teacher-workload/model/teacher-workload.types";
 
 interface DepartmentRow {
   id: string;
   facultyId?: string;
   facultyName?: string;
-  facultyStatus?: string;
-  loginStatus?: string;
-  email?: string;
-  phoneNumber?: string;
   department?: string;
   designation?: string;
+  teachingSummary?: string;
+  periodSummary?: string;
+  allocationStatus?: string;
   subjects?: string;
   classes?: string;
   required?: number;
@@ -59,7 +60,7 @@ interface DepartmentRow {
   deficit?: number;
 }
 
-type FacultyDetailTab = "PROFILE" | "WORKLOAD" | "COUNSELLING";
+type FacultyDetailTab = "PROFILE" | "WORKLOAD";
 type FacultyScheduleView = "TABLE" | "LIST";
 
 const teachingDays = [
@@ -97,7 +98,7 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
   const selectedFacultyId = searchParams.get("faculty");
   const requestedTab = searchParams.get("tab");
   const facultyDetailTab: FacultyDetailTab =
-    requestedTab === "WORKLOAD" || requestedTab === "COUNSELLING" ? requestedTab : "PROFILE";
+    requestedTab === "WORKLOAD" ? requestedTab : "PROFILE";
   const updateFacultyLocation = (
     facultyId: string | null,
     tab: FacultyDetailTab = "PROFILE",
@@ -185,12 +186,18 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
         id: item.employeeId,
         facultyId: item.employeeCode,
         facultyName: item.fullName,
-        facultyStatus: item.status,
-        loginStatus: item.loginStatus,
-        email: item.email ?? "Not recorded",
-        phoneNumber: item.phone ?? "Not recorded",
         department: item.department ?? "Not assigned",
         designation: item.designation ?? "Not assigned",
+        teachingSummary:
+          [...new Set(item.allocations.map((allocation) => allocation.subjectName))].join(", ") ||
+          "No subject allocation",
+        periodSummary: `${item.scheduledPeriods} / ${item.requiredPeriods}`,
+        allocationStatus:
+          item.scheduledPeriods > item.requiredPeriods
+            ? "Over scheduled"
+            : item.scheduledPeriods < item.requiredPeriods
+              ? "Incomplete"
+              : "Ready",
       }));
     }
     if (page.id === "dept_coverage" || page.id === "coord_coverage") {
@@ -304,50 +311,38 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
   const columns = useMemo<WorkspaceTableColumn<DepartmentRow>[]>(() => {
     if (isFacultyPage) {
       return [
-        { key: "facultyId", label: "Faculty ID" },
-        { key: "facultyName", label: "Faculty Name" },
         {
-          key: "facultyStatus",
-          label: "Status",
+          key: "facultyName",
+          label: "Faculty",
           render: (row) => (
-            <WorkspaceStatus
-              tone={
-                row.facultyStatus === "ACTIVE"
-                  ? "success"
-                  : row.facultyStatus === "INACTIVE"
-                    ? "warning"
-                    : "neutral"
-              }
-            >
-              {(row.facultyStatus ?? "UNKNOWN").replaceAll("_", " ")}
-            </WorkspaceStatus>
+            <div>
+              <strong className="block text-xs text-slate-950">{row.facultyName}</strong>
+              <span className="mt-0.5 block text-[11px] text-slate-500">
+                {[row.facultyId, row.designation].filter(Boolean).join(" · ")}
+              </span>
+            </div>
           ),
         },
-        { key: "email", label: "Email" },
+        { key: "teachingSummary", label: "Subjects" },
+        { key: "periodSummary", label: "Scheduled / Required" },
         {
-          key: "loginStatus",
-          label: "Portal Access",
+          key: "allocationStatus",
+          label: "Allocation",
           render: (row) => (
             <WorkspaceStatus
               tone={
-                row.loginStatus === "ACTIVE"
+                row.allocationStatus === "Ready"
                   ? "success"
-                  : row.loginStatus === "FAILED"
+                  : row.allocationStatus === "Over scheduled"
                     ? "danger"
-                    : row.loginStatus === "INVITED"
-                      ? "warning"
-                      : "neutral"
+                    : "warning"
               }
             >
-              {row.loginStatus === "NONE"
-                ? "No account"
-                : (row.loginStatus ?? "UNKNOWN").replaceAll("_", " ")}
+              {row.allocationStatus ?? "Unknown"}
             </WorkspaceStatus>
           ),
         },
-        { key: "phoneNumber", label: "Phone Number" },
         { key: "department", label: "Department" },
-        { key: "designation", label: "Designation" },
       ];
     }
     if (page.id === "dept_workload") {
@@ -468,7 +463,9 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
     <>
       {selectedFaculty ? (
         <FacultyDetailsWorkspace
+          key={selectedFaculty.employeeId}
           faculty={selectedFaculty}
+          academicYearId={data?.academicYear.id ?? workspace.academicYear.id}
           academicYearName={data?.academicYear.name ?? workspace.academicYear.name}
           tab={facultyDetailTab}
           onTabChange={(tab) => updateFacultyLocation(selectedFacultyId, tab, true)}
@@ -539,7 +536,7 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
             <>
               <dl className="grid grid-cols-2 gap-x-5 gap-y-3 border-y border-slate-200 py-3 lg:grid-cols-4">
                 {[
-                  ["Faculty", String(data.summary.faculty)],
+                  [isFacultyPage ? "Allocated faculty" : "Faculty", String(data.summary.faculty)],
                   [
                     "Class sections",
                     `${data.summary.sections} across ${data.summary.classes} classes`,
@@ -659,18 +656,23 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
 
 function FacultyDetailsWorkspace({
   faculty,
+  academicYearId,
   academicYearName,
   tab,
   onTabChange,
   onClose,
 }: {
   faculty: DepartmentFaculty;
+  academicYearId: string;
   academicYearName: string;
   tab: FacultyDetailTab;
   onTabChange: (tab: FacultyDetailTab) => void;
   onClose: () => void;
 }) {
   const [scheduleView, setScheduleView] = useState<FacultyScheduleView>("TABLE");
+  const [workload, setWorkload] = useState<TeacherWorkloadWorkspace | null>(null);
+  const [workloadLoading, setWorkloadLoading] = useState(false);
+  const [workloadError, setWorkloadError] = useState<string | null>(null);
   const workloadBalance = faculty.requiredPeriods - faculty.scheduledPeriods;
   const workloadState =
     workloadBalance < 0
@@ -679,6 +681,31 @@ function FacultyDetailsWorkspace({
         ? `${workloadBalance} periods available`
         : "Allocation balanced";
   const teacherSchedule = faculty.schedule;
+  useEffect(() => {
+    if (tab !== "WORKLOAD" || workload?.teacher.id === faculty.employeeId) return;
+    let active = true;
+    setWorkloadLoading(true);
+    setWorkloadError(null);
+    void getTeacherWorkloadWorkspace({
+      teacherId: faculty.employeeId,
+      academicYearId,
+      viewMode: "PUBLISHED",
+      weekStartDate: new Date().toISOString().slice(0, 10),
+    })
+      .then((result) => {
+        if (active) setWorkload(result);
+      })
+      .catch((value) => {
+        if (active)
+          setWorkloadError(value instanceof Error ? value.message : "Unable to load workload");
+      })
+      .finally(() => {
+        if (active) setWorkloadLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [academicYearId, faculty.employeeId, tab, workload?.teacher.id]);
   const scheduleSlots = useMemo(() => {
     const unique = new Map<string, { startTime: string; endTime: string }>();
     for (const lesson of teacherSchedule) {
@@ -728,7 +755,7 @@ function FacultyDetailsWorkspace({
             ["Teaching groups", faculty.assignmentCount],
             ["Required periods", faculty.requiredPeriods],
             ["Scheduled periods", faculty.scheduledPeriods],
-            ["Assigned mentees", faculty.menteeCount],
+            ["Allocation", workloadState],
           ].map(([label, value]) => (
             <div key={label} className="border-b border-slate-100 p-4 sm:border-r lg:border-b-0">
               <dt className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
@@ -745,7 +772,7 @@ function FacultyDetailsWorkspace({
             aria-label="Faculty details"
             className="flex gap-1 border-b border-slate-200"
           >
-            {(["PROFILE", "WORKLOAD", "COUNSELLING"] as const).map((item) => (
+            {(["PROFILE", "WORKLOAD"] as const).map((item) => (
               <button
                 type="button"
                 key={item}
@@ -755,7 +782,7 @@ function FacultyDetailsWorkspace({
                 tabIndex={tab === item ? 0 : -1}
                 aria-selected={tab === item}
                 onKeyDown={(event) => {
-                  const tabs: FacultyDetailTab[] = ["PROFILE", "WORKLOAD", "COUNSELLING"];
+                  const tabs: FacultyDetailTab[] = ["PROFILE", "WORKLOAD"];
                   const index = tabs.indexOf(item);
                   const nextIndex =
                     event.key === "ArrowRight"
@@ -794,17 +821,17 @@ function FacultyDetailsWorkspace({
             {tab === "PROFILE" ? (
               <WorkspaceDetails
                 rows={[
-                  ["Faculty ID", faculty.employeeCode],
-                  ["Faculty Name", faculty.fullName],
-                  ["Status", faculty.status.replaceAll("_", " ")],
                   ["Email", faculty.email ?? "Not recorded"],
                   ["Phone Number", faculty.phone ?? "Not recorded"],
-                  ["Department", faculty.department ?? "Not assigned"],
-                  ["Designation", faculty.designation ?? "Not assigned"],
-                  ["Staff Type", faculty.staffType?.replaceAll("_", " ") ?? "Not recorded"],
                   [
                     "Employment Type",
                     faculty.employmentType?.replaceAll("_", " ") ?? "Not recorded",
+                  ],
+                  [
+                    "Portal Access",
+                    faculty.loginStatus === "NONE"
+                      ? "No account"
+                      : faculty.loginStatus.replaceAll("_", " "),
                   ],
                   [
                     "Joining Date",
@@ -818,14 +845,53 @@ function FacultyDetailsWorkspace({
 
             {tab === "WORKLOAD" ? (
               <div className="space-y-4">
-                <WorkspaceDetails
-                  rows={[
-                    ["Teaching groups", faculty.assignmentCount],
-                    ["Required weekly periods", faculty.requiredPeriods],
-                    ["Scheduled weekly periods", faculty.scheduledPeriods],
-                    ["Allocation state", workloadState],
-                  ]}
-                />
+                {workloadLoading ? <LoadingState label="Loading current workload" /> : null}
+                {workloadError ? (
+                  <div role="alert" className="rounded-md bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
+                    Capacity information is unavailable. Department allocation remains visible below.
+                  </div>
+                ) : null}
+                {workload ? (
+                  <>
+                    <dl className="grid border-y border-slate-200 sm:grid-cols-2 lg:grid-cols-4">
+                      {[
+                        ["Weekly limit", workload.summary.maximumWeeklyPeriods],
+                        ["Actual this week", workload.summary.actualWeeklyPeriods],
+                        ["Remaining capacity", workload.summary.remainingCapacity],
+                        ["Substitutions", workload.summary.substitutionPeriods],
+                      ].map(([label, value]) => (
+                        <div key={label} className="py-3 sm:pr-5">
+                          <dt className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
+                            {label}
+                          </dt>
+                          <dd className="mt-1 text-lg font-extrabold text-slate-950">{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    {workload.summary.overloadPeriods > 0 || workload.issues.length > 0 ? (
+                      <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
+                        <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                        <span>
+                          {workload.summary.overloadPeriods > 0
+                            ? `${workload.summary.overloadPeriods} periods above the weekly limit.`
+                            : workload.issues[0]?.reason}
+                        </span>
+                      </div>
+                    ) : null}
+                    {workload.availabilityExceptions.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-200 pb-3 text-xs text-slate-600">
+                        <span className="inline-flex items-center gap-1.5 font-bold text-slate-800">
+                          <CalendarClock size={14} aria-hidden="true" /> Availability
+                        </span>
+                        {workload.availabilityExceptions.map((item) => (
+                          <span key={item.id}>
+                            {item.dayOfWeek[0] + item.dayOfWeek.slice(1).toLowerCase()} · {formatClockTime(item.startTime)}–{formatClockTime(item.endTime)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
                 <div className="overflow-x-auto rounded-md border border-slate-200">
                   <table className="w-full min-w-[620px] border-collapse text-left">
                     <thead>
@@ -1042,23 +1108,6 @@ function FacultyDetailsWorkspace({
               </div>
             ) : null}
 
-            {tab === "COUNSELLING" ? (
-              <div className="space-y-3">
-                <WorkspaceDetails
-                  rows={[
-                    ["Assigned mentees", faculty.menteeCount],
-                    [
-                      "Mentor responsibility",
-                      faculty.responsibilityTypes.includes("MENTOR") ? "Active" : "Not assigned",
-                    ],
-                  ]}
-                />
-                <p className="text-xs font-medium leading-5 text-slate-500">
-                  Private counselling notes remain visible only to the assigned mentor. Academic
-                  leadership sees assignment coverage, not confidential interaction content.
-                </p>
-              </div>
-            ) : null}
           </div>
         </div>
       </WorkspaceSurface>

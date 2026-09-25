@@ -11,6 +11,7 @@ import { TeacherWorkspacePage } from "./teacher-workspace-page";
 import { getTeacherAttendanceWorkspace } from "../../teacher-attendance/api/teacher-attendance.api";
 import { getTeacherMarksWorkspace } from "../../teacher-marks/api/teacher-marks.api";
 import type { TeacherWorkloadWorkspace } from "../../teacher-workload/model/teacher-workload.types";
+import { getTeacherWorkloadWorkspace } from "../../teacher-workload/api/teacher-workload.api";
 import {
   listTeacherDiaryEntries,
   listTeacherLessonPlans,
@@ -81,6 +82,10 @@ vi.mock("../../teacher-department/api/teacher-department.api", () => ({
   getTeacherCoordinationWorkspace: vi.fn(),
   getTeacherDepartmentWorkspace: vi.fn(),
   getTeacherLeadershipWorkspace: vi.fn(),
+}));
+
+vi.mock("../../teacher-workload/api/teacher-workload.api", () => ({
+  getTeacherWorkloadWorkspace: vi.fn(),
 }));
 
 vi.mock("../../teacher-section/api/teacher-section.api", () => ({
@@ -299,6 +304,7 @@ describe("teacher workspace pages", () => {
       scopeType: "TENANT",
     });
     vi.mocked(getFileDownloadUrl).mockResolvedValue("https://storage.test/portrait.png");
+    vi.mocked(getTeacherWorkloadWorkspace).mockResolvedValue(assignedTeacherWorkspace);
     vi.mocked(getTeacherDepartmentWorkspace).mockResolvedValue({
       scope: {
         responsibilityId: "hod-1",
@@ -1079,23 +1085,16 @@ describe("teacher workspace pages", () => {
       await screen.findByRole("heading", { name: "Faculty & Allocation" }),
     ).toBeInTheDocument();
     for (const heading of [
-      "Faculty ID",
-      "Faculty Name",
-      "Status",
-      "Portal Access",
-      "Email",
-      "Phone Number",
+      "Faculty",
+      "Subjects",
+      "Scheduled / Required",
+      "Allocation",
       "Department",
-      "Designation",
     ]) {
       expect(screen.getByRole("columnheader", { name: heading })).toBeInTheDocument();
     }
-    expect(
-      screen.queryByRole("columnheader", { name: "Teaching Workload" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("columnheader", { name: "Designated Responsibilities" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Email" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Phone Number" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "View details" }));
     expect(screen.getByTestId("location")).toHaveTextContent("faculty=");
@@ -1109,20 +1108,25 @@ describe("teacher workspace pages", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Workload" }));
     expect(screen.getByTestId("location")).toHaveTextContent("tab=WORKLOAD");
-    expect(screen.getByText("Allocation balanced")).toBeInTheDocument();
+    expect(screen.getAllByText("Allocation balanced")).toHaveLength(2);
     expect(screen.getByRole("cell", { name: "Mathematics" })).toBeInTheDocument();
     expect(screen.getByText("Teacher Timetable")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("columnheader", { name: "Monday" })).toBeInTheDocument();
+    expect(await screen.findByText("Weekly limit")).toBeInTheDocument();
+    expect(getTeacherWorkloadWorkspace).toHaveBeenCalledWith({
+      teacherId: "employee-1",
+      academicYearId: "year-1",
+      viewMode: "PUBLISHED",
+      weekStartDate: expect.any(String),
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "List" }));
     expect(screen.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("cell", { name: "Grade 8 - Section A" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "9:00 AM - 9:45 AM" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Counselling" }));
-    expect(screen.getAllByText("Assigned mentees")).toHaveLength(2);
-    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("tab", { name: "Counselling" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Back to faculty list" }));
     expect(screen.getByRole("heading", { name: "Faculty & Allocation" })).toBeInTheDocument();
@@ -1232,7 +1236,7 @@ describe("teacher workspace pages", () => {
     expect(
       await screen.findByRole("heading", { name: "Faculty & Allocation" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Faculty ID" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Faculty" })).toBeInTheDocument();
     expect(getTeacherLeadershipWorkspace).toHaveBeenCalledWith({
       academicYearId: "year-1",
       date: expect.any(String),
