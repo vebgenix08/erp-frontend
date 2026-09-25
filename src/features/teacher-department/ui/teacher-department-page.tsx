@@ -708,7 +708,7 @@ function FacultyDetailsWorkspace({
       teacherId: faculty.employeeId,
       academicYearId,
       viewMode: "PUBLISHED",
-      weekStartDate: new Date().toISOString().slice(0, 10),
+      weekStartDate: new Date().toISOString(),
     })
       .then((result) => {
         if (active) setWorkload(result);
