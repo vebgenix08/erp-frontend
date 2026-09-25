@@ -8,6 +8,7 @@ import {
   Columns3,
   Download,
   FileWarning,
+  ListFilter,
   FilterX,
   Printer,
   Search,
@@ -199,6 +200,24 @@ export interface WorkspaceTableColumn<Row extends object> {
   render?: (row: Row) => ReactNode;
 }
 
+export interface WorkspaceTableFilter<Row extends object> {
+  key: keyof Row & string;
+  label: string;
+  allLabel?: string;
+}
+
+function readVisibleColumns(storageKey: string, columnKeys: string[]) {
+  if (typeof window === "undefined") return columnKeys;
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(storageKey) ?? "[]");
+    if (!Array.isArray(saved)) return columnKeys;
+    const available = columnKeys.filter((key) => saved.includes(key));
+    return available.length ? available : columnKeys;
+  } catch {
+    return columnKeys;
+  }
+}
+
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
 }
@@ -208,33 +227,60 @@ export function WorkspaceDataTable<Row extends { id: string }>({
   columns,
   downloadName,
   onOpen,
+  filters = [],
 }: {
   rows: Row[];
   columns: WorkspaceTableColumn<Row>[];
   downloadName: string;
   onOpen?: (row: Row) => void;
+  filters?: WorkspaceTableFilter<Row>[];
 }) {
   const signature = columns.map((column) => column.key).join("|");
   const columnKeys = useMemo(() => signature.split("|"), [signature]);
+  const storageKey = `workspace-table:${downloadName}:visible-columns`;
   const [query, setQuery] = useState("");
-  const [visible, setVisible] = useState<string[]>(columns.map((column) => column.key));
+  const [visible, setVisible] = useState<string[]>(() =>
+    readVisibleColumns(storageKey, columnKeys),
+  );
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [sort, setSort] = useState<{ key: string; descending: boolean } | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
-    setVisible(columnKeys);
+    setVisible(readVisibleColumns(storageKey, columnKeys));
     setSelected([]);
     setPage(1);
     setSort(null);
-  }, [columnKeys, signature]);
+    setActiveFilters({});
+  }, [columnKeys, signature, storageKey]);
+
+  useEffect(() => {
+    window.localStorage.setItem(storageKey, JSON.stringify(visible));
+  }, [storageKey, visible]);
+
+  const filterOptions = useMemo(
+    () =>
+      filters.map((filter) => ({
+        ...filter,
+        values: [...new Set(rows.map((row) => String(row[filter.key] ?? "")).filter(Boolean))].sort(
+          (left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }),
+        ),
+      })),
+    [filters, rows],
+  );
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
+    const faceted = rows.filter((row) =>
+      Object.entries(activeFilters).every(
+        ([key, value]) => !value || String(row[key as keyof Row] ?? "") === value,
+      ),
+    );
     const matches = !normalized
-      ? rows
-      : rows.filter((row) =>
+      ? faceted
+      : faceted.filter((row) =>
           Object.values(row).some((value) =>
             String(value ?? "")
               .toLowerCase()
@@ -257,7 +303,7 @@ export function WorkspaceDataTable<Row extends { id: string }>({
             });
       return sort.descending ? -order : order;
     });
-  }, [query, rows, sort]);
+  }, [activeFilters, query, rows, sort]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -297,6 +343,35 @@ export function WorkspaceDataTable<Row extends { id: string }>({
             className="min-w-0 flex-1 border-0 bg-transparent text-xs font-semibold text-slate-800 outline-none"
           />
         </label>
+        {filterOptions.length ? (
+          <div className="flex flex-wrap items-center gap-2" aria-label="Table filters">
+            <ListFilter size={15} className="text-slate-500" aria-hidden="true" />
+            {filterOptions.map((filter) => (
+              <label key={filter.key}>
+                <span className="sr-only">Filter by {filter.label}</span>
+                <select
+                  aria-label={`Filter by ${filter.label}`}
+                  value={activeFilters[filter.key] ?? ""}
+                  onChange={(event) => {
+                    setActiveFilters((current) => ({
+                      ...current,
+                      [filter.key]: event.target.value,
+                    }));
+                    setPage(1);
+                  }}
+                  className="min-h-11 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+                >
+                  <option value="">{filter.allLabel ?? `All ${filter.label.toLowerCase()}`}</option>
+                  {filter.values.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+        ) : null}
         <DropdownMenu.Root>
           <DropdownMenu.Trigger className="inline-flex min-h-11 items-center gap-2 rounded-md border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
             <Columns3 size={15} aria-hidden="true" /> Columns
@@ -348,8 +423,15 @@ export function WorkspaceDataTable<Row extends { id: string }>({
         <WorkspaceButton icon={Printer} onClick={() => window.print()}>
           Print / PDF
         </WorkspaceButton>
-        {query ? (
-          <WorkspaceButton icon={FilterX} onClick={() => setQuery("")}>
+        {query || Object.values(activeFilters).some(Boolean) ? (
+          <WorkspaceButton
+            icon={FilterX}
+            onClick={() => {
+              setQuery("");
+              setActiveFilters({});
+              setPage(1);
+            }}
+          >
             Reset
           </WorkspaceButton>
         ) : null}
@@ -474,11 +556,13 @@ export function WorkspaceDataTable<Row extends { id: string }>({
                   <div className="grid place-items-center gap-2 text-center">
                     <FileWarning size={24} className="text-slate-400" />
                     <strong className="text-sm text-slate-800">
-                      {query.trim() ? "No matching records" : "No records available"}
+                      {query.trim() || Object.values(activeFilters).some(Boolean)
+                        ? "No matching records"
+                        : "No records available"}
                     </strong>
                     <span className="text-xs text-slate-500">
-                      {query.trim()
-                        ? "Change or reset the current search."
+                      {query.trim() || Object.values(activeFilters).some(Boolean)
+                        ? "Change or reset the current search and filters."
                         : "Records will appear here when they are available for this scope."}
                     </span>
                   </div>

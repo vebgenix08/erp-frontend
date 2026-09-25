@@ -2,7 +2,10 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, describe, expect, it } from "vitest";
 import { WorkspaceDataTable } from "./teacher-workspace-primitives";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+});
 const columns = [
   { key: "name" as const, label: "Name" },
   { key: "periods" as const, label: "Periods" },
@@ -57,5 +60,31 @@ describe("WorkspaceDataTable", () => {
     expect(screen.getByText("No matching records")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
     expect(screen.getByText("No records available")).toBeInTheDocument();
+  });
+
+  it("restores saved column visibility after remounting", () => {
+    localStorage.setItem("workspace-table:saved-faculty:visible-columns", JSON.stringify(["name"]));
+    render(<WorkspaceDataTable rows={rows} columns={columns} downloadName="saved-faculty" />);
+    expect(screen.queryByRole("columnheader", { name: "Periods" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
+  });
+
+  it("filters rows using configured facets and resets them", () => {
+    render(
+      <WorkspaceDataTable
+        rows={rows}
+        columns={columns}
+        downloadName="filtered-faculty"
+        filters={[{ key: "periods", label: "Periods" }]}
+      />,
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter by Periods" }), {
+      target: { value: "2" },
+    });
+    expect(screen.getByText("Teacher 2")).toBeInTheDocument();
+    expect(screen.queryByText("Teacher 10")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(screen.getByText("Teacher 10")).toBeInTheDocument();
   });
 });

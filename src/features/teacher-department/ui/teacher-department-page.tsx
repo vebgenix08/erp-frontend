@@ -97,8 +97,7 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const selectedFacultyId = searchParams.get("faculty");
   const requestedTab = searchParams.get("tab");
-  const facultyDetailTab: FacultyDetailTab =
-    requestedTab === "WORKLOAD" ? requestedTab : "PROFILE";
+  const facultyDetailTab: FacultyDetailTab = requestedTab === "WORKLOAD" ? requestedTab : "PROFILE";
   const updateFacultyLocation = (
     facultyId: string | null,
     tab: FacultyDetailTab = "PROFILE",
@@ -553,18 +552,39 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
           ) : (
             <>
               <dl className="grid grid-cols-2 gap-x-5 gap-y-3 border-y border-slate-200 py-3 lg:grid-cols-4">
-                {[
-                  [isFacultyPage ? "Allocated faculty" : "Faculty", String(data.summary.faculty)],
-                  [
-                    "Class sections",
-                    `${data.summary.sections} across ${data.summary.classes} classes`,
-                  ],
-                  [
-                    "Teaching coverage",
-                    `${data.coverage.filter((item) => item.status === "READY").length} / ${data.summary.subjectOfferings} ready`,
-                  ],
-                  ["Published timetables", `${data.summary.publishedTimetables} sections`],
-                ].map(([label, value]) => (
+                {(isFacultyPage
+                  ? [
+                      ["Allocated faculty", String(data.summary.faculty)],
+                      [
+                        "Class sections",
+                        `${data.summary.sections} across ${data.summary.classes} classes`,
+                      ],
+                      [
+                        "Scheduled periods",
+                        String(data.faculty.reduce((sum, item) => sum + item.scheduledPeriods, 0)),
+                      ],
+                      [
+                        "Allocation attention",
+                        String(
+                          data.faculty.filter(
+                            (item) => item.scheduledPeriods !== item.requiredPeriods,
+                          ).length,
+                        ),
+                      ],
+                    ]
+                  : [
+                      ["Faculty", String(data.summary.faculty)],
+                      [
+                        "Class sections",
+                        `${data.summary.sections} across ${data.summary.classes} classes`,
+                      ],
+                      [
+                        "Teaching coverage",
+                        `${data.coverage.filter((item) => item.status === "READY").length} / ${data.summary.subjectOfferings} ready`,
+                      ],
+                      ["Published timetables", `${data.summary.publishedTimetables} sections`],
+                    ]
+                ).map(([label, value]) => (
                   <div key={label}>
                     <dt className="text-sm text-slate-500">{label}</dt>
                     <dd className="mt-1 text-base font-semibold text-slate-900">{value}</dd>
@@ -651,6 +671,14 @@ export function TeacherDepartmentPage({ page }: { page: TeacherPageDefinition })
                     rows={rows}
                     columns={columns}
                     downloadName={page.slug}
+                    {...(isFacultyPage
+                      ? {
+                          filters: [
+                            { key: "department" as const, label: "Department" },
+                            { key: "allocationStatus" as const, label: "Allocation" },
+                          ],
+                        }
+                      : {})}
                     {...(isFacultyPage || page.id === "dept_workload"
                       ? {
                           onOpen: (row: DepartmentRow) => {
@@ -865,8 +893,12 @@ function FacultyDetailsWorkspace({
               <div className="space-y-4">
                 {workloadLoading ? <LoadingState label="Loading current workload" /> : null}
                 {workloadError ? (
-                  <div role="alert" className="rounded-md bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
-                    Capacity information is unavailable. Department allocation remains visible below.
+                  <div
+                    role="alert"
+                    className="rounded-md bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900"
+                  >
+                    Capacity information is unavailable. Department allocation remains visible
+                    below.
                   </div>
                 ) : null}
                 {workload ? (
@@ -903,7 +935,8 @@ function FacultyDetailsWorkspace({
                         </span>
                         {workload.availabilityExceptions.map((item) => (
                           <span key={item.id}>
-                            {item.dayOfWeek[0] + item.dayOfWeek.slice(1).toLowerCase()} · {formatClockTime(item.startTime)}–{formatClockTime(item.endTime)}
+                            {item.dayOfWeek[0] + item.dayOfWeek.slice(1).toLowerCase()} ·{" "}
+                            {formatClockTime(item.startTime)}–{formatClockTime(item.endTime)}
                           </span>
                         ))}
                       </div>
@@ -1125,7 +1158,6 @@ function FacultyDetailsWorkspace({
                 </div>
               </div>
             ) : null}
-
           </div>
         </div>
       </WorkspaceSurface>
