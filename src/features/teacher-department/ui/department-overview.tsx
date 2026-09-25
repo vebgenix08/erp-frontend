@@ -30,23 +30,23 @@ export function DepartmentOverview({
   const coveragePath = leadership
     ? "academic-overview"
     : coordination
-      ? "coord-coverage"
-      : "dept-coverage";
+      ? "academic-coverage"
+      : "teaching-coverage";
   const timetablePath = leadership
     ? "attendance-timetable"
     : coordination
-      ? "coord-timetable"
-      : "dept-timetable";
+      ? "timetable-readiness"
+      : "department-timetable";
   const completionPath = leadership
     ? "leadership-reports"
     : coordination
-      ? "coord-reports"
-      : "dept-reports";
+      ? "academic-operations-reports"
+      : "department-reports";
   const allocationPath = leadership
     ? "leadership-faculty"
     : coordination
-      ? "coord-allocation"
-      : "dept-workload";
+      ? "teaching-allocation"
+      : "department-workload";
   const target = (path: string, filter: string, sectionId?: string) => {
     const query = new URLSearchParams({ filter });
     if (data.scope.responsibilityId) query.set("scope", data.scope.responsibilityId);
