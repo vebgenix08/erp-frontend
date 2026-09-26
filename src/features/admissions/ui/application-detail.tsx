@@ -19,6 +19,8 @@ import {
   rejectApplication,
 } from "../api/applications.api";
 import type { AdmissionApplication, ApplicationStatus } from "../model/application.types";
+import { listClasses, listSections } from "../../academic-structure/api/academic-structure.api";
+import { getStudentByAdmissionApplicationId } from "../../students/api/students.api";
 import { Badge } from "../../../shared/ui/badge";
 import { Button } from "../../../shared/ui/button";
 import { ErrorState, LoadingState } from "../../../shared/ui/page-state";
@@ -39,6 +41,10 @@ const label = (value: string) =>
 export function ApplicationDetail() {
   const { applicationId = "" } = useParams();
   const [record, setRecord] = useState<AdmissionApplication | null>(null);
+  const [academicLabels, setAcademicLabels] = useState({
+    academicClass: "Not assigned",
+    section: "Not assigned",
+  });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -47,7 +53,22 @@ export function ApplicationDetail() {
     setError(null);
     try {
       const data = await getApplication(applicationId);
+      const admittedStudent =
+        data.status === "CONFIRMED"
+          ? await getStudentByAdmissionApplicationId(data.id).catch(() => null)
+          : null;
+      const effectiveCampusId = admittedStudent?.enrollment.campusId ?? data.campusId;
+      const effectiveClassId = admittedStudent?.enrollment.classId ?? data.academicTargetId;
+      const effectiveSectionId = admittedStudent?.enrollment.sectionId ?? data.sectionId;
+      const [classes, sections] = await Promise.all([
+        listClasses(effectiveCampusId),
+        listSections(effectiveCampusId),
+      ]);
       setRecord(data);
+      setAcademicLabels({
+        academicClass: classes.find((item) => item.id === effectiveClassId)?.name ?? "Not assigned",
+        section: sections.find((item) => item.id === effectiveSectionId)?.name ?? "Not assigned",
+      });
     } catch (value) {
       setError(value instanceof Error ? value.message : "Unable to load application details");
     }
@@ -146,8 +167,8 @@ export function ApplicationDetail() {
               </h1>
               {getStatusBadge(record.status)}
             </div>
-            <p className="text-xs text-slate-500 font-medium mt-0.5 font-mono">
-              Application No: {record.applicationNumber ?? "Draft"} • ID: {record.id.slice(0, 8)}
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Application No: {record.applicationNumber ?? "Not assigned"}
             </p>
           </div>
         </div>
@@ -202,11 +223,11 @@ export function ApplicationDetail() {
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Left 8 Cols: Form Preview Content */}
         <div className="space-y-6 lg:col-span-8">
-          {/* Section 1: Applicant Information Form Card */}
+          {/* Applicant information */}
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
             <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
               <GraduationCap className="h-4 w-4 text-blue-600" />
-              Section 1: Applicant & Enrolment Information
+              Applicant & Enrolment Information
             </h2>
 
             <dl className="grid gap-4 sm:grid-cols-2 text-xs">
@@ -222,7 +243,7 @@ export function ApplicationDetail() {
                   Target Academic Class
                 </dt>
                 <dd className="mt-1 font-extrabold text-blue-700 text-sm">
-                  {record.academicTargetId ? label(record.academicTargetId) : "Class 10"}
+                  {academicLabels.academicClass}
                 </dd>
               </div>
 
@@ -230,16 +251,16 @@ export function ApplicationDetail() {
                 <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Allocated Section
                 </dt>
-                <dd className="mt-1 font-bold text-slate-800">
-                  {record.sectionId ? label(record.sectionId) : "Section A (Default)"}
-                </dd>
+                <dd className="mt-1 font-bold text-slate-800">{academicLabels.section}</dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
                 <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Gender
                 </dt>
-                <dd className="mt-1 font-bold text-slate-800">{record.gender ?? "MALE"}</dd>
+                <dd className="mt-1 font-bold text-slate-800">
+                  {record.gender ? label(record.gender) : "Not recorded"}
+                </dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
@@ -262,11 +283,11 @@ export function ApplicationDetail() {
             </dl>
           </div>
 
-          {/* Section 2: Parent & Guardian Details Form Card */}
+          {/* Parent and guardian details */}
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
             <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
               <UserRound className="h-4 w-4 text-emerald-600" />
-              Section 2: Parent & Guardian Details
+              Parent & Guardian Details
             </h2>
 
             <dl className="grid gap-4 sm:grid-cols-2 text-xs">
@@ -281,7 +302,9 @@ export function ApplicationDetail() {
                 <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Primary Contact Phone
                 </dt>
-                <dd className="mt-1 font-extrabold text-emerald-700">{record.phone}</dd>
+                <dd className="mt-1 font-extrabold text-emerald-700">
+                  {record.parentPhone || "Not provided"}
+                </dd>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
@@ -296,7 +319,7 @@ export function ApplicationDetail() {
                   Parent Relationship
                 </dt>
                 <dd className="mt-1 font-bold text-slate-800">
-                  {record.parentRelation || "Father"}
+                  {record.parentRelation || "Not recorded"}
                 </dd>
               </div>
 
@@ -305,34 +328,11 @@ export function ApplicationDetail() {
                   Residential Address
                 </dt>
                 <dd className="mt-1 font-semibold text-slate-800">
-                  {record.address || "Main City Address"}
+                  {record.address || "Not provided"}
                 </dd>
               </div>
             </dl>
           </div>
-
-          {/* Section 3: Custom Form Fields & Template Responses */}
-          {record.customFields && Object.keys(record.customFields).length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-              <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-                <FileText className="h-4 w-4 text-purple-600" />
-                Section 3: Custom Template Form Fields
-              </h2>
-
-              <dl className="grid gap-4 sm:grid-cols-2 text-xs">
-                {Object.entries(record.customFields).map(([key, value]) => (
-                  <div key={key} className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                    <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      {label(key)}
-                    </dt>
-                    <dd className="mt-1 font-bold text-slate-900">
-                      {typeof value === "boolean" ? (value ? "Yes" : "No") : String(value ?? "—")}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          )}
         </div>
 
         {/* Right 4 Cols: Attached Documents + Workflow History Timeline */}

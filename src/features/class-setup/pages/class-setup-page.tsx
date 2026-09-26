@@ -7,6 +7,7 @@ import {
   Clock3,
   GripVertical,
   List,
+  LayoutDashboard,
   Pencil,
   Plus,
   RefreshCw,
@@ -88,10 +89,11 @@ export function ClassSetupPage() {
   const [activeTab, setActiveTab] = useState(() => {
     const requestedTab = searchParams.get("tab");
     if (requestedTab === "students") return "Students";
+    if (requestedTab === "overview") return "Overview";
     if (requestedTab === "daily-classes") return "Daily Classes";
     if (requestedTab === "timetable") return "Timetable";
     if (requestedTab === "incharge") return "Incharge";
-    return "Subjects & Teachers";
+    return "Overview";
   });
   const [timetableView, setTimetableView] = useState<"TABLE" | "LIST">("TABLE");
   const [studentSearch, setStudentSearch] = useState("");
@@ -297,6 +299,7 @@ export function ClassSetupPage() {
   };
 
   const TABS = [
+    { name: "Overview", icon: LayoutDashboard },
     { name: "Subjects & Teachers", icon: BookOpen },
     { name: "Students", icon: Users },
     { name: "Daily Classes", icon: Clock3 },

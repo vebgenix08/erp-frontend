@@ -826,7 +826,13 @@ describe("teacher workspace pages", () => {
     renderPage("/teacher/academic-reports", assignedTeacherWorkspace);
     expect(await screen.findByRole("heading", { name: "Academic Reports" })).toBeInTheDocument();
     expect(
-      await screen.findByRole("option", { name: "Assessment-Window Attendance" }),
+      await screen.findByRole("option", { name: "Daily Attendance Register" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Monthly Attendance Summary" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Test Marks Register" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Test Performance Analysis" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Assessment Submission Status" }),
     ).toBeInTheDocument();
   });
 
@@ -1203,9 +1209,7 @@ describe("teacher workspace pages", () => {
 
   it("dispatches academic leadership through a campus-scoped operation", async () => {
     renderPage("/teacher/leadership-dashboard", emptyTeacherWorkspace, ["PRINCIPAL"]);
-    expect(
-      await screen.findByRole("heading", { name: "Leadership Overview" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Leadership Overview" })).toBeInTheDocument();
     expect(getTeacherLeadershipWorkspace).toHaveBeenCalledWith({
       academicYearId: "year-1",
       date: expect.any(String),
@@ -1214,9 +1218,7 @@ describe("teacher workspace pages", () => {
 
   it("redirects a principal dashboard to academic leadership", async () => {
     renderPage("/teacher/dashboard", emptyTeacherWorkspace, ["PRINCIPAL"]);
-    expect(
-      await screen.findByRole("heading", { name: "Leadership Overview" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Leadership Overview" })).toBeInTheDocument();
   });
 
   it("renders academic overview from section completion instead of repeating exceptions", async () => {

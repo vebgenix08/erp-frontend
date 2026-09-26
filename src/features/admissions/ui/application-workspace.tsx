@@ -122,8 +122,9 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useSearchParams();
-  const { selectedCampus } = useSelectedCampus();
-  const { selectedAcademicYear } = useSelectedAcademicYear();
+  const { selectedCampus, loading: campusLoading } = useSelectedCampus();
+  const { selectedAcademicYear, loading: academicYearLoading } = useSelectedAcademicYear();
+  const loadSequence = useRef(0);
   const operatingContextRef = useRef(
     `${selectedCampus?.id ?? ""}:${selectedAcademicYear?.id ?? ""}`,
   );
@@ -184,14 +185,24 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
   };
 
   const load = async () => {
+    const sequence = ++loadSequence.current;
+    if (campusLoading || academicYearLoading) return;
+    if (!selectedCampus || !selectedAcademicYear) {
+      setItems([]);
+      setClasses([]);
+      setSections([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const [applications, leads, templates, classRows, sectionRows] = await Promise.all([
         listApplicationPage({
           ...(status ? { status } : {}),
-          ...(selectedCampus ? { campusId: selectedCampus.id } : {}),
-          ...(selectedAcademicYear ? { academicYearId: selectedAcademicYear.id } : {}),
+          campusId: selectedCampus.id,
+          academicYearId: selectedAcademicYear.id,
           ...(academicTargetId ? { academicTargetId } : {}),
           ...(sectionId ? { sectionId } : {}),
           ...(confirmedOnly
@@ -209,9 +220,10 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
         }),
         listEnquiries(),
         listTenantTemplates(),
-        selectedCampus ? listClasses(selectedCampus.id) : [],
-        selectedCampus ? listSections(selectedCampus.id) : [],
+        listClasses(selectedCampus.id),
+        listSections(selectedCampus.id),
       ]);
+      if (sequence !== loadSequence.current) return;
       setItems(applications.items);
       setTotal(applications.total);
       setEnquiries(leads.filter((item) => item.status !== "CLOSED"));
@@ -226,9 +238,10 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
       setClasses(classRows.filter((item) => item.status === "ACTIVE"));
       setSections(sectionRows.filter((item) => item.status === "ACTIVE"));
     } catch (value) {
+      if (sequence !== loadSequence.current) return;
       setError(value instanceof Error ? value.message : "Unable to load applications");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   };
 
@@ -243,7 +256,9 @@ export function ApplicationWorkspace({ confirmedOnly = false }: { confirmedOnly?
     status,
     sectionId,
     selectedCampus?.id,
+    campusLoading,
     selectedAcademicYear?.id,
+    academicYearLoading,
     search,
     page,
     pageSize,
