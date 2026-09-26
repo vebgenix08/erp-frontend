@@ -23,6 +23,7 @@ import type {
   TeacherMarksHistoryItem,
 } from "../../teacher-history/model/teacher-history.types";
 import { EmptyState, ErrorState, LoadingState } from "../../../shared/ui/page-state";
+import { formatClockTime } from "../../../shared/lib/time-format";
 import { useTeacherWorkspace } from "../model/teacher-workspace-context";
 import {
   WorkspaceDataTable,
@@ -141,12 +142,6 @@ const displayDateTime = (value: string) =>
     hour12: true,
   }).format(new Date(value));
 
-const displayTime = (value: string) => {
-  const [hours = "0", minutes = "0"] = value.split(":");
-  const parsedHours = Number(hours);
-  return `${parsedHours % 12 || 12}:${minutes.padStart(2, "0")} ${parsedHours >= 12 ? "PM" : "AM"}`;
-};
-
 const percentage = (part: number, total: number) =>
   total ? `${Math.round((part * 1000) / total) / 10}%` : "Not available";
 
@@ -261,7 +256,7 @@ export function TeacherReportsPage() {
         date: displayDate(row.date),
         classSection: classSection(row),
         subject: row.subjectName,
-        time: `${displayTime(row.startTime)} – ${displayTime(row.endTime)}`,
+        time: `${formatClockTime(row.startTime)} – ${formatClockTime(row.endTime)}`,
         students: row.studentCount,
         present: row.presentCount,
         absent: row.absentCount,

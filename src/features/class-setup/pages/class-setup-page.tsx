@@ -38,6 +38,7 @@ import { SubjectTeacherMatrix } from "../components/subject-teacher-matrix";
 import { TimingConfiguration } from "../components/timing-configuration";
 import { useClassSetup } from "../hooks/use-class-setup";
 import { comparePeriodSlots } from "../../academic-planning/model/timetable-view";
+import { formatClockTime } from "../../../shared/lib/time-format";
 
 const selectClass =
   "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
@@ -242,7 +243,7 @@ export function ClassSetupPage() {
     }
     return {
       slotId: slot.id,
-      time: `${slot.startTime} - ${slot.endTime}`,
+      time: `${formatClockTime(slot.startTime)} - ${formatClockTime(slot.endTime)}`,
       label: slot.label,
       slotType: slot.slotType,
       schedule,
